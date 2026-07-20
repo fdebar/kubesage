@@ -1,9 +1,8 @@
 from kubernetes import client, config
-
-from config import settings
+from config import settings, logger
 from models.container import ContainerInfo
 from models.incident import Incident
-
+from kubernetes.client.exceptions import ApiException
 
 class KubernetesService:
 
@@ -14,6 +13,12 @@ class KubernetesService:
         self.v1 = client.CoreV1Api()
 
     def collect(self, namespace: str, pod: str) -> Incident:
+
+        logger.info(
+            "Collecting pod %s/%s",
+            namespace,
+            pod,
+        )
 
         logs = self.v1.read_namespaced_pod_log(
             name=pod,
@@ -65,6 +70,8 @@ class KubernetesService:
         )
 
         warnings = []
+
+        logger.info("Incident collected successfully.")
 
         for e in events.items:
 
