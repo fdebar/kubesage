@@ -19,8 +19,8 @@ class ConnectivityRule(BaseRule):
             findings.append(
                 Finding(
                     severity=Severity.WARNING.value,
-                    title="Erreur de connexion",
-                    description=("Une dépendance externe refuse la connexion."),
+                    title="Connection refused",
+                    description=("An external dependency is refusing the connection."),
                     confidence=0.8,
                     source="container.logs",
                 )

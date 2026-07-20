@@ -19,9 +19,9 @@ class OOMRule(BaseRule):
                 findings.append(
                     Finding(
                         severity=Severity.CRITICAL.value,
-                        title="OOMKilled détecté",
+                        title="OOMKilled detected",
                         description=(
-                            f"{container.name} " "a probablement dépassé sa mémoire."
+                            f"{container.name} " "likely exceeded its memory limit."
                         ),
                         confidence=0.9,
                         source="kubernetes.container.exit_code",
