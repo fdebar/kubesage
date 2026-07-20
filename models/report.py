@@ -13,3 +13,4 @@ class Report:
     recommendations: list[str] = field(default_factory=list)
 
     kubectl_commands: list[str] = field(default_factory=list)
+    
