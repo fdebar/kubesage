@@ -19,10 +19,10 @@ class CrashLoopRule(BaseRule):
                 findings.append(
                     Finding(
                         severity=Severity.CRITICAL.value,
-                        title="CrashLoopBackOff détecté",
+                        title="CrashLoopBackOff detected",
                         description=(
-                            f"Le container {container.name} "
-                            "redémarre continuellement."
+                            f"The container {container.name} "
+                            "is restarting continuously."
                         ),
                         confidence=0.95,
                         source="kubernetes.container.status",
