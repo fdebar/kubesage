@@ -1,5 +1,3 @@
-from dataclasses import asdict
-import json
 from dataclasses import dataclass, field
 
 
@@ -10,11 +8,8 @@ class Report:
 
     summary: str
 
-    findings: list[str] = field(default_factory=list)
+    root_cause: str
 
     recommendations: list[str] = field(default_factory=list)
 
-    commands: list[str] = field(default_factory=list)
-
-    def to_json(self) -> str:
-        return json.dumps(asdict(self))
+    kubectl_commands: list[str] = field(default_factory=list)
