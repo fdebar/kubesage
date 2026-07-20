@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ai-demo-app
+  namespace: default
+spec:
+  containers:
+  - name: app
+    image: busybox
+    command:
+      - sh
+      - -c
+      - |
+        echo "Application démarrage"
+        sleep 5
+        echo "ERROR database connection refused"
+        echo "ERROR cannot connect to redis"
+        exit 1
