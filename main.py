@@ -26,4 +26,4 @@ service = IncidentService()
 
 report = service.analyze(namespace=args.namespace, pod=args.pod)
 
-print(json.dumps(report))
+print(json.dumps(report, indent=4))
