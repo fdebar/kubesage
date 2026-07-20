@@ -1,3 +1,4 @@
+from models.report import Report
 from analyzers.rules import analyze_incident
 from models.incident import Incident
 from services.kubernetes_service import KubernetesService
@@ -24,4 +25,8 @@ class IncidentService:
             incident
         )
 
-        return incident, findings
+        return Report(
+            severity="critical",
+            summary="CrashLoopBackOff détecté.",
+            findings=findings,
+        )

@@ -1,48 +1,29 @@
+import argparse
 from services.incident_service import IncidentService
 
+def parse_args():
 
-def main():
+    parser = argparse.ArgumentParser()
 
-    service = IncidentService()
-
-    incident, findings = service.analyze(
-        namespace="default",
-        pod="ai-demo-app",
+    parser.add_argument(
+        "--namespace",
+        default="default",
     )
 
-    print("=" * 60)
+    parser.add_argument(
+        "--pod",
+        required=True,
+    )
 
-    print(f"Pod        : {incident.pod}")
-    print(f"Namespace  : {incident.namespace}")
-    print(f"Phase      : {incident.phase}")
+    return parser.parse_args()
 
-    print()
+args = parse_args()
 
-    print("Containers")
+service = IncidentService()
 
-    for c in incident.containers:
+report = service.analyze(
+    args.namespace,
+    args.pod,
+)
 
-        print(
-            f"- {c.name}"
-            f" ready={c.ready}"
-            f" restart={c.restart_count}"
-            f" waiting={c.waiting_reason}"
-        )
-
-    print()
-
-    print("Findings")
-
-    for finding in findings:
-        print(f"• {finding}")
-
-    print()
-
-    print("Warnings")
-
-    for event in incident.events:
-        print(f"- {event['reason']} : {event['message']}")
-
-
-if __name__ == "__main__":
-    main()
+print(report.to_json())

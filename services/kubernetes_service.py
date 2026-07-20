@@ -20,6 +20,21 @@ class KubernetesService:
             pod,
         )
 
+        try:
+            pod_info = self.v1.read_namespaced_pod(
+                name=pod,
+                namespace=namespace,
+            )
+
+        except ApiException as e:
+
+            if e.status == 404:
+                raise ValueError(
+                    f"Pod {namespace}/{pod} introuvable."
+                )
+
+            raise
+
         logs = self.v1.read_namespaced_pod_log(
             name=pod,
             namespace=namespace,
@@ -28,11 +43,6 @@ class KubernetesService:
 
         if isinstance(logs, bytes):
             logs = logs.decode("utf-8")
-
-        pod_info = self.v1.read_namespaced_pod(
-            name=pod,
-            namespace=namespace,
-        )
 
         containers = []
 
