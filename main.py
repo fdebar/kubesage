@@ -1,3 +1,4 @@
+import json
 import argparse
 from services.incident_service import IncidentService
 
@@ -23,25 +24,6 @@ args = parse_args()
 
 service = IncidentService()
 
-incidents, findings = service.analyze(
-    args.namespace,
-    args.pod,
-)
+report = service.analyze(namespace=args.namespace, pod=args.pod)
 
-for finding in findings:
-
-    print(
-        f"""
-[{finding.severity}]
-
-{finding.title}
-
-{finding.description}
-
-Confidence:
-{finding.confidence}
-
-Source:
-{finding.source}
-"""
-    )
+print(json.dumps(report))

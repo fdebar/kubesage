@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from dotenv import load_dotenv
 import logging
 import os
 
@@ -6,14 +7,12 @@ import os
 @dataclass(slots=True)
 class Settings:
 
-    log_tail_lines: int = int(
-        os.getenv("LOG_TAIL_LINES", "200")
-    )
+    load_dotenv()
 
-    log_level: str = os.getenv(
-        "LOG_LEVEL",
-        "INFO"
-    )
+    log_tail_lines: int = int(os.getenv("LOG_TAIL_LINES", "200"))
+    log_level: str = os.getenv("LOG_LEVEL", "INFO")
+    openai_model: str = os.getenv("OPENAI_MODEL")
+    openai_api_key: str = os.getenv("OPENAI_API_KEY")
 
 
 settings = Settings()
