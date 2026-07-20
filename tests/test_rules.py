@@ -1,4 +1,6 @@
-from analyzers.rules import analyze_incident
+from analyzers.rules.crashloop import CrashLoopRule
+from analyzers.rules.connectivity import ConnectivityRule
+from analyzers.rules.oom import OOMRule
 from models.container import ContainerInfo
 from models.incident import Incident
 
@@ -21,9 +23,44 @@ def test_crashloopbackoff():
         ],
     )
 
-    findings = analyze_incident(incident)
+    findings = CrashLoopRule().evaluate(incident)
 
-    assert any(
-        "CrashLoopBackOff" in f
-        for f in findings
+    assert any("CrashLoopBackOff detected" in f.title for f in findings)
+
+
+def test_connectivity():
+
+    incident = Incident(
+        namespace="default",
+        pod="demo",
+        phase="Running",
+        logs="error: connection refused by server",
+        containers=[],
     )
+
+    findings = ConnectivityRule().evaluate(incident)
+
+    assert any("Erreur de connexion" in f.title for f in findings)
+
+
+def test_oomkilled():
+
+    incident = Incident(
+        namespace="default",
+        pod="demo",
+        phase="Running",
+        logs="",
+        containers=[
+            ContainerInfo(
+                name="app",
+                ready=False,
+                restart_count=1,
+                waiting_reason="OOMKilled",
+                last_exit_code=137,
+            )
+        ],
+    )
+
+    findings = OOMRule().evaluate(incident)
+
+    assert any("OOMKilled detected" in f.title for f in findings)
