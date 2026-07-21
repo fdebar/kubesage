@@ -18,7 +18,7 @@ class AIService:
         response = self.client.chat.completions.create(
             model=self.model,
             messages=[
-                {"role": "system", "content": "Tu es un expert Kubernetes SRE."},
+                {"role": "system", "content": "You are an expert Kubernetes SRE."},
                 {"role": "user", "content": prompt},
             ],
             response_format={"type": "json_object"},
