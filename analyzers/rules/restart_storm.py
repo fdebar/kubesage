@@ -21,7 +21,7 @@ class RestartStormRule(BaseRule):
         if restarts.value > self.RESTART_THRESHOLD:
             findings.append(
                 Finding(
-                    severity=Severity.CRITICAL,
+                    severity=Severity.CRITICAL.value,
                     title="Container restarted many times",
                     description=(f"{restarts.value:.0f} restarts detected."),
                     confidence=0.95,

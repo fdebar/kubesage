@@ -24,7 +24,7 @@ class ProbableOOMRule(BaseRule):
 
                 findings.append(
                     Finding(
-                        severity=Severity.CRITICAL,
+                        severity=Severity.CRITICAL.value,
                         title="Probable OOMKilled",
                         description=(
                             "CrashLoopBackOff + exit code 137 "
