@@ -7,10 +7,10 @@ import requests
 
 class PrometheusService:
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.base_url = settings.prometheus_url
 
-    def query(self, promql: str):
+    def query(self, promql: str) -> list:
         try:
             response = requests.get(
                 f"{self.base_url}/api/v1/query",
@@ -21,9 +21,10 @@ class PrometheusService:
             )
             response.raise_for_status()
 
-            return response.json()["data"]["result"]
+            return response.json()["data"]["result"]  # type: ignore
         except requests.RequestException as exc:
             KubeSageException.throw_and_exit(exc)
+            return []
 
     def collect(
         self,
