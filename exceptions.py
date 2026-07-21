@@ -6,7 +6,6 @@ console = Console()
 
 
 class KubeSageException(Exception):
-
     def __init__(self) -> None:
         pass
 

@@ -5,7 +5,6 @@ from models.finding import Finding
 
 
 class DiagnosticEngine:
-
     def __init__(self) -> None:
         self.rules = discover_rules()
         logger.info("Loaded %d rules", len(self.rules))

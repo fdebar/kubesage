@@ -4,7 +4,6 @@ from models.finding import Finding
 
 
 class ContextBuilder:
-
     def build(self, incident: Incident, findings: list[Finding]) -> AIContext:
         summary = self._build_summary(findings)
         metrics = self._metrics_summary(incident)
@@ -32,7 +31,7 @@ class ContextBuilder:
         if usage.cpu:
             metrics.append(f"CPU: {usage.cpu.value:.3f}")
         if usage.memory:
-            metrics.append(f"Memory: {usage.memory.value/1024/1024:.0f} MiB")
+            metrics.append(f"Memory: {usage.memory.value / 1024 / 1024:.0f} MiB")
         if usage.restarts:
             metrics.append(f"Restarts: {usage.restarts.value:.0f}")
 

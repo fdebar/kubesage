@@ -22,7 +22,6 @@ class ProbableOOMRule(BaseRule):
                 container.waiting_reason == "CrashLoopBackOff"
                 and container.last_exit_code == 137
             ):
-
                 findings.append(
                     Finding(
                         severity=Severity.CRITICAL,

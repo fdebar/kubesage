@@ -6,7 +6,6 @@ import requests
 
 
 class PrometheusService:
-
     def __init__(self) -> None:
         self.base_url = settings.prometheus_url
 

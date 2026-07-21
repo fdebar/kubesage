@@ -5,7 +5,6 @@ from config import settings
 
 
 class AIService:
-
     def __init__(self) -> None:
         self.model = settings.openai_model
 
@@ -32,4 +31,4 @@ class AIService:
 
         content = response.choices[0].message.content
 
-        return json.loads(content or "{}") # type: ignore
+        return json.loads(content or "{}")  # type: ignore

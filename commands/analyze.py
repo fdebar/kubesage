@@ -1,8 +1,8 @@
 import json
 from services.incident_service import IncidentService
-from services.prometheus_service import PrometheusService
 
 import argparse
+
 
 def analyze_command(args: argparse.Namespace) -> None:
     """Manage the execution of the analyze command."""

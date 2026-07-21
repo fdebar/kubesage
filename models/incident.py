@@ -1,5 +1,5 @@
 from models.prometheus import ResourceUsage
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from models.container import ContainerInfo
 from models.metrics import PodMetrics
 from models.events import Event

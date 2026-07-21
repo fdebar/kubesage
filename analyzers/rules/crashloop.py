@@ -14,9 +14,7 @@ class CrashLoopRule(BaseRule):
         findings: list[Finding] = []
 
         for container in incident.containers:
-
             if container.waiting_reason == "CrashLoopBackOff":
-
                 findings.append(
                     Finding(
                         severity=Severity.CRITICAL,

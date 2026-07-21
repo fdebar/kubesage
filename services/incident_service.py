@@ -8,7 +8,6 @@ from services.ai_service import AIService
 
 
 class IncidentService:
-
     def __init__(self) -> None:
 
         self.kubernetes = KubernetesService()

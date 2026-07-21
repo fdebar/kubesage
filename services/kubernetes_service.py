@@ -1,14 +1,13 @@
 from exceptions import KubeSageException
-from kubernetes import client, config # type: ignore
+from kubernetes import client, config  # type: ignore
 from config import settings, logger
-from kubernetes.client.exceptions import ApiException # type: ignore
+from kubernetes.client.exceptions import ApiException  # type: ignore
 from models.container import ContainerInfo
 from models.incident import Incident
 from models.events import Event
 
 
 class KubernetesService:
-
     def __init__(self) -> None:
         config.load_kube_config()
         self.v1 = client.CoreV1Api()
@@ -81,7 +80,9 @@ class KubernetesService:
                 Event(
                     reason=event_item.reason,
                     message=event_item.message,
-                    last_timestamp=str(event_item.last_timestamp) if event_item.last_timestamp else "",
+                    last_timestamp=str(event_item.last_timestamp)
+                    if event_item.last_timestamp
+                    else "",
                 )
             )
 

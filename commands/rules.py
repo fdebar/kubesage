@@ -2,6 +2,7 @@ from analyzers.engine import DiagnosticEngine
 
 import argparse
 
+
 def rules_command(args: argparse.Namespace) -> None:
     """Manage the execution of the rules command."""
 

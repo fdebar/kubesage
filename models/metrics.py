@@ -10,5 +10,4 @@ class ContainerMetrics:
 
 @dataclass(slots=True)
 class PodMetrics:
-
     containers: list[ContainerMetrics] = field(default_factory=list)

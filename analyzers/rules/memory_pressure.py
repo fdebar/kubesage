@@ -24,7 +24,7 @@ class MemoryPressureRule(BaseRule):
                 Finding(
                     severity=Severity.WARNING,
                     title="High memory usage",
-                    description=(f"{memory.value / 1024 /1024:.0f} MiB used."),
+                    description=(f"{memory.value / 1024 / 1024:.0f} MiB used."),
                     confidence=0.8,
                     source="prometheus",
                     category="resource_utilization",
