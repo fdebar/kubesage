@@ -1,19 +1,12 @@
-from analyzers.rules.connectivity import ConnectivityRule
-from analyzers.rules.crashloop import CrashLoopRule
-from analyzers.rules.high_memory import HighMemoryRule
-from analyzers.rules.oom import OOMRule
+from config import logger
+from analyzers.rule_loader import discover_rules
 
 
 class DiagnosticEngine:
 
     def __init__(self):
-
-        self.rules = [
-            CrashLoopRule(),
-            OOMRule(),
-            ConnectivityRule(),
-            HighMemoryRule(),
-        ]
+        self.rules = discover_rules()
+        logger.info("Loaded %d rules", len(self.rules))
 
     def analyze(self, incident):
         findings = []
@@ -22,3 +15,7 @@ class DiagnosticEngine:
             findings.extend(rule.evaluate(incident))
 
         return findings
+
+    def list_rules(self):
+        for rule in self.rules:
+            print(f"- {rule.name}: {rule.description}")

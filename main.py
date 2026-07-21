@@ -1,29 +1,32 @@
-import json
 import argparse
-from services.incident_service import IncidentService
+from commands.analyze import analyze_command
+from commands.rules import rules_command
 
 
-def parse_args():
+def main():
+    parser = argparse.ArgumentParser(description="Incident analysis tool")
 
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument(
-        "--namespace",
-        default="default",
+    subparsers = parser.add_subparsers(
+        dest="command", required=True, help="Available commands"
     )
 
-    parser.add_argument(
-        "--pod",
-        required=True,
+    parser_analyze = subparsers.add_parser(
+        "analyze", help="Analyzes an incident on a specific pod"
     )
+    parser_analyze.add_argument("--namespace", default="default")
+    parser_analyze.add_argument("--pod", required=True)
+    parser_analyze.set_defaults(func=analyze_command)
 
-    return parser.parse_args()
+    parser_rules = subparsers.add_parser("rules", help="Manage rules")
+    parser_rules.add_argument(
+        "--list", action="store_true", help="List all configured rules", required=True
+    )
+    parser_rules.set_defaults(func=rules_command)
+
+    args = parser.parse_args()
+
+    args.func(args)
 
 
-args = parse_args()
-
-service = IncidentService()
-
-report = service.analyze(namespace=args.namespace, pod=args.pod)
-
-print(json.dumps(report, indent=4, ensure_ascii=False))
+if __name__ == "__main__":
+    main()

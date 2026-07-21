@@ -7,15 +7,14 @@ from models.finding import (
 
 
 class OOMRule(BaseRule):
+    name = "OOM"
+    description = "Detect OOMKilled"
 
     def evaluate(self, incident):
-
         findings = []
 
         for container in incident.containers:
-
             if container.last_exit_code == 137:
-
                 findings.append(
                     Finding(
                         severity=Severity.CRITICAL.value,

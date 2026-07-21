@@ -6,6 +6,8 @@ from models.finding import (
 
 
 class HighMemoryRule(BaseRule):
+    name = "HighMemory"
+    description = "Detect high memory usage"
 
     def evaluate(self, incident):
         findings = []

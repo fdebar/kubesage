@@ -1,5 +1,4 @@
 from analyzers.rules.base import BaseRule
-
 from models.finding import (
     Finding,
     Severity,
@@ -7,9 +6,10 @@ from models.finding import (
 
 
 class CrashLoopRule(BaseRule):
+    name = "CrashLoop"
+    description = "Detect CrashLoopBackOff"
 
     def evaluate(self, incident):
-
         findings = []
 
         for container in incident.containers:

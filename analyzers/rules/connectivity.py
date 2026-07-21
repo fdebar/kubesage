@@ -1,5 +1,4 @@
 from analyzers.rules.base import BaseRule
-
 from models.finding import (
     Finding,
     Severity,
@@ -7,15 +6,14 @@ from models.finding import (
 
 
 class ConnectivityRule(BaseRule):
+    name = "Connectivity"
+    description = "Detect connection refused"
 
     def evaluate(self, incident):
-
         findings = []
 
         logs = incident.logs.lower()
-
         if "connection refused" in logs:
-
             findings.append(
                 Finding(
                     severity=Severity.WARNING.value,
