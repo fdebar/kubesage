@@ -21,6 +21,9 @@ def test_crashloopbackoff():
                 last_exit_code=1,
             )
         ],
+        events=[],
+        metrics=None,
+        prometheus=None,
     )
 
     findings = CrashLoopRule().evaluate(incident)
@@ -36,11 +39,14 @@ def test_connectivity():
         phase="Running",
         logs="error: connection refused by server",
         containers=[],
+        events=[],
+        metrics=None,
+        prometheus=None,
     )
 
     findings = ConnectivityRule().evaluate(incident)
 
-    assert any("Erreur de connexion" in f.title for f in findings)
+    assert any("Connection refused" in f.title for f in findings)
 
 
 def test_oomkilled():
@@ -59,6 +65,9 @@ def test_oomkilled():
                 last_exit_code=137,
             )
         ],
+        events=[],
+        metrics=None,
+        prometheus=None,
     )
 
     findings = OOMRule().evaluate(incident)
