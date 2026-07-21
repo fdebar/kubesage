@@ -1,3 +1,4 @@
+from config import logger
 from exceptions import KubeSageException
 from models.prometheus import Metric
 from models.prometheus import ResourceUsage
@@ -31,6 +32,7 @@ class PrometheusService:
         pod: str,
     ) -> ResourceUsage:
         usage = ResourceUsage()
+        logger.info("Collecting prometheus data...")
 
         cpu = self.query(self.CPU_QUERY % (namespace, pod))
         memory = self.query(self.MEMORY_QUERY % (namespace, pod))

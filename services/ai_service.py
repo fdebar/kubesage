@@ -1,3 +1,4 @@
+from config import logger
 from exceptions import KubeSageException
 import json
 from openai import OpenAI
@@ -14,6 +15,7 @@ class AIService:
             self.client = OpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
 
     def analyze(self, prompt: str) -> dict:
+        logger.info("Calling LLM....")
 
         try:
             response = self.client.chat.completions.create(

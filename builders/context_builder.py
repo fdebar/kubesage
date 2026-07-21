@@ -1,3 +1,4 @@
+from config import logger
 from models.ai_context import AIContext
 from models.incident import Incident
 from models.finding import Finding
@@ -5,6 +6,8 @@ from models.finding import Finding
 
 class ContextBuilder:
     def build(self, incident: Incident, findings: list[Finding]) -> AIContext:
+        logger.info("Building AI context...")
+
         summary = self._build_summary(findings)
         metrics = self._metrics_summary(incident)
 

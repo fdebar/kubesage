@@ -19,6 +19,7 @@ class MetricsService:
         namespace: str,
         pod: str,
     ) -> PodMetrics | None:
+        logger.info("Collecting metrics-server data ...")
 
         try:
             metrics = self.api.get_namespaced_custom_object(
@@ -32,7 +33,7 @@ class MetricsService:
         except ApiException as e:
             if e.status == 404:
                 logger.info(
-                    f"Metrics from metrics-server are not available for {pod} (pod not found or too recent)."
+                    "Metrics from metrics-server are not available (pod not found or too recent)."
                 )
             elif e.status == 503:
                 logger.error("The metrics-server is not yet ready to respond.")

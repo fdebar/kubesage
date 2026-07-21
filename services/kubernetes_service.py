@@ -13,7 +13,7 @@ class KubernetesService:
         self.v1 = client.CoreV1Api()
 
     def collect(self, namespace: str, pod: str) -> Incident:
-        logger.info("Collecting pod %s/%s", namespace, pod)
+        logger.info("Collecting kubernetes data for pod %s/%s...", namespace, pod)
 
         try:
             pod_info = self.v1.read_namespaced_pod(name=pod, namespace=namespace)
@@ -69,8 +69,6 @@ class KubernetesService:
         if events is None:
             logger.warning("No events collected")
 
-        logger.info("Incident collected successfully.")
-
         warnings = []
         for event_item in events.items:
             if event_item.type != "Warning":
@@ -80,9 +78,11 @@ class KubernetesService:
                 Event(
                     reason=event_item.reason,
                     message=event_item.message,
-                    last_timestamp=str(event_item.last_timestamp)
-                    if event_item.last_timestamp
-                    else "",
+                    last_timestamp=(
+                        str(event_item.last_timestamp)
+                        if event_item.last_timestamp
+                        else ""
+                    ),
                 )
             )
 
