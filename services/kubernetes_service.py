@@ -1,9 +1,10 @@
+from exceptions import KubeSageException
 from kubernetes import client, config
 from config import settings, logger
+from kubernetes.client.exceptions import ApiException
 from models.container import ContainerInfo
 from models.incident import Incident
 from models.events import Event
-from kubernetes.client.exceptions import ApiException
 
 
 class KubernetesService:
@@ -19,8 +20,10 @@ class KubernetesService:
             pod_info = self.v1.read_namespaced_pod(name=pod, namespace=namespace)
         except ApiException as e:
             if e.status == 404:
-                raise ValueError(f"Pod {namespace}/{pod} cannot be found.")
-            raise
+                KubeSageException.throw_and_exit(
+                    f"Pod {namespace}/{pod} cannot be found."
+                )
+            KubeSageException.throw_and_exit(e)
 
         logs = self.v1.read_namespaced_pod_log(
             name=pod,
@@ -63,6 +66,9 @@ class KubernetesService:
             namespace=namespace,
             field_selector=f"involvedObject.name={pod}",
         )
+
+        if events is None:
+            logger.warning("No events collected")
 
         logger.info("Incident collected successfully.")
 

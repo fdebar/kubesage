@@ -3,3 +3,5 @@ python-dotenv>=1.0.0
 pytest>=9.1.1
 openai>=1.0.0
 requests>=2.32.0
+panel>=1.9.3
+rich>=15.0.0

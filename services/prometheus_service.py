@@ -1,7 +1,8 @@
+from exceptions import KubeSageException
 from models.prometheus import Metric
 from models.prometheus import ResourceUsage
-import requests
 from config import settings
+import requests
 
 
 class PrometheusService:
@@ -10,18 +11,19 @@ class PrometheusService:
         self.base_url = settings.prometheus_url
 
     def query(self, promql: str):
-        response = requests.get(
-            f"{self.base_url}/api/v1/query",
-            params={
-                "query": promql,
-            },
-            timeout=settings.prometheus_timeout,
-        )
+        try:
+            response = requests.get(
+                f"{self.base_url}/api/v1/query",
+                params={
+                    "query": promql,
+                },
+                timeout=settings.prometheus_timeout,
+            )
+            response.raise_for_status()
 
-        response.raise_for_status()
-        data = response.json()
-
-        return data["data"]["result"]
+            return response.json()["data"]["result"]
+        except requests.RequestException as exc:
+            KubeSageException.throw_and_exit(exc)
 
     def collect(
         self,

@@ -1,3 +1,4 @@
+from config import logger
 from analyzers.rules.base import BaseRule
 from models.finding import (
     Finding,
@@ -13,6 +14,10 @@ class ConnectivityRule(BaseRule):
         findings = []
 
         logs = incident.logs.lower()
+        if incident.logs is None:
+            logger.warning("No logs collected")
+            return findings
+
         if "connection refused" in logs:
             findings.append(
                 Finding(

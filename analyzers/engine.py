@@ -14,6 +14,11 @@ class DiagnosticEngine:
         for rule in self.rules:
             findings.extend(rule.evaluate(incident))
 
+        if not findings:
+            logger.info(
+                f"No findings detected for pod: {incident.pod_name} in namespace: {incident.namespace}"
+            )
+
         return findings
 
     def list_rules(self):
