@@ -29,7 +29,6 @@ class MetricsService:
                 plural="pods",
                 name=pod,
             )
-            return metrics
 
         except ApiException as e:
             if e.status == 404:

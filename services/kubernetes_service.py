@@ -2,37 +2,24 @@ from kubernetes import client, config
 from config import settings, logger
 from models.container import ContainerInfo
 from models.incident import Incident
+from models.events import Event
 from kubernetes.client.exceptions import ApiException
+
 
 class KubernetesService:
 
     def __init__(self):
-
         config.load_kube_config()
-
         self.v1 = client.CoreV1Api()
 
     def collect(self, namespace: str, pod: str) -> Incident:
-
-        logger.info(
-            "Collecting pod %s/%s",
-            namespace,
-            pod,
-        )
+        logger.info("Collecting pod %s/%s", namespace, pod)
 
         try:
-            pod_info = self.v1.read_namespaced_pod(
-                name=pod,
-                namespace=namespace,
-            )
-
+            pod_info = self.v1.read_namespaced_pod(name=pod, namespace=namespace)
         except ApiException as e:
-
             if e.status == 404:
-                raise ValueError(
-                    f"Pod {namespace}/{pod} introuvable."
-                )
-
+                raise ValueError(f"Pod {namespace}/{pod} cannot be found.")
             raise
 
         logs = self.v1.read_namespaced_pod_log(
@@ -45,9 +32,7 @@ class KubernetesService:
             logs = logs.decode("utf-8")
 
         containers = []
-
         for c in pod_info.status.container_statuses or []:
-
             waiting_reason = None
             waiting_message = None
 
@@ -79,20 +64,19 @@ class KubernetesService:
             field_selector=f"involvedObject.name={pod}",
         )
 
-        warnings = []
-
         logger.info("Incident collected successfully.")
 
+        warnings = []
         for e in events.items:
-
             if e.type != "Warning":
                 continue
 
             warnings.append(
-                {
-                    "reason": e.reason,
-                    "message": e.message,
-                }
+                Event(
+                    reason=e.reason,
+                    message=e.message,
+                    last_timestamp=str(e.last_timestamp) if e.last_timestamp else "",
+                )
             )
 
         return Incident(
