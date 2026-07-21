@@ -6,7 +6,7 @@ from analyzers.rules.base import BaseRule
 import analyzers.rules
 
 
-def discover_rules():
+def discover_rules() -> list[BaseRule]:
     rules = []
 
     for module in pkgutil.iter_modules(analyzers.rules.__path__):

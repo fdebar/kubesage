@@ -1,6 +1,6 @@
 from config import logger
-from kubernetes.client.exceptions import ApiException
-from kubernetes import client, config
+from kubernetes.client.exceptions import ApiException # type: ignore
+from kubernetes import client, config # type: ignore
 
 from models.metrics import (
     PodMetrics,
@@ -10,16 +10,16 @@ from models.metrics import (
 
 class MetricsService:
 
-    def __init__(self):
+    def __init__(self) -> None:
 
         config.load_kube_config()
         self.api = client.CustomObjectsApi()
 
     def collect(
         self,
-        namespace,
-        pod,
-    ):
+        namespace: str,
+        pod: str,
+    ) -> PodMetrics | None:
 
         try:
             metrics = self.api.get_namespaced_custom_object(

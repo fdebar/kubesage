@@ -5,7 +5,7 @@ from models.container import ContainerInfo
 from models.incident import Incident
 
 
-def test_crashloopbackoff():
+def test_crashloopbackoff() -> None:
 
     incident = Incident(
         namespace="default",
@@ -31,7 +31,7 @@ def test_crashloopbackoff():
     assert any("CrashLoopBackOff detected" in f.title for f in findings)
 
 
-def test_connectivity():
+def test_connectivity() -> None:
 
     incident = Incident(
         namespace="default",
@@ -49,7 +49,7 @@ def test_connectivity():
     assert any("Connection refused" in f.title for f in findings)
 
 
-def test_oomkilled():
+def test_oomkilled() -> None:
 
     incident = Incident(
         namespace="default",

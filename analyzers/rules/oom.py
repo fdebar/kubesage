@@ -1,3 +1,4 @@
+from models.incident import Incident
 from analyzers.rules.base import BaseRule
 
 from models.finding import (
@@ -10,14 +11,14 @@ class OOMRule(BaseRule):
     name = "OOM"
     description = "Detect OOMKilled"
 
-    def evaluate(self, incident):
-        findings = []
+    def evaluate(self, incident: Incident) -> list[Finding]:
+        findings: list[Finding] = []
 
         for container in incident.containers:
             if container.last_exit_code == 137:
                 findings.append(
                     Finding(
-                        severity=Severity.CRITICAL.value,
+                        severity=Severity.CRITICAL,
                         title="OOMKilled detected",
                         description=(
                             f"{container.name} " "likely exceeded its memory limit."

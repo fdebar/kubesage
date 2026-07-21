@@ -7,13 +7,15 @@ console = Console()
 
 class KubeSageException(Exception):
 
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
-    def throw_and_exit(exc: Exception, color: str = "bold red"):
+    @staticmethod
+    def throw_and_exit(exc: Exception | str, color: str = "bold red") -> None:
+        exc_type = type(exc).__name__ if isinstance(exc, Exception) else "Error"
         console.print(
             Panel(
-                f"[bold {color}]{type(exc).__name__}:[/bold {color}] {exc}",
+                f"[bold {color}]{exc_type}:[/bold {color}] {exc}",
                 title=f"[bold white on {color}] ERROR [/bold white on {color}]",
                 border_style=color,
                 expand=False,
@@ -21,10 +23,12 @@ class KubeSageException(Exception):
         )
         sys.exit(1)
 
-    def throw_and_continue(exc: Exception, color: str = "bold yellow"):
+    @staticmethod
+    def throw_and_continue(exc: Exception | str, color: str = "bold yellow") -> None:
+        exc_type = type(exc).__name__ if isinstance(exc, Exception) else "Warning"
         console.print(
             Panel(
-                f"[bold {color}]{type(exc).__name__}:[/bold {color}] {exc}",
+                f"[bold {color}]{exc_type}:[/bold {color}] {exc}",
                 title=f"[bold white on {color}] WARNING [/bold white on {color}]",
                 border_style=color,
                 expand=False,

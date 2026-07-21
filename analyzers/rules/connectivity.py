@@ -1,3 +1,4 @@
+from models.incident import Incident
 from config import logger
 from analyzers.rules.base import BaseRule
 from models.finding import (
@@ -10,8 +11,8 @@ class ConnectivityRule(BaseRule):
     name = "Connectivity"
     description = "Detect connection refused"
 
-    def evaluate(self, incident):
-        findings = []
+    def evaluate(self, incident: Incident) -> list[Finding]:
+        findings: list[Finding] = []
 
         logs = incident.logs.lower()
         if incident.logs is None:
@@ -21,7 +22,7 @@ class ConnectivityRule(BaseRule):
         if "connection refused" in logs:
             findings.append(
                 Finding(
-                    severity=Severity.WARNING.value,
+                    severity=Severity.WARNING,
                     title="Connection refused",
                     description=("An external dependency is refusing the connection."),
                     confidence=0.8,

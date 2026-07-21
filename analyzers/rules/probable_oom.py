@@ -1,3 +1,4 @@
+from models.incident import Incident
 from analyzers.rules.base import BaseRule
 from models.finding import Finding, Severity
 
@@ -6,8 +7,8 @@ class ProbableOOMRule(BaseRule):
     name = "Probable OOM"
     description = "Correlate memory and restart"
 
-    def evaluate(self, incident):
-        findings = []
+    def evaluate(self, incident: Incident) -> list[Finding]:
+        findings: list[Finding] = []
 
         if incident.prometheus is None:
             return findings
@@ -24,7 +25,7 @@ class ProbableOOMRule(BaseRule):
 
                 findings.append(
                     Finding(
-                        severity=Severity.CRITICAL.value,
+                        severity=Severity.CRITICAL,
                         title="Probable OOMKilled",
                         description=(
                             "CrashLoopBackOff + exit code 137 "

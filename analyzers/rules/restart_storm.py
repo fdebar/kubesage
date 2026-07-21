@@ -1,3 +1,4 @@
+from models.incident import Incident
 from analyzers.rules.base import BaseRule
 from models.finding import Finding, Severity
 
@@ -8,8 +9,8 @@ class RestartStormRule(BaseRule):
 
     RESTART_THRESHOLD = 5
 
-    def evaluate(self, incident):
-        findings = []
+    def evaluate(self, incident: Incident) -> list[Finding]:
+        findings: list[Finding] = []
 
         if incident.prometheus is None:
             return findings
@@ -21,7 +22,7 @@ class RestartStormRule(BaseRule):
         if restarts.value > self.RESTART_THRESHOLD:
             findings.append(
                 Finding(
-                    severity=Severity.CRITICAL.value,
+                    severity=Severity.CRITICAL,
                     title="Container restarted many times",
                     description=(f"{restarts.value:.0f} restarts detected."),
                     confidence=0.95,

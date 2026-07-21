@@ -1,14 +1,16 @@
 from config import logger
 from analyzers.rule_loader import discover_rules
+from models.incident import Incident
+from models.finding import Finding
 
 
 class DiagnosticEngine:
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.rules = discover_rules()
         logger.info("Loaded %d rules", len(self.rules))
 
-    def analyze(self, incident):
+    def analyze(self, incident: Incident) -> list[Finding]:
         findings = []
 
         for rule in self.rules:
@@ -16,11 +18,11 @@ class DiagnosticEngine:
 
         if not findings:
             logger.info(
-                f"No findings detected for pod: {incident.pod_name} in namespace: {incident.namespace}"
+                f"No findings detected for pod: {incident.pod} in namespace: {incident.namespace}"
             )
 
         return findings
 
-    def list_rules(self):
+    def list_rules(self) -> None:
         for rule in self.rules:
             print(f"- {rule.name}: {rule.description}")

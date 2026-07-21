@@ -7,7 +7,6 @@ from models.events import Event
 
 @dataclass(slots=True)
 class Incident:
-
     namespace: str
     pod: str
     phase: str

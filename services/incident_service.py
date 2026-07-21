@@ -9,7 +9,7 @@ from services.ai_service import AIService
 
 class IncidentService:
 
-    def __init__(self):
+    def __init__(self) -> None:
 
         self.kubernetes = KubernetesService()
         self.engine = DiagnosticEngine()
@@ -21,9 +21,9 @@ class IncidentService:
 
     def analyze(
         self,
-        namespace,
-        pod,
-    ):
+        namespace: str,
+        pod: str,
+    ) -> dict:
 
         incident = self.kubernetes.collect(namespace, pod)
         incident.metrics = self.metrics.collect(namespace, pod)

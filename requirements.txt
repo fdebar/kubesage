@@ -5,3 +5,4 @@ openai>=1.0.0
 requests>=2.32.0
 panel>=1.9.3
 rich>=15.0.0
+mypy>=2.3.0

@@ -4,7 +4,7 @@ from builders.context_builder import ContextBuilder
 from builders.prompt_builder import PromptBuilder
 from analyzers.engine import DiagnosticEngine
 
-def test_summary_contains_findings():
+def test_summary_contains_findings() -> None:
     builder = ContextBuilder()
     
     finding1 = MagicMock()
@@ -21,7 +21,7 @@ def test_summary_contains_findings():
     assert "High CPU Usage" in context.summary
     assert "OOM Killed" in context.summary
 
-def test_prompt_contains_logs():
+def test_prompt_contains_logs() -> None:
     builder = PromptBuilder()
     
     context = MagicMock()
@@ -38,7 +38,7 @@ def test_prompt_contains_logs():
     
     assert "ERROR: connection refused" in prompt
 
-def test_all_rules_are_loaded():
+def test_all_rules_are_loaded() -> None:
     engine = DiagnosticEngine()
     
     assert len(engine.rules) > 0

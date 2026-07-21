@@ -11,8 +11,8 @@ class Settings:
 
     log_level: str = os.getenv("LOG_LEVEL", "INFO")
     log_tail_lines: int = int(os.getenv("LOG_TAIL_LINES", "200"))
-    openai_model: str = os.getenv("OPENAI_MODEL")
-    openai_api_key: str = os.getenv("OPENAI_API_KEY")
+    openai_model: str = os.getenv("OPENAI_MODEL", "")
+    openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
     prometheus_url: str = os.getenv("PROMETHEUS_URL", "http://localhost:9090")
     prometheus_timeout: int = int(os.getenv("PROMETHEUS_TIMEOUT", "5"))
 

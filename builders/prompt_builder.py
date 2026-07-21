@@ -4,7 +4,7 @@ from models.ai_context import AIContext
 
 
 class PromptBuilder:
-    def __init__(self):
+    def __init__(self) -> None:
         template_path = Path(__file__).parent.parent / "prompts" / "sre_analysis.txt"
         self.template = template_path.read_text(encoding="utf-8")
 

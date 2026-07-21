@@ -1,9 +1,11 @@
 from models.ai_context import AIContext
+from models.incident import Incident
+from models.finding import Finding
 
 
 class ContextBuilder:
 
-    def build(self, incident, findings):
+    def build(self, incident: Incident, findings: list[Finding]) -> AIContext:
         summary = self._build_summary(findings)
         metrics = self._metrics_summary(incident)
 
@@ -14,13 +16,13 @@ class ContextBuilder:
             metrics_summary=metrics,
         )
 
-    def _build_summary(self, findings):
+    def _build_summary(self, findings: list[Finding]) -> str:
         if not findings:
             return "No issue detected."
 
         return "\n".join(f"- {f.title}" for f in findings)
 
-    def _metrics_summary(self, incident):
+    def _metrics_summary(self, incident: Incident) -> str:
         metrics = []
 
         if incident.prometheus is None:

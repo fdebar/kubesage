@@ -3,7 +3,7 @@ from commands.analyze import analyze_command
 from commands.rules import rules_command
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Incident analysis tool")
 
     subparsers = parser.add_subparsers(

@@ -1,7 +1,7 @@
 from exceptions import KubeSageException
-from kubernetes import client, config
+from kubernetes import client, config # type: ignore
 from config import settings, logger
-from kubernetes.client.exceptions import ApiException
+from kubernetes.client.exceptions import ApiException # type: ignore
 from models.container import ContainerInfo
 from models.incident import Incident
 from models.events import Event
@@ -9,7 +9,7 @@ from models.events import Event
 
 class KubernetesService:
 
-    def __init__(self):
+    def __init__(self) -> None:
         config.load_kube_config()
         self.v1 = client.CoreV1Api()
 
@@ -73,15 +73,15 @@ class KubernetesService:
         logger.info("Incident collected successfully.")
 
         warnings = []
-        for e in events.items:
-            if e.type != "Warning":
+        for event_item in events.items:
+            if event_item.type != "Warning":
                 continue
 
             warnings.append(
                 Event(
-                    reason=e.reason,
-                    message=e.message,
-                    last_timestamp=str(e.last_timestamp) if e.last_timestamp else "",
+                    reason=event_item.reason,
+                    message=event_item.message,
+                    last_timestamp=str(event_item.last_timestamp) if event_item.last_timestamp else "",
                 )
             )
 

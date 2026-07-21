@@ -1,3 +1,4 @@
+from models.incident import Incident
 from analyzers.rules.base import BaseRule
 from models.finding import Finding, Severity
 
@@ -6,8 +7,8 @@ class NetworkSilenceRule(BaseRule):
     name = "Network Silence"
     description = "Detect no incoming traffic"
 
-    def evaluate(self, incident):
-        findings = []
+    def evaluate(self, incident: Incident) -> list[Finding]:
+        findings: list[Finding] = []
 
         if incident.prometheus is None:
             return findings

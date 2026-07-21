@@ -1,3 +1,4 @@
+from models.incident import Incident
 from analyzers.rules.base import BaseRule
 from models.finding import (
     Finding,
@@ -9,8 +10,8 @@ class HighMemoryRule(BaseRule):
     name = "HighMemory"
     description = "Detect high memory usage"
 
-    def evaluate(self, incident):
-        findings = []
+    def evaluate(self, incident: Incident) -> list[Finding]:
+        findings: list[Finding] = []
 
         if incident.metrics is None:
             return findings

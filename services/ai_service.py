@@ -6,7 +6,7 @@ from config import settings
 
 class AIService:
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.model = settings.openai_model
 
         if settings.openai_api_key:
@@ -32,4 +32,4 @@ class AIService:
 
         content = response.choices[0].message.content
 
-        return json.loads(content)
+        return json.loads(content or "{}") # type: ignore

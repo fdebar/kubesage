@@ -1,3 +1,4 @@
+from models.incident import Incident
 from abc import ABC
 from abc import abstractmethod
 from models.incident import Incident
