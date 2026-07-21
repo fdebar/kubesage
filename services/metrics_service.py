@@ -34,7 +34,7 @@ class MetricsService:
         except ApiException as e:
             if e.status == 404:
                 logger.info(
-                    f"Metrics not available for {pod} (pod not found or too recent)."
+                    f"Metrics from metrics-server are not available for {pod} (pod not found or too recent)."
                 )
             elif e.status == 503:
                 logger.error("The metrics-server is not yet ready to respond.")

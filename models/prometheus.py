@@ -6,6 +6,7 @@ class Metric:
     name: str
     value: float
     unit: str
+    timestamp: float
 
 
 @dataclass(slots=True)

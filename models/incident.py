@@ -1,3 +1,4 @@
+from models.prometheus import ResourceUsage
 from dataclasses import dataclass, field
 from models.container import ContainerInfo
 from models.metrics import PodMetrics
@@ -13,3 +14,4 @@ class Incident:
     containers: list[ContainerInfo]
     events: list[dict] = field(default_factory=list)
     metrics: PodMetrics | None = None
+    prometheus: ResourceUsage | None = None
