@@ -41,14 +41,13 @@ Pod:
 Phase:
 {incident.phase}
 
+Metrics
+{incident.metrics}
 
 Logs:
-
 {incident.logs}
 
-
 Diagnostics automatiques:
-
 {findings_text}
 
 """

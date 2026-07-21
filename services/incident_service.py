@@ -1,3 +1,4 @@
+from services.metrics_service import MetricsService
 from analyzers.engine import DiagnosticEngine
 from services.kubernetes_service import KubernetesService
 from services.ai_service import AIService
@@ -11,6 +12,7 @@ class IncidentService:
         self.kubernetes = KubernetesService()
         self.engine = DiagnosticEngine()
         self.ai = AIService()
+        self.metrics = MetricsService()
 
     def analyze(
         self,
@@ -19,15 +21,13 @@ class IncidentService:
     ):
 
         incident = self.kubernetes.collect(namespace, pod)
-
+        incident.metrics = self.metrics.collect(namespace, pod)
         findings = self.engine.analyze(incident)
 
         with open("prompts/sre_analysis.txt") as f:
-
             template = f.read()
 
         prompt = build_prompt(incident, findings, template)
-
         report = self.ai.analyze(prompt)
 
         return report
