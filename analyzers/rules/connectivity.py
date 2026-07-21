@@ -21,6 +21,8 @@ class ConnectivityRule(BaseRule):
                     description=("An external dependency is refusing the connection."),
                     confidence=0.8,
                     source="container.logs",
+                    category="connectivity",
+                    evidence=["container.logs"],
                 )
             )
 

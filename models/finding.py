@@ -15,3 +15,5 @@ class Finding:
     description: str
     confidence: float
     source: str
+    category: str
+    evidence: list[str]

@@ -26,6 +26,11 @@ class CrashLoopRule(BaseRule):
                         ),
                         confidence=0.95,
                         source="kubernetes.container.status",
+                        category="crashloop",
+                        evidence=[
+                            "container.waiting_reason",
+                            "container.last_exit_code",
+                        ],
                     )
                 )
 

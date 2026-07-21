@@ -27,6 +27,8 @@ class HighMemoryRule(BaseRule):
                             description=f"{c.name} is using {mem}.",
                             confidence=0.8,
                             source="metrics-server",
+                            category="resource_utilization",
+                            evidence=["memory"],
                         )
                     )
 

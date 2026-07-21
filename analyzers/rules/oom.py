@@ -24,6 +24,8 @@ class OOMRule(BaseRule):
                         ),
                         confidence=0.9,
                         source="kubernetes.container.exit_code",
+                        category="oom",
+                        evidence=["container.last_exit_code"],
                     )
                 )
 
