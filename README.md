@@ -127,7 +127,7 @@ kubesage/
 - Kubernetes Python Client
 - Prometheus
 - Metrics Server
-- OpenAI API
+- OpenAI API (development with Ollama running locally with `llama3.1`)
 - Requests
 - Pytest
 - Ruff
@@ -144,7 +144,7 @@ Before running the project, ensure the following components are available.
 - kubectl configured
 - Metrics Server installed
 - Prometheus installed
-- OpenAI API Key
+- OpenAI API Key (production)
 
 ---
 
