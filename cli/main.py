@@ -1,6 +1,6 @@
 import argparse
-from commands.analyze import analyze_command
-from commands.rules import rules_command
+from cli.commands.analyze import analyze_command
+from cli.commands.rules import rules_command
 
 
 def main() -> None:

@@ -1,4 +1,4 @@
-from config import logger
+from utils.config import logger
 from models.ai_context import AIContext
 from models.incident import Incident
 from models.finding import Finding

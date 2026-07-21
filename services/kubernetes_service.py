@@ -1,6 +1,6 @@
-from exceptions import KubeSageException
+from utils.exceptions import KubeSageException
 from kubernetes import client, config  # type: ignore
-from config import settings, logger
+from utils.config import settings, logger
 from kubernetes.client.exceptions import ApiException  # type: ignore
 from models.container import ContainerInfo
 from models.incident import Incident

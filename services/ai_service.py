@@ -1,8 +1,8 @@
-from config import logger
-from exceptions import KubeSageException
+from utils.config import logger
+from utils.exceptions import KubeSageException
 import json
 from openai import OpenAI
-from config import settings
+from utils.config import settings
 
 
 class AIService:

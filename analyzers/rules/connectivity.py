@@ -1,5 +1,5 @@
 from models.incident import Incident
-from config import logger
+from utils.config import logger
 from analyzers.rules.base import BaseRule
 from models.finding import (
     Finding,

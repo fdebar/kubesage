@@ -1,4 +1,4 @@
-from config import logger
+from utils.config import logger
 from kubernetes.client.exceptions import ApiException  # type: ignore
 from kubernetes import client, config  # type: ignore
 

@@ -1,1 +1,25 @@
-__pycache__
+# Virtual environments
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Packaging
+*.egg-info/
+build/
+dist/
+
+# Test / Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Static analysis
+.mypy_cache/
+.ruff_cache/
+
+# macOS
+.DS_Store

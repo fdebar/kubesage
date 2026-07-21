@@ -1,8 +1,8 @@
-from config import logger
-from exceptions import KubeSageException
+from utils.config import logger
+from utils.exceptions import KubeSageException
 from models.prometheus import Metric
 from models.prometheus import ResourceUsage
-from config import settings
+from utils.config import settings
 import requests
 
 
