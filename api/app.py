@@ -5,6 +5,7 @@ from api.routers.system import router as system_router
 from api.routers.analysis import router as analysis_router
 from api.exception_handlers import register_exception_handlers
 from utils.config import logger
+from api.middlewares.request_id import RequestIDMiddleware
 import time
 
 app = FastAPI(
@@ -20,6 +21,8 @@ app.include_router(
     analysis_router,
     prefix="/api/v1",
 )
+
+app.add_middleware(RequestIDMiddleware)
 
 register_exception_handlers(app)
 

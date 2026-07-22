@@ -13,11 +13,3 @@ class AnalyzeRequest(BaseModel):
         max_length=253,
         examples=["ai-demo-app"],
     )
-
-
-class AnalyzeResponse(BaseModel):
-    summary: str
-    severity: str
-    root_cause: str
-    recommendations: list = Field(default_factory=list)
-    kubectl_commands: list = Field(default_factory=list)
