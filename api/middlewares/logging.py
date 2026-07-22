@@ -5,7 +5,7 @@ from utils.config import logger
 import time
 
 
-class RequestLoggerMiddleware(BaseHTTPMiddleware):
+class LoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         start = time.perf_counter()
         response = await call_next(request)

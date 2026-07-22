@@ -4,7 +4,7 @@ from api.routers.system import router as system_router
 from api.routers.analysis import router as analysis_router
 from api.exception_handlers import register_exception_handlers
 from api.middlewares.request_id import RequestIDMiddleware
-from api.middlewares.request_logger import RequestLoggerMiddleware
+from api.middlewares.logging import LoggingMiddleware
 
 app = FastAPI(
     title="KubeSage",
@@ -21,6 +21,6 @@ app.include_router(
 )
 
 app.add_middleware(RequestIDMiddleware)
-app.add_middleware(RequestLoggerMiddleware)
+app.add_middleware(LoggingMiddleware)
 
 register_exception_handlers(app)
