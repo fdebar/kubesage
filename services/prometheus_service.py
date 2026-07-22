@@ -1,5 +1,4 @@
 from utils.config import logger
-from utils.exceptions import KubeSageException
 from models.prometheus import Metric
 from models.prometheus import ResourceUsage
 from utils.config import settings
@@ -22,15 +21,28 @@ class PrometheusService:
             response.raise_for_status()
 
             return response.json()["data"]["result"]  # type: ignore
-        except requests.RequestException as exc:
-            KubeSageException.throw_and_exit(exc)
+        except requests.exceptions.ConnectionError:
+            logger.warning("Prometheus server unreachable or offline")
+            return []
+        except requests.exceptions.Timeout:
+            logger.warning("Prometheus query timed out")
+            return []
+        except requests.exceptions.HTTPError as exc:
+            logger.warning(
+                "Prometheus returned HTTP error status %s: %s",
+                response.status_code,
+                exc,
+            )
+            return []
+        except requests.exceptions.RequestException as exc:
+            logger.warning("Prometheus query failed: %s", exc)
             return []
 
     def collect(
         self,
         namespace: str,
         pod: str,
-    ) -> ResourceUsage:
+    ) -> ResourceUsage | None:
         usage = ResourceUsage()
         logger.info("Collecting prometheus data...")
 
@@ -45,6 +57,13 @@ class PrometheusService:
         usage.restarts = self._metric_from_result("restarts", "count", restarts)
         usage.network_rx = self._metric_from_result("network_rx", "bytes/s", rx)
         usage.network_tx = self._metric_from_result("network_tx", "bytes/s", tx)
+
+        if all(
+            getattr(usage, field) is None
+            for field in ("cpu", "memory", "restarts", "network_rx", "network_tx")
+        ):
+            logger.warning("Prometheus data unavailable, continuing without metrics.")
+            return None
 
         return usage
 

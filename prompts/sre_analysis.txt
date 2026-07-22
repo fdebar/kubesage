@@ -6,7 +6,15 @@ You only use supplied evidence.
 
 Your goal is to explain the incident.
 
-Your answer MUST be JSON.
+Your answer MUST be only the following JSON:
+
+{
+ "severity": "",
+ "summary": "",
+ "root_cause": "",
+ "recommendations": [],
+ "kubectl_commands": []
+}
 
 Confidence must be justified.
 

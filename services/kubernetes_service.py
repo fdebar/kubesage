@@ -1,59 +1,92 @@
-from utils.exceptions import KubeSageException
-from kubernetes import client, config  # type: ignore
-from utils.config import settings, logger
 from kubernetes.client.exceptions import ApiException  # type: ignore
+from utils.config import settings, logger
+from utils.kube_client import create_core_v1_api
 from models.container import ContainerInfo
 from models.incident import Incident
 from models.events import Event
+from utils.exceptions import PodNotFoundError
 
 
 class KubernetesService:
     def __init__(self) -> None:
-        config.load_kube_config()
-        self.v1 = client.CoreV1Api()
+        self.v1 = create_core_v1_api()
 
     def collect(self, namespace: str, pod: str) -> Incident:
         logger.info("Collecting kubernetes data for pod %s/%s...", namespace, pod)
 
+        if self.v1 is None:
+            logger.error("Kubernetes unavailable, continuing without cluster data.")
+            return self._empty_incident(namespace, pod)
+
         try:
             pod_info = self.v1.read_namespaced_pod(name=pod, namespace=namespace)
-        except ApiException as e:
-            if e.status == 404:
-                KubeSageException.throw_and_exit(
-                    f"Pod {namespace}/{pod} cannot be found."
+        except ApiException as exc:
+            if exc.status == 404:
+                raise PodNotFoundError(
+                    f"Pod '{pod}' not found in namespace '{namespace}'."
                 )
-            KubeSageException.throw_and_exit(e)
+            else:
+                logger.error("Kubernetes API error (%s): %s", exc.status, exc.reason)
+            return self._empty_incident(namespace, pod)
+        except Exception as exc:
+            logger.error("Failed to collect Kubernetes data: %s", exc)
+            return self._empty_incident(namespace, pod)
 
-        logs = self.v1.read_namespaced_pod_log(
-            name=pod,
+        logs = self._collect_logs(namespace, pod)
+        containers = self._collect_containers(pod_info)
+        events = self._collect_events(namespace, pod)
+
+        return Incident(
             namespace=namespace,
-            tail_lines=settings.log_tail_lines,
+            pod=pod,
+            phase=pod_info.status.phase or "Unknown",
+            logs=logs,
+            containers=containers,
+            events=events,
         )
 
-        if isinstance(logs, bytes):
-            logs = logs.decode("utf-8")
+    def _collect_logs(self, namespace: str, pod: str) -> str:
+        try:
+            logs = self.v1.read_namespaced_pod_log(
+                name=pod,
+                namespace=namespace,
+                tail_lines=settings.log_tail_lines,
+            )
+        except ApiException as exc:
+            logger.warning("Failed to collect logs: %s", exc.reason)
+            return ""
+        except Exception as exc:
+            logger.warning("Failed to collect logs: %s", exc)
+            return ""
 
+        if isinstance(logs, bytes):
+            return logs.decode("utf-8")
+
+        return logs or ""
+
+    def _collect_containers(self, pod_info) -> list[ContainerInfo]:
         containers = []
-        for c in pod_info.status.container_statuses or []:
+
+        for container in pod_info.status.container_statuses or []:
             waiting_reason = None
             waiting_message = None
 
-            if c.state and c.state.waiting:
-                waiting_reason = c.state.waiting.reason
-                waiting_message = c.state.waiting.message
+            if container.state and container.state.waiting:
+                waiting_reason = container.state.waiting.reason
+                waiting_message = container.state.waiting.message
 
             last_exit_code = None
             last_exit_reason = None
 
-            if c.last_state and c.last_state.terminated:
-                last_exit_code = c.last_state.terminated.exit_code
-                last_exit_reason = c.last_state.terminated.reason
+            if container.last_state and container.last_state.terminated:
+                last_exit_code = container.last_state.terminated.exit_code
+                last_exit_reason = container.last_state.terminated.reason
 
             containers.append(
                 ContainerInfo(
-                    name=c.name,
-                    ready=c.ready,
-                    restart_count=c.restart_count,
+                    name=container.name,
+                    ready=container.ready,
+                    restart_count=container.restart_count,
                     waiting_reason=waiting_reason,
                     waiting_message=waiting_message,
                     last_exit_code=last_exit_code,
@@ -61,13 +94,24 @@ class KubernetesService:
                 )
             )
 
-        events = self.v1.list_namespaced_event(
-            namespace=namespace,
-            field_selector=f"involvedObject.name={pod}",
-        )
+        return containers
+
+    def _collect_events(self, namespace: str, pod: str) -> list[Event]:
+        try:
+            events = self.v1.list_namespaced_event(
+                namespace=namespace,
+                field_selector=f"involvedObject.name={pod}",
+            )
+        except ApiException as exc:
+            logger.warning("Failed to collect events: %s", exc.reason)
+            return []
+        except Exception as exc:
+            logger.warning("Failed to collect events: %s", exc)
+            return []
 
         if events is None:
             logger.warning("No events collected")
+            return []
 
         warnings = []
         for event_item in events.items:
@@ -86,11 +130,15 @@ class KubernetesService:
                 )
             )
 
+        return warnings
+
+    @staticmethod
+    def _empty_incident(namespace: str, pod: str) -> Incident:
         return Incident(
             namespace=namespace,
             pod=pod,
-            phase=pod_info.status.phase,
-            logs=logs,
-            containers=containers,
-            events=warnings,
+            phase="Unknown",
+            logs="",
+            containers=[],
+            events=[],
         )

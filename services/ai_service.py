@@ -1,5 +1,4 @@
 from utils.config import logger
-from utils.exceptions import KubeSageException
 import json
 from openai import OpenAI
 from utils.config import settings
@@ -27,9 +26,14 @@ class AIService:
                 response_format={"type": "json_object"},
             )
         except Exception as e:
-            KubeSageException.throw_and_exit(
-                f"A problem occured while contacting the LLM. Details: {e}"
-            )
+            logger.error("LLM analysis failed: %s", e)
+            return {
+                "summary": "AI analysis could not be completed.",
+                "severity": "Unknown",
+                "root_cause": "",
+                "recommendations": [],
+                "kubectl_commands": [],
+            }
 
         content = response.choices[0].message.content
 

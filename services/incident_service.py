@@ -23,7 +23,6 @@ class IncidentService:
         namespace: str,
         pod: str,
     ) -> dict:
-
         incident = self.kubernetes.collect(namespace, pod)
         incident.metrics = self.metrics.collect(namespace, pod)
         incident.prometheus = self.prometheus.collect(namespace, pod)
