@@ -1,8 +1,6 @@
 from dataclasses import dataclass
-import logging
 import os
 from dotenv import load_dotenv
-import sys
 
 
 @dataclass(slots=True)
@@ -18,12 +16,3 @@ class Settings:
 
 
 settings = Settings()
-
-
-logging.basicConfig(
-    level=getattr(logging, settings.log_level),
-    format="%(asctime)s %(levelname)s %(name)s - %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)],
-)
-
-logger = logging.getLogger("kubesage")

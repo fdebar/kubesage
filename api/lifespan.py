@@ -1,7 +1,9 @@
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 from fastapi import FastAPI
-from utils.config import logger
+from observability.factory import get_logger
+
+logger = get_logger(__name__)
 
 
 @asynccontextmanager

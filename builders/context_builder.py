@@ -1,11 +1,12 @@
-from utils.config import logger
 from models.ai_context import AIContext
 from models.incident import Incident
 from models.finding import Finding
+from observability import get_logger
 
 
 class ContextBuilder:
     def build(self, incident: Incident, findings: list[Finding]) -> AIContext:
+        logger = get_logger(__name__)
         logger.info("Building AI context...")
 
         summary = self._build_summary(findings)

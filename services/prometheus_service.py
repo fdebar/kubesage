@@ -1,13 +1,14 @@
-from utils.config import logger
 from models.prometheus import Metric
 from models.prometheus import ResourceUsage
 from utils.config import settings
+from observability.factory import get_logger
 import requests
 
 
 class PrometheusService:
     def __init__(self) -> None:
         self.base_url = settings.prometheus_url
+        self.logger = get_logger(__name__)
 
     def query(self, promql: str) -> list:
         try:
@@ -22,20 +23,20 @@ class PrometheusService:
 
             return response.json()["data"]["result"]  # type: ignore
         except requests.exceptions.ConnectionError:
-            logger.warning("Prometheus server unreachable or offline")
+            self.logger.warning("Prometheus server unreachable or offline")
             return []
         except requests.exceptions.Timeout:
-            logger.warning("Prometheus query timed out")
+            self.logger.warning("Prometheus query timed out")
             return []
         except requests.exceptions.HTTPError as exc:
-            logger.warning(
+            self.logger.warning(
                 "Prometheus returned HTTP error status %s: %s",
                 response.status_code,
                 exc,
             )
             return []
         except requests.exceptions.RequestException as exc:
-            logger.warning("Prometheus query failed: %s", exc)
+            self.logger.warning("Prometheus query failed: %s", exc)
             return []
 
     def collect(
@@ -44,7 +45,7 @@ class PrometheusService:
         pod: str,
     ) -> ResourceUsage | None:
         usage = ResourceUsage()
-        logger.info("Collecting prometheus data...")
+        self.logger.info("Collecting prometheus data...")
 
         cpu = self.query(self.CPU_QUERY % (namespace, pod))
         memory = self.query(self.MEMORY_QUERY % (namespace, pod))
@@ -62,7 +63,9 @@ class PrometheusService:
             getattr(usage, field) is None
             for field in ("cpu", "memory", "restarts", "network_rx", "network_tx")
         ):
-            logger.warning("Prometheus data unavailable, continuing without metrics.")
+            self.logger.warning(
+                "Prometheus data unavailable, continuing without metrics."
+            )
             return None
 
         return usage

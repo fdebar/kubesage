@@ -1,12 +1,13 @@
-from utils.config import logger
 import json
 from openai import OpenAI
 from utils.config import settings
+from observability.factory import get_logger
 
 
 class AIService:
     def __init__(self) -> None:
         self.model = settings.openai_model
+        self.logger = get_logger(__name__)
 
         if settings.openai_api_key:
             self.client = OpenAI(api_key=settings.openai_api_key)
@@ -14,7 +15,7 @@ class AIService:
             self.client = OpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
 
     def analyze(self, prompt: str) -> dict:
-        logger.info("Calling LLM....")
+        self.logger.info("Calling LLM....")
 
         try:
             response = self.client.chat.completions.create(
@@ -26,7 +27,7 @@ class AIService:
                 response_format={"type": "json_object"},
             )
         except Exception as e:
-            logger.error("LLM analysis failed: %s", e)
+            self.logger.error("LLM analysis failed: %s", e)
             return {
                 "summary": "AI analysis could not be completed.",
                 "severity": "Unknown",

@@ -6,14 +6,16 @@ from utils.exceptions import (
     PrometheusQueryError,
     AIAnalysisError,
 )
-from utils.config import logger
+from observability.factory import get_logger
 from pydantic import BaseModel
 
 
 def register_exception_handlers(app: FastAPI) -> None:
 
+    logger = get_logger(__name__)
+
     @app.exception_handler(PodNotFoundError)
-    async def pod_not_found(_: Request, exc: PodNotFoundError) -> JSONResponse:
+    async def pod_not_found(request: Request, exc: PodNotFoundError) -> JSONResponse:
         logger.warning(str(exc))
 
         return JSONResponse(
@@ -21,12 +23,13 @@ def register_exception_handlers(app: FastAPI) -> None:
             content={
                 "error": "Pod not found",
                 "detail": str(exc),
+                "request_id": request.state.request_id,
             },
         )
 
     @app.exception_handler(KubernetesConnectionError)
     async def kubernetes_error(
-        _: Request, exc: KubernetesConnectionError
+        request: Request, exc: KubernetesConnectionError
     ) -> JSONResponse:
         logger.error(str(exc))
 
@@ -35,11 +38,14 @@ def register_exception_handlers(app: FastAPI) -> None:
             content={
                 "error": "Kubernetes unavailable",
                 "detail": str(exc),
+                "request_id": request.state.request_id,
             },
         )
 
     @app.exception_handler(PrometheusQueryError)
-    async def prometheus_error(_: Request, exc: PrometheusQueryError) -> JSONResponse:
+    async def prometheus_error(
+        request: Request, exc: PrometheusQueryError
+    ) -> JSONResponse:
         logger.error(str(exc))
 
         return JSONResponse(
@@ -47,11 +53,12 @@ def register_exception_handlers(app: FastAPI) -> None:
             content={
                 "error": "Prometheus unavailable",
                 "detail": str(exc),
+                "request_id": request.state.request_id,
             },
         )
 
     @app.exception_handler(AIAnalysisError)
-    async def ai_error(_: Request, exc: AIAnalysisError) -> JSONResponse:
+    async def ai_error(request: Request, exc: AIAnalysisError) -> JSONResponse:
         logger.exception(exc)
 
         return JSONResponse(
@@ -59,17 +66,19 @@ def register_exception_handlers(app: FastAPI) -> None:
             content={
                 "error": "AI analysis failed",
                 "detail": str(exc),
+                "request_id": request.state.request_id,
             },
         )
 
     @app.exception_handler(Exception)
-    async def unexpected(_: Request, exc: Exception) -> JSONResponse:
+    async def unexpected(request: Request, exc: Exception) -> JSONResponse:
         logger.exception(exc)
 
         return JSONResponse(
             status_code=500,
             content={
                 "error": "Internal server error",
+                "request_id": request.state.request_id,
             },
         )
 

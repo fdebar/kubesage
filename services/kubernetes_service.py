@@ -1,22 +1,26 @@
 from typing import Any
 from kubernetes.client.exceptions import ApiException  # type: ignore
-from utils.config import settings, logger
+from utils.config import settings
 from utils.kube_client import create_core_v1_api
 from models.container import ContainerInfo
 from models.incident import Incident
 from models.events import Event
 from utils.exceptions import PodNotFoundError
+from observability.factory import get_logger
 
 
 class KubernetesService:
     def __init__(self) -> None:
         self.v1 = create_core_v1_api()
+        self.logger = get_logger(__name__)
 
     def collect(self, namespace: str, pod: str) -> Incident:
-        logger.info("Collecting kubernetes data for pod %s/%s...", namespace, pod)
+        self.logger.info("Collecting kubernetes data for pod %s/%s...", namespace, pod)
 
         if self.v1 is None:
-            logger.error("Kubernetes unavailable, continuing without cluster data.")
+            self.logger.error(
+                "Kubernetes unavailable, continuing without cluster data."
+            )
             return self._empty_incident(namespace, pod)
 
         try:
@@ -27,10 +31,12 @@ class KubernetesService:
                     f"Pod '{pod}' not found in namespace '{namespace}'."
                 )
             else:
-                logger.error("Kubernetes API error (%s): %s", exc.status, exc.reason)
+                self.logger.error(
+                    "Kubernetes API error (%s): %s", exc.status, exc.reason
+                )
             return self._empty_incident(namespace, pod)
         except Exception as exc:
-            logger.error("Failed to collect Kubernetes data: %s", exc)
+            self.logger.error("Failed to collect Kubernetes data: %s", exc)
             return self._empty_incident(namespace, pod)
 
         logs = self._collect_logs(namespace, pod)
@@ -56,10 +62,10 @@ class KubernetesService:
                 tail_lines=settings.log_tail_lines,
             )
         except ApiException as exc:
-            logger.warning("Failed to collect logs: %s", exc.reason)
+            self.logger.warning("Failed to collect logs: %s", exc.reason)
             return ""
         except Exception as exc:
-            logger.warning("Failed to collect logs: %s", exc)
+            self.logger.warning("Failed to collect logs: %s", exc)
             return ""
 
         if isinstance(logs, bytes):
@@ -108,14 +114,14 @@ class KubernetesService:
                 field_selector=f"involvedObject.name={pod}",
             )
         except ApiException as exc:
-            logger.warning("Failed to collect events: %s", exc.reason)
+            self.logger.warning("Failed to collect events: %s", exc.reason)
             return []
         except Exception as exc:
-            logger.warning("Failed to collect events: %s", exc)
+            self.logger.warning("Failed to collect events: %s", exc)
             return []
 
         if events is None:
-            logger.warning("No events collected")
+            self.logger.warning("No events collected")
             return []
 
         warnings = []

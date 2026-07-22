@@ -1,8 +1,9 @@
 import kubernetes.client as client
 import kubernetes.config as config
 from kubernetes.config.config_exception import ConfigException
-from utils.config import logger
+from observability.factory import get_logger
 
+logger = get_logger(__name__)
 _kube_config_loaded: bool | None = None
 
 

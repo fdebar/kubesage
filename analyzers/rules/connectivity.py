@@ -1,10 +1,10 @@
 from models.incident import Incident
-from utils.config import logger
 from analyzers.rules.base import BaseRule
 from models.finding import (
     Finding,
     Severity,
 )
+from observability.factory import get_logger
 
 
 class ConnectivityRule(BaseRule):
@@ -12,6 +12,7 @@ class ConnectivityRule(BaseRule):
     description = "Detect connection refused"
 
     def evaluate(self, incident: Incident) -> list[Finding]:
+        logger = get_logger(__name__)
         findings: list[Finding] = []
 
         logs = incident.logs.lower()

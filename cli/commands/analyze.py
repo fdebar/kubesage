@@ -1,10 +1,9 @@
+from observability import get_logger
 from utils.exceptions import KubeSageError
+from services.incident_service import IncidentService
+import argparse
 import json
 import sys
-from utils.config import logger
-from services.incident_service import IncidentService
-
-import argparse
 
 
 def analyze_command(args: argparse.Namespace) -> None:
@@ -14,6 +13,7 @@ def analyze_command(args: argparse.Namespace) -> None:
     try:
         report = service.analyze(namespace=args.namespace, pod=args.pod)
     except KubeSageError as exc:
+        logger = get_logger(__name__)
         logger.error(exc)
         sys.exit(1)
 

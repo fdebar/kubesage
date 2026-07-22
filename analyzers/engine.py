@@ -1,7 +1,9 @@
-from utils.config import logger
 from analyzers.rule_loader import discover_rules
 from models.incident import Incident
 from models.finding import Finding
+from observability.factory import get_logger
+
+logger = get_logger(__name__)
 
 
 class DiagnosticEngine:

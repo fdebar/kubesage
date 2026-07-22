@@ -1,7 +1,6 @@
-from utils.config import logger
 from kubernetes.client.exceptions import ApiException  # type: ignore
 from utils.kube_client import create_custom_objects_api
-
+from observability.factory import get_logger
 from models.metrics import (
     PodMetrics,
     ContainerMetrics,
@@ -11,16 +10,17 @@ from models.metrics import (
 class MetricsService:
     def __init__(self) -> None:
         self.api = create_custom_objects_api()
+        self.logger = get_logger(__name__)
 
     def collect(
         self,
         namespace: str,
         pod: str,
     ) -> PodMetrics | None:
-        logger.info("Collecting metrics-server data ...")
+        self.logger.info("Collecting metrics-server data ...")
 
         if self.api is None:
-            logger.warning(
+            self.logger.warning(
                 "Kubernetes unavailable, skipping metrics-server collection."
             )
             return None
@@ -36,17 +36,19 @@ class MetricsService:
 
         except ApiException as exc:
             if exc.status == 404:
-                logger.info(
+                self.logger.info(
                     "Metrics from metrics-server are not available (pod not found or too recent)."
                 )
             elif exc.status == 503:
-                logger.error("The metrics-server is not yet ready to respond.")
+                self.logger.error("The metrics-server is not yet ready to respond.")
             else:
-                logger.error("Kubernetes API Error (%s): %s", exc.status, exc.reason)
+                self.logger.error(
+                    "Kubernetes API Error (%s): %s", exc.status, exc.reason
+                )
 
             return None
         except Exception as exc:
-            logger.error("Failed to collect metrics-server data: %s", exc)
+            self.logger.error("Failed to collect metrics-server data: %s", exc)
             return None
 
         result = PodMetrics()

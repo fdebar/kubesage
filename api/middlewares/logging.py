@@ -1,8 +1,10 @@
 from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi import Response, Request
 from typing import Callable
-from utils.config import logger
 import time
+from observability.factory import get_logger
+
+logger = get_logger(__name__)
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
