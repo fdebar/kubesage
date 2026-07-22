@@ -1,7 +1,7 @@
 from api.schemas.response import AnalyzeResponse
 
 
-def to_response(report) -> AnalyzeResponse:
+def to_response(report: dict) -> AnalyzeResponse:
     return AnalyzeResponse(
         summary=report.get("summary", ""),
         severity=report.get("severity", "Unknown"),

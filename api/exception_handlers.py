@@ -25,7 +25,9 @@ def register_exception_handlers(app: FastAPI) -> None:
         )
 
     @app.exception_handler(KubernetesConnectionError)
-    async def kubernetes_error(_: Request, exc: KubernetesConnectionError) -> JSONResponse:
+    async def kubernetes_error(
+        _: Request, exc: KubernetesConnectionError
+    ) -> JSONResponse:
         logger.error(str(exc))
 
         return JSONResponse(
