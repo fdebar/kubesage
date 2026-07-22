@@ -1,0 +1,15 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kubesage-reader
+  namespace: kubesage
+subjects:
+- kind: ServiceAccount
+  name: kubesage
+  namespace: kubesage
+roleRef:
+  kind: ClusterRole
+  name: kubesage-reader
+  apiGroup:
+    rbac.authorization.k8s.io

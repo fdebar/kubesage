@@ -1,0 +1,24 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kubesage
+rules:
+- apiGroups:
+    - ""
+  resources:
+    - pods
+    - pods/log
+    - events
+  verbs:
+    - get
+    - list
+    - watch
+- apiGroups:
+    - metrics.k8s.io
+  resources:
+    - pods
+    - nodes
+  verbs:
+    - get
+    - list
