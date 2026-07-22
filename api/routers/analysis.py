@@ -1,8 +1,7 @@
-from fastapi import APIRouter
-from fastapi import Depends
+from fastapi import APIRouter, Depends
 from api.dependencies import get_incident_service
-from api.schemas import AnalyzeRequest
-from api.schemas import AnalyzeResponse
+from api.schemas import AnalyzeRequest, AnalyzeResponse
+from services.incident_service import IncidentService
 
 router = APIRouter(
     tags=["Analysis"],
@@ -12,8 +11,8 @@ router = APIRouter(
 @router.post("/analyze", response_model=AnalyzeResponse)
 def analyze(
     request: AnalyzeRequest,
-    service=Depends(get_incident_service),
-):
+    service: IncidentService = Depends(get_incident_service),
+) -> AnalyzeResponse:
     report = service.analyze(
         namespace=request.namespace,
         pod=request.pod,

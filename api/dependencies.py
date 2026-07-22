@@ -3,5 +3,5 @@ from services.incident_service import IncidentService
 incident_service = IncidentService()
 
 
-def get_incident_service():
+def get_incident_service() -> IncidentService:
     return incident_service

@@ -1,3 +1,4 @@
+from typing import Any
 from kubernetes.client.exceptions import ApiException  # type: ignore
 from utils.config import settings, logger
 from utils.kube_client import create_core_v1_api
@@ -46,6 +47,8 @@ class KubernetesService:
         )
 
     def _collect_logs(self, namespace: str, pod: str) -> str:
+        if self.v1 is None:
+            return ""
         try:
             logs = self.v1.read_namespaced_pod_log(
                 name=pod,
@@ -64,7 +67,7 @@ class KubernetesService:
 
         return logs or ""
 
-    def _collect_containers(self, pod_info) -> list[ContainerInfo]:
+    def _collect_containers(self, pod_info: Any) -> list[ContainerInfo]:
         containers = []
 
         for container in pod_info.status.container_statuses or []:
@@ -97,6 +100,8 @@ class KubernetesService:
         return containers
 
     def _collect_events(self, namespace: str, pod: str) -> list[Event]:
+        if self.v1 is None:
+            return []
         try:
             events = self.v1.list_namespaced_event(
                 namespace=namespace,

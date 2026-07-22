@@ -1,3 +1,4 @@
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from utils.exceptions import (
     PodNotFoundError,
@@ -9,10 +10,10 @@ from utils.config import logger
 from pydantic import BaseModel
 
 
-def register_exception_handlers(app):
+def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(PodNotFoundError)
-    async def pod_not_found(_, exc):
+    async def pod_not_found(_: Request, exc: PodNotFoundError) -> JSONResponse:
         logger.warning(str(exc))
 
         return JSONResponse(
@@ -24,7 +25,7 @@ def register_exception_handlers(app):
         )
 
     @app.exception_handler(KubernetesConnectionError)
-    async def kubernetes_error(_, exc):
+    async def kubernetes_error(_: Request, exc: KubernetesConnectionError) -> JSONResponse:
         logger.error(str(exc))
 
         return JSONResponse(
@@ -36,7 +37,7 @@ def register_exception_handlers(app):
         )
 
     @app.exception_handler(PrometheusQueryError)
-    async def prometheus_error(_, exc):
+    async def prometheus_error(_: Request, exc: PrometheusQueryError) -> JSONResponse:
         logger.error(str(exc))
 
         return JSONResponse(
@@ -48,7 +49,7 @@ def register_exception_handlers(app):
         )
 
     @app.exception_handler(AIAnalysisError)
-    async def ai_error(_, exc):
+    async def ai_error(_: Request, exc: AIAnalysisError) -> JSONResponse:
         logger.exception(exc)
 
         return JSONResponse(
@@ -60,7 +61,7 @@ def register_exception_handlers(app):
         )
 
     @app.exception_handler(Exception)
-    async def unexpected(_, exc):
+    async def unexpected(_: Request, exc: Exception) -> JSONResponse:
         logger.exception(exc)
 
         return JSONResponse(
