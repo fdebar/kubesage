@@ -14,18 +14,18 @@ def _ensure_kube_config() -> bool:
         return _kube_config_loaded
 
     try:
-        config.load_kube_config()
-    except ConfigException as exc:
-        logger.warning("Kubernetes config unavailable: %s", exc)
-        _kube_config_loaded = False
-        return False
-    except Exception as exc:
-        logger.warning("Failed to load Kubernetes config: %s", exc)
-        _kube_config_loaded = False
-        return False
+        config.load_incluster_config()
+        _kube_config_loaded = True
+    except ConfigException:
+        try:
+            config.load_kube_config()
+            logger.info("Loaded local kubeconfig.")
+            _kube_config_loaded = True
+        except ConfigException as exc:
+            logger.warning("Failed to load kubeconfig: %s", exc)
+            _kube_config_loaded = False
 
-    _kube_config_loaded = True
-    return True
+    return _kube_config_loaded
 
 
 def create_core_v1_api() -> client.CoreV1Api | None:

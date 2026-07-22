@@ -4,15 +4,24 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kubesage"
-version = "0.1.0"
+version = "0.10.0"
 description = "AI-powered Kubernetes incident analysis assistant"
 readme = "README.md"
 requires-python = ">=3.12"
 
 dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
     "openai",
     "kubernetes",
-    "pyyaml",
+    "prometheus-client"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ruff",
+    "mypy"
 ]
 
 [project.scripts]

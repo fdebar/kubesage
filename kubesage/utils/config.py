@@ -9,11 +9,14 @@ from dotenv import load_dotenv
 class Settings:
     load_dotenv()
 
-    log_level: str = os.getenv("LOG_LEVEL", "INFO")
+    app_name: str = os.getenv("APP_NAME", "KubeSage")
+    environment: str = os.getenv("ENVIRONMENT", "production")
+    log_level: str = os.getenv("LOG_LEVEL", "WARNING")
     log_tail_lines: int = int(os.getenv("LOG_TAIL_LINES", "200"))
     openai_model: str = os.getenv("OPENAI_MODEL", "")
     openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
-    prometheus_url: str = os.getenv("PROMETHEUS_URL", "http://localhost:9090")
+    openai_url: str = os.getenv("OPENAI_URL", "")
+    prometheus_url: str = os.getenv("PROMETHEUS_URL", "")
     prometheus_timeout: int = int(os.getenv("PROMETHEUS_TIMEOUT", "5"))
 
 

@@ -8,11 +8,10 @@ class AIService:
     def __init__(self) -> None:
         self.model = settings.openai_model
         self.logger = get_logger(__name__)
-
-        if settings.openai_api_key:
-            self.client = OpenAI(api_key=settings.openai_api_key)
-        else:
-            self.client = OpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
+        self.client = OpenAI(
+            base_url=settings.openai_url,
+            api_key=settings.openai_api_key,
+        )
 
     def analyze(self, prompt: str) -> dict:
         self.logger.info("Calling LLM....")
