@@ -1,8 +1,8 @@
-from analyzers.rules.crashloop import CrashLoopRule
-from analyzers.rules.connectivity import ConnectivityRule
-from analyzers.rules.oom import OOMRule
-from models.container import ContainerInfo
-from models.incident import Incident
+from kubesage.analyzers.rules.crashloop import CrashLoopRule
+from kubesage.analyzers.rules.connectivity import ConnectivityRule
+from kubesage.analyzers.rules.oom import OOMRule
+from kubesage.models.container import ContainerInfo
+from kubesage.models.incident import Incident
 
 
 def test_crashloopbackoff() -> None:

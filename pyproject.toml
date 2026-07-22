@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [project.scripts]
-kubesage = "cli.main:main"
+kubesage = "kubesage.cli.main:main"
 
 [tool.setuptools]
 include-package-data = true
