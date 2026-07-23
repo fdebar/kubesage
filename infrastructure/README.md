@@ -39,25 +39,42 @@ Open your web browser and navigate to:
 
 You should now see the Prometheus web interface!
 
+---
 
-----
+KubeSage uses Grafana Tempo Distributed deployed via Helm with OpenTelemetry Collector (Alloy)
 
+## 2. Install OpenTelemetry Collector
 
-kube-prometheus-stack has been installed. Check its status by running:
-  kubectl --namespace monitoring get pods -l "release=monitoring"
+helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+helm repo update
 
-Get Grafana 'admin' user password by running:
+helm install opentelemetry-collector open-telemetry/opentelemetry-collector \
+  --set image.repository="otel/opentelemetry-collector-k8s" \
+  --set mode=deployment
 
-  kubectl --namespace monitoring get secrets monitoring-grafana -o jsonpath="{.data.admin-password}" | base64 -d ; echo
+## 3. Install Grafana
 
-Access Grafana local instance:
+helm repo add grafana-community https://grafana.github.io/helm-charts
+helm repo update
 
-  export POD_NAME=$(kubectl --namespace monitoring get pod -l "app.kubernetes.io/name=grafana,app.kubernetes.io/instance=monitoring" -oname)
-  kubectl --namespace monitoring port-forward $POD_NAME 3000
+helm install grafana grafana-community/grafana \
+  --namespace monitoring \
+  --create-namespace \
+  -f infrastructure/monitoring/grafana-values.yaml
 
-Get your grafana admin user password by running:
+helm install loki grafana-community/loki \
+  --namespace monitoring \
+  --create-namespace \
+  -f infrastructure/monitoring/loki-values.yaml
 
-  kubectl get secret --namespace monitoring -l app.kubernetes.io/component=admin-secret -o jsonpath="{.items[0].data.admin-password}" | base64 --decode ; echo
+helm install tempo grafana-community/tempo \
+  --namespace monitoring \
+  --create-namespace \
+  -f infrastructure/monitoring/tempo-values.yaml
 
+helm repo add grafana https://grafana.github.io/helm-charts
+helm repo update
 
-Visit https://github.com/prometheus-operator/kube-prometheus for instructions on how to create & configure Alertmanager and Prometheus instances using the Operator.
+helm install alloy grafana/alloy \
+  --namespace monitoring \
+  --create-namespace

@@ -14,7 +14,13 @@ dependencies = [
     "uvicorn[standard]",
     "openai",
     "kubernetes",
-    "prometheus-client"
+    "prometheus-client",
+    "opentelemetry-api",
+    "opentelemetry-sdk",
+    "opentelemetry-instrumentation-fastapi",
+    "opentelemetry-instrumentation-httpx",
+    "opentelemetry-exporter-otlp",
+    "structlog"
 ]
 
 [project.optional-dependencies]

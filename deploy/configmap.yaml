@@ -10,3 +10,4 @@ data:
   PROMETHEUS_URL: "http://monitoring-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090"
   OPENAI_URL: "http://host.minikube.internal:11434/v1"
   OPENAI_MODEL: "qwen2.5-coder:14b"
+  OTLP_ENDPOINT: "http://tempo.monitoring.svc.cluster.local:4318/v1/traces"

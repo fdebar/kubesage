@@ -17,7 +17,7 @@ spec:
       serviceAccountName: kubesage
       containers:
       - name: kubesage
-        image: kubesage:0.10
+        image: kubesage:0.11.3
         imagePullPolicy: Never # local only (minikube)
         envFrom:
         - configMapRef:
