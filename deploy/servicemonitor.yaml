@@ -1,0 +1,19 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kubesage
+  namespace: monitoring
+  labels:
+    release: monitoring # required for discovery by the Prometheus Operator (it must match helm release name)
+spec:
+  namespaceSelector:
+    matchNames:
+      - kubesage
+  selector:
+    matchLabels:
+      app: kubesage
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s

@@ -1,0 +1,16 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: kubesage
+spec:
+  groups:
+  - name: kubesage
+    rules:
+    - alert: KubeSageDown
+      expr: up{job="kubesage"} == 0
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        summary: "KubeSage is unreachable"
