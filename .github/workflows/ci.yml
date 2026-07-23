@@ -1,4 +1,6 @@
 name: KubeSage CI
+permissions:
+  contents: read
 on:
   push:
     branches:
