@@ -1,5 +1,7 @@
 # 🚀 KubeSage
 
+![CI](https://github.com/fdevar/KubeSage/actions/workflows/ci.yml/badge.svg)
+
 > AI-powered Kubernetes incident analysis assistant for DevOps and SRE teams.
 
 KubeSage is an intelligent Kubernetes troubleshooting assistant designed to accelerate incident investigation by combining:
