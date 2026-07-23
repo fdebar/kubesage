@@ -7,6 +7,9 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+import structlog
+
+logger = structlog.get_logger()
 
 
 def setup_telemetry(app: FastAPI) -> None:
@@ -26,10 +29,14 @@ def setup_telemetry(app: FastAPI) -> None:
         provider.add_span_processor(
             BatchSpanProcessor(OTLPSpanExporter(endpoint=settings.otlp_endpoint))
         )
+        logger.info("opentelemetry_with_otlp_endpoint", endpoint=settings.otlp_endpoint)
     else:
-        # Export only to console
         provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
+        logger.info("opentelemetry_with_console_exporter")
 
     trace.set_tracer_provider(provider)
+
+    if isinstance(provider, TracerProvider):
+        provider.shutdown()
 
     FastAPIInstrumentor.instrument_app(app, tracer_provider=provider)
