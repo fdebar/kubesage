@@ -1,6 +1,6 @@
 # 🚀 KubeSage
 
-![CI](https://github.com/fdevar/KubeSage/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/fdebar/KubeSage/actions/workflows/ci.yml/badge.svg)
 
 > AI-powered Kubernetes incident analysis assistant for DevOps and SRE teams.
 
