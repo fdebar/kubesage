@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 
-class Severity(str, Enum):
+class Severity(Enum):
     INFO = "INFO"
     WARNING = "WARNING"
     CRITICAL = "CRITICAL"

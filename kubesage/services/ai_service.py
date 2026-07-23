@@ -28,7 +28,7 @@ class AIService:
                 ],
                 response_format={"type": "json_object"},
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error("llm_analysis_failed: %s", e)
             return {
                 "summary": "AI analysis could not be completed.",

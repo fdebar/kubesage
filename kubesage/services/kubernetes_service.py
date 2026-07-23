@@ -30,11 +30,13 @@ class KubernetesService:
             if exc.status == 404:
                 raise PodNotFoundError(
                     f"Pod '{pod}' not found in namespace '{namespace}'."
-                )
+                ) from None
             else:
-                logger.error("kubernetes_api_error: %s", exc.status, exc.reason)
+                logger.error(
+                    "kubernetes_api_error", status=exc.status, reason=exc.reason
+                )
             return self._empty_incident(namespace, pod)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.error("kubernetes_failed_to_collect_data: %s", exc)
             return self._empty_incident(namespace, pod)
 
@@ -63,7 +65,7 @@ class KubernetesService:
         except ApiException as exc:
             logger.warning("kubernetes_failed_to_collect_logs: %s", exc.reason)
             return ""
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.warning("kubernetes_failed_to_collect_logs: %s", exc)
             return ""
 
@@ -115,7 +117,7 @@ class KubernetesService:
         except ApiException as exc:
             logger.warning("kubernetes_failed_to_collect_events: %s", exc.reason)
             return []
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.warning("kubernetes_failed_to_collect_events: %s", exc)
             return []
 

@@ -55,11 +55,11 @@ class MetricsService:
                 )
             else:
                 logger.error(
-                    "kubernetes_metrics_api_error: %s %s", exc.status, exc.reason
+                    "kubernetes_metrics_api_error", status=exc.status, reason=exc.reason
                 )
 
             return None
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.error("kubernetes_metrics_failed_to_collect_data: %s", exc)
             return None
 

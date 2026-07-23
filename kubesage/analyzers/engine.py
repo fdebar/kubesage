@@ -19,7 +19,9 @@ class DiagnosticEngine:
 
         if not findings:
             logger.info(
-                f"No findings detected for pod: {incident.pod} in namespace: {incident.namespace}"
+                "No findings detected for pod: %s in namespace: %s",
+                incident.pod,
+                incident.namespace,
             )
 
         return findings
