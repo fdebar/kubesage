@@ -47,11 +47,3 @@ check: lint typecheck test
 fix:
 	$(PYTHON) -m ruff check . --fix
 	$(PYTHON) -m ruff format .
-
-
-# Local development environment
-dev-start:
-	./scripts/dev-start.sh
-
-dev-stop:
-	./scripts/dev-stop.sh
