@@ -33,12 +33,6 @@ KUBERNETES_ERRORS = Counter(
     "Kubernetes API errors",
 )
 
-ANALYSIS_COUNTER = Counter(
-    "kubesage_analysis_total",
-    "Total analyses",
-    ["status"],
-)
-
 OPENAI_DURATION = Histogram(
     "kubesage_openai_duration_seconds",
     "LLM request duration",
