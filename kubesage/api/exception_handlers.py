@@ -1,13 +1,14 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from kubesage.utils.exceptions import (
-    PodNotFoundError,
-    KubernetesConnectionError,
-    PrometheusQueryError,
-    AIAnalysisError,
-)
-from kubesage.observability.factory import get_logger
 from pydantic import BaseModel
+
+from kubesage.observability.factory import get_logger
+from kubesage.utils.exceptions import (
+    AIAnalysisError,
+    KubernetesConnectionError,
+    PodNotFoundError,
+    PrometheusQueryError,
+)
 
 
 def register_exception_handlers(app: FastAPI) -> None:

@@ -1,12 +1,13 @@
+import structlog
+from opentelemetry import trace
+
+from kubesage.analyzers.engine import DiagnosticEngine
 from kubesage.builders.context_builder import ContextBuilder
 from kubesage.builders.prompt_builder import PromptBuilder
-from kubesage.services.prometheus_service import PrometheusService
-from kubesage.services.metrics_service import MetricsService
-from kubesage.analyzers.engine import DiagnosticEngine
-from kubesage.services.kubernetes_service import KubernetesService
 from kubesage.services.ai_service import AIService
-from opentelemetry import trace
-import structlog
+from kubesage.services.kubernetes_service import KubernetesService
+from kubesage.services.metrics_service import MetricsService
+from kubesage.services.prometheus_service import PrometheusService
 
 tracer = trace.get_tracer(__name__)
 logger = structlog.get_logger()

@@ -1,12 +1,14 @@
 from typing import Any
-from kubernetes.client.exceptions import ApiException
-from kubesage.utils.config import settings
-from kubesage.utils.kube_client import create_core_v1_api
-from kubesage.models.container import ContainerInfo
-from kubesage.models.incident import Incident
-from kubesage.models.events import Event
-from kubesage.utils.exceptions import PodNotFoundError
+
 import structlog
+from kubernetes.client.exceptions import ApiException
+
+from kubesage.models.container import ContainerInfo
+from kubesage.models.events import Event
+from kubesage.models.incident import Incident
+from kubesage.utils.config import settings
+from kubesage.utils.exceptions import PodNotFoundError
+from kubesage.utils.kube_client import create_core_v1_api
 
 logger = structlog.get_logger()
 

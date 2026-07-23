@@ -1,8 +1,8 @@
-from kubesage.models.prometheus import Metric
-from kubesage.models.prometheus import ResourceUsage
-from kubesage.utils.config import settings
 import requests
 import structlog
+
+from kubesage.models.prometheus import Metric, ResourceUsage
+from kubesage.utils.config import settings
 
 logger = structlog.get_logger()
 

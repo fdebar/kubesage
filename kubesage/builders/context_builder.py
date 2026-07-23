@@ -1,7 +1,8 @@
-from kubesage.models.ai_context import AIContext
-from kubesage.models.incident import Incident
-from kubesage.models.finding import Finding
 import structlog
+
+from kubesage.models.ai_context import AIContext
+from kubesage.models.finding import Finding
+from kubesage.models.incident import Incident
 
 logger = structlog.get_logger()
 

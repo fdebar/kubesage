@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+
 from kubesage.models.finding import Finding
 from kubesage.models.incident import Incident
 

@@ -1,6 +1,6 @@
-import kubernetes.client as client
-import kubernetes.config as config
+from kubernetes import client, config
 from kubernetes.config.config_exception import ConfigException
+
 from kubesage.observability.factory import get_logger
 
 logger = get_logger(__name__)

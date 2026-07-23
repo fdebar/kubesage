@@ -1,6 +1,8 @@
 import json
+
 import structlog
 from openai import OpenAI
+
 from kubesage.utils.config import settings
 
 logger = structlog.get_logger()

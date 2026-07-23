@@ -1,5 +1,4 @@
-from prometheus_client import Counter
-from prometheus_client import Histogram
+from prometheus_client import Counter, Histogram
 
 REQUEST_COUNT = Counter(
     "kubesage_http_requests_total",

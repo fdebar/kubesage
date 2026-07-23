@@ -1,5 +1,5 @@
-from kubesage.analyzers.rules.crashloop import CrashLoopRule
 from kubesage.analyzers.rules.connectivity import ConnectivityRule
+from kubesage.analyzers.rules.crashloop import CrashLoopRule
 from kubesage.analyzers.rules.oom import OOMRule
 from kubesage.models.container import ContainerInfo
 from kubesage.models.incident import Incident

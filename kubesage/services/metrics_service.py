@@ -1,10 +1,11 @@
-from kubernetes.client.exceptions import ApiException  # type: ignore
-from kubesage.utils.kube_client import create_custom_objects_api
-from kubesage.models.metrics import (
-    PodMetrics,
-    ContainerMetrics,
-)
 import structlog
+from kubernetes.client.exceptions import ApiException  # type: ignore
+
+from kubesage.models.metrics import (
+    ContainerMetrics,
+    PodMetrics,
+)
+from kubesage.utils.kube_client import create_custom_objects_api
 
 logger = structlog.get_logger()
 

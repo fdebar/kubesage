@@ -1,9 +1,10 @@
-from kubesage.observability import get_logger
-from kubesage.utils.exceptions import KubeSageError
-from kubesage.services.incident_service import IncidentService
 import argparse
 import json
 import sys
+
+from kubesage.observability import get_logger
+from kubesage.services.incident_service import IncidentService
+from kubesage.utils.exceptions import KubeSageError
 
 
 def analyze_command(args: argparse.Namespace) -> None:

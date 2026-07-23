@@ -1,6 +1,7 @@
 import importlib
 import inspect
 import pkgutil
+
 import kubesage.analyzers.rules as rules_package
 from kubesage.analyzers.rules.base import BaseRule
 

@@ -1,6 +1,6 @@
-from kubesage.analyzers.engine import DiagnosticEngine
-
 import argparse
+
+from kubesage.analyzers.engine import DiagnosticEngine
 
 
 def rules_command(args: argparse.Namespace) -> None:

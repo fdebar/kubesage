@@ -1,7 +1,9 @@
 import time
+from collections.abc import Callable
+
+from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
-from fastapi import Response, Request
-from typing import Callable
+
 from kubesage.api.metrics import (
     REQUEST_COUNT,
     REQUEST_DURATION,

@@ -1,9 +1,11 @@
+import uuid
+from collections.abc import Callable
+
+from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
-from fastapi import Response, Request
-from typing import Callable
+
 from kubesage.observability import setup_logging
 from kubesage.observability.context import set_request_id
-import uuid
 
 
 class RequestIDMiddleware(BaseHTTPMiddleware):

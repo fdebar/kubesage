@@ -25,10 +25,10 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest",
-    "ruff",
-    "mypy",
-    "pip_audit"
+    "pytest>=9.1.0",
+    "ruff>=0.16.0",
+    "mypy>=2.3.0",
+    "pip_audit>=2.10.0"
 ]
 
 [project.scripts]

@@ -1,7 +1,7 @@
-from abc import ABC
-from abc import abstractmethod
-from kubesage.models.incident import Incident
+from abc import ABC, abstractmethod
+
 from kubesage.models.finding import Finding
+from kubesage.models.incident import Incident
 
 
 class BaseRule(ABC):

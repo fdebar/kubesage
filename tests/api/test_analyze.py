@@ -1,10 +1,11 @@
 # pyrefly: ignore [missing-import]
+from collections.abc import Generator
+
 import pytest
-from typing import Generator
 from fastapi.testclient import TestClient
+
 from kubesage.api.app import app
 from kubesage.api.dependencies import get_incident_service
-
 
 client = TestClient(app)
 

@@ -1,6 +1,6 @@
 from kubesage.analyzers.rule_loader import discover_rules
-from kubesage.models.incident import Incident
 from kubesage.models.finding import Finding
+from kubesage.models.incident import Incident
 from kubesage.observability.factory import get_logger
 
 logger = get_logger(__name__)

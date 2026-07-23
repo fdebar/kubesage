@@ -1,5 +1,6 @@
 import argparse
 import uuid
+
 from kubesage.cli.commands.analyze import analyze_command
 from kubesage.cli.commands.rules import rules_command
 from kubesage.observability import setup_logging

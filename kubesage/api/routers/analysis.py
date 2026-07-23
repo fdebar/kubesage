@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends
-from kubesage.services.incident_service import IncidentService
-from kubesage.api.mappers import to_response
+
 from kubesage.api.dependencies import get_incident_service
+from kubesage.api.mappers import to_response
 from kubesage.api.schemas.request import AnalyzeRequest
 from kubesage.api.schemas.response import AnalyzeResponse
+from kubesage.services.incident_service import IncidentService
 
 router = APIRouter(
     tags=["Analysis"],

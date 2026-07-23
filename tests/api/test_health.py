@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
-from kubesage.api.app import app
 
+from kubesage.api.app import app
 
 client = TestClient(app)
 

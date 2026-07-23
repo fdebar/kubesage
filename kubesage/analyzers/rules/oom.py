@@ -1,9 +1,9 @@
-from kubesage.models.incident import Incident
 from kubesage.analyzers.rules.base import BaseRule
 from kubesage.models.finding import (
     Finding,
     Severity,
 )
+from kubesage.models.incident import Incident
 
 
 class OOMRule(BaseRule):
