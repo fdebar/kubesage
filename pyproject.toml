@@ -28,7 +28,7 @@ dev = [
     "pytest",
     "ruff",
     "mypy",
-    "pip-audit"
+    "pip_audit"
 ]
 
 [project.scripts]
