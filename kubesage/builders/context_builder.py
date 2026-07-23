@@ -1,16 +1,27 @@
 from kubesage.models.ai_context import AIContext
 from kubesage.models.incident import Incident
 from kubesage.models.finding import Finding
-from kubesage.observability import get_logger
+import structlog
+
+logger = structlog.get_logger()
 
 
 class ContextBuilder:
     def build(self, incident: Incident, findings: list[Finding]) -> AIContext:
-        logger = get_logger(__name__)
-        logger.info("Building AI context...")
+        logger.info(
+            "ai_context_building_started",
+            namespace=incident.namespace,
+            pod=incident.pod,
+        )
 
         summary = self._build_summary(findings)
         metrics = self._metrics_summary(incident)
+
+        logger.info(
+            "ai_context_building_completed",
+            namespace=incident.namespace,
+            pod=incident.pod,
+        )
 
         return AIContext(
             incident=incident,

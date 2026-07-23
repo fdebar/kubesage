@@ -1,27 +1,32 @@
 from kubernetes.client.exceptions import ApiException  # type: ignore
 from kubesage.utils.kube_client import create_custom_objects_api
-from kubesage.observability.factory import get_logger
 from kubesage.models.metrics import (
     PodMetrics,
     ContainerMetrics,
 )
+import structlog
+
+logger = structlog.get_logger()
 
 
 class MetricsService:
     def __init__(self) -> None:
         self.api = create_custom_objects_api()
-        self.logger = get_logger(__name__)
 
     def collect(
         self,
         namespace: str,
         pod: str,
     ) -> PodMetrics | None:
-        self.logger.info("Collecting metrics-server data ...")
+        logger.info(
+            "kubernetes_metrics_collecting_data_for_pod", namespace=namespace, pod=pod
+        )
 
         if self.api is None:
-            self.logger.warning(
-                "Kubernetes unavailable, skipping metrics-server collection."
+            logger.warning(
+                "kubernetes_metrics_unavailable",
+                namespace=namespace,
+                pod=pod,
             )
             return None
 
@@ -36,19 +41,25 @@ class MetricsService:
 
         except ApiException as exc:
             if exc.status == 404:
-                self.logger.info(
-                    "Metrics from metrics-server are not available (pod not found or too recent)."
+                logger.warning(
+                    "kubernetes_metrics_not_available_pod_not_found_or_too_recent",
+                    namespace=namespace,
+                    pod=pod,
                 )
             elif exc.status == 503:
-                self.logger.error("The metrics-server is not yet ready to respond.")
+                logger.error(
+                    "kubernetes_metrics_server_not_yet_ready_to_respond",
+                    namespace=namespace,
+                    pod=pod,
+                )
             else:
-                self.logger.error(
-                    "Kubernetes API Error (%s): %s", exc.status, exc.reason
+                logger.error(
+                    "kubernetes_metrics_api_error: %s %s", exc.status, exc.reason
                 )
 
             return None
         except Exception as exc:
-            self.logger.error("Failed to collect metrics-server data: %s", exc)
+            logger.error("kubernetes_metrics_failed_to_collect_data: %s", exc)
             return None
 
         result = PodMetrics()

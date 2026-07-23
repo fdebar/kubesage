@@ -1,4 +1,6 @@
 from fastapi import FastAPI
+from kubesage.core.telemetry import setup_telemetry
+from kubesage.utils.config import settings
 from kubesage.api.routers.system import router as system_router
 from kubesage.api.routers.analysis import router as analysis_router
 from kubesage.api.routers.metrics import router as metrics_router
@@ -7,16 +9,16 @@ from kubesage.api.middlewares.request_id import RequestIDMiddleware
 from kubesage.api.middlewares.logging import LoggingMiddleware
 from kubesage.api.middlewares.metrics import MetricsMiddleware
 from kubesage.api.lifespan import lifespan
-from kubesage.observability.factory import get_logger
 
-get_logger(__name__)
 
 app = FastAPI(
-    title="KubeSage",
+    title=settings.app_name,
     description="AI-powered Kubernetes Incident Analysis",
-    version="0.8.0",
+    version=settings.app_version,
     lifespan=lifespan,
 )
+
+setup_telemetry(app)
 
 app.include_router(system_router)
 app.include_router(analysis_router, prefix="/api/v1")

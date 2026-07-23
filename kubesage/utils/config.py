@@ -9,7 +9,8 @@ from dotenv import load_dotenv
 class Settings:
     load_dotenv()
 
-    app_name: str = os.getenv("APP_NAME", "KubeSage")
+    app_name: str = "KubeSage"
+    app_version: str = "0.11.0"
     environment: str = os.getenv("ENVIRONMENT", "production")
     log_level: str = os.getenv("LOG_LEVEL", "WARNING")
     log_tail_lines: int = int(os.getenv("LOG_TAIL_LINES", "200"))
@@ -18,6 +19,7 @@ class Settings:
     openai_url: str = os.getenv("OPENAI_URL", "")
     prometheus_url: str = os.getenv("PROMETHEUS_URL", "")
     prometheus_timeout: int = int(os.getenv("PROMETHEUS_TIMEOUT", "5"))
+    otlp_endpoint: str = os.getenv("OTLP_ENDPOINT", "")
 
 
 settings = Settings()
