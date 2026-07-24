@@ -34,6 +34,10 @@ jobs:
 
       - name: Deploy Helm chart
         run: |
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo update
+          helm upgrade --install prometheus prometheus-community/kube-prometheus-stack -n monitoring --create-namespace
+
           helm upgrade --install kubesage ./charts/kubesage \
             --namespace kubesage \
             --create-namespace \
