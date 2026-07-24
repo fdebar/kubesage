@@ -4,23 +4,27 @@ PYTHON := $(if $(wildcard $(VENV)/bin/python),$(VENV)/bin/python,python3)
 SHORT_SHA := $(shell git rev-parse --short HEAD)
 IMAGE_NAME := kubesage:${SHORT_SHA}
 
-.PHONY: help install test lint format typecheck security quality docker-build docker-run ci
+.PHONY: help install test lint format typecheck security quality docker-build docker-run ci helm-lint helm-template kubeconform package
 
 help:
 	@echo "[KubeSage] Available commands:"
-	@echo "  make install     	Install project dependencies"
-	@echo "  make format      	Format code with Ruff"
-	@echo "  make lint        	Run Ruff linting"
-	@echo "  make typecheck   	Run MyPy type checking"
-	@echo "  make test        	Run test suite"
-	@echo "  make bandit       	Run bandit static code analysis"
-	@echo "  make pip_audit   	Run pip audit"
-	@echo "  make trivy       	Run trivy vulnerability scan"
-	@echo "  make docker-build	Build the Docker image"
-	@echo "  make docker-run  	Run the Docker image"
-	@echo "  make quality     	Run quality check"
-	@echo "  make security    	Run security audit"
-	@echo "  make ci          	Run CI checks"
+	@echo "  make install     		Install project dependencies"
+	@echo "  make format      		Format code with Ruff"
+	@echo "  make lint        		Run Ruff linting"
+	@echo "  make typecheck   		Run MyPy type checking"
+	@echo "  make test        		Run test suite"
+	@echo "  make bandit       		Run bandit static code analysis"
+	@echo "  make pip_audit   		Run pip audit"
+	@echo "  make trivy       		Run trivy vulnerability scan"
+	@echo "  make docker-build		Build the Docker image"
+	@echo "  make docker-run  		Run the Docker image"
+	@echo "  make quality     		Run quality check"
+	@echo "  make security    		Run security audit"
+	@echo "  make ci          		Run CI checks"
+	@echo "  make helm-lint   		Run helm lint"
+	@echo "  make helm-template 	Run helm template"
+	@echo "  make kubeconform 		Run kubeconform"
+	@echo "  make package 			Run helm package"
 
 # Install dependencies
 install:
@@ -56,6 +60,18 @@ trivy: |
 	trivy image ${IMAGE_NAME} --config trivy.yaml
 
 security: bandit pip_audit trivy
+
+# Helm
+helm-lint:
+	helm lint charts/kubesage
+
+helm-template:
+	helm template charts/kubesage
+
+kubeconform:
+	helm template charts/kubesage | kubeconform -summary -strict
+
+package: helm-lint helm-template kubeconform
 
 # Docker
 docker-build: |

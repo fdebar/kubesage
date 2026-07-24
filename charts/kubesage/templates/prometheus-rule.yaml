@@ -2,13 +2,13 @@
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
-  name: kubesage
+  name: {{ include "kubesage.fullname" . }}
 spec:
   groups:
-  - name: kubesage
+  - name: {{ include "kubesage.fullname" . }}
     rules:
     - alert: KubeSageDown
-      expr: up{job="kubesage"} == 0
+      expr: up{job="{{ include "kubesage.fullname" . }}"} == 0
       for: 2m
       labels:
         severity: critical

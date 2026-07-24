@@ -1,0 +1,45 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "kubesage.fullname" . }}
+  labels:
+    {{- include "kubesage.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "kubesage.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+      labels:
+        {{- include "kubesage.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "kubesage.serviceAccountName" . }}
+      containers:
+      - name: {{ include "kubesage.fullname" . }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: "{{ .Values.image.pullPolicy }}"
+        resources:
+        {{- toYaml .Values.resources | nindent 12 }}
+        envFrom:
+        - configMapRef:
+            name: {{ include "kubesage.fullname" . }}-config
+        - secretRef:
+            name: {{ include "kubesage.fullname" . }}-secret
+        ports:
+          - name: http
+            containerPort: {{ .Values.service.port }}
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+          initialDelaySeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 15

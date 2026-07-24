@@ -1,0 +1,16 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name:  {{ include "kubesage.fullname" . }}
+  labels:
+    {{- include "kubesage.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "kubesage.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+  type: {{ .Values.service.type }}

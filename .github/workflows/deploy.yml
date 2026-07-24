@@ -1,0 +1,39 @@
+name: Deploy KubeSage
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+
+        - name: Setup kubectl
+          uses: azure/setup-kubectl@v4
+
+        - name: Setup Helm
+          uses: azure/setup-helm@v4
+
+        - name: Configure Kubernetes
+          run: |
+            mkdir ~/.kube
+            echo "${{ secrets.KUBE_CONFIG }}" > ~/.kube/config
+
+        - name: Deploy Helm chart
+          run: |
+            helm upgrade --install kubesage \
+              ./charts/kubesage \
+              --namespace kubesage \
+              --create-namespace \
+              --set image.tag=${{ github.sha }}
+
+        - name: Verify deployment
+          run: |
+            kubectl rollout status \
+              deployment/kubesage \
+              -n kubesage \
+              --timeout=120s

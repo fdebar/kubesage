@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name:  {{ include "kubesage.fullname" . }}-config
+data:
+  ENVIRONMENT: {{ .Values.application.environment | quote }}
+  LOG_LEVEL: {{ .Values.application.logLevel | quote }}
+
+  OPENAI_MODEL: {{ .Values.openai.model | quote }}
+  OPENAI_URL: {{ .Values.openai.endpoint | quote }}
+
+  PROMETHEUS_URL: {{ .Values.observability.prometheus | quote }}
+  LOKI_URL: {{ .Values.observability.loki | quote }}
+  OTLP_ENDPOINT: {{ .Values.observability.tempo | quote }}

@@ -126,3 +126,16 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}/kubesage:${{ steps.vars.outputs.sha_short }}
             ghcr.io/${{ github.repository }}/kubesage:latest
+
+  helm:
+    name: Helm
+    needs: 
+      - quality
+      - docker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Helm package
+        run: make package

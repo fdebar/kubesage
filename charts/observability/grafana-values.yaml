@@ -25,6 +25,14 @@ datasources:
         type: tempo
         access: proxy
         url: http://tempo.monitoring.svc.cluster.local:3200
+        jsonData:
+          tracesToLogs:
+            datasourceUid: loki
+            tags:
+              - key: namespace
+                value: namespace
+              - key: pod
+                value: pod
 plugins:
   - grafana-piechart-panel
 grafana.ini:
