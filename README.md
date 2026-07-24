@@ -1,8 +1,35 @@
-# 🚀 KubeSage
+<h1 align="center">🤖 KubeSage</h1>
+
+<p align="center">
+  <img src="docs/kubesage-logo.png" alt="KubeSage Logo" width="280">
+</p>
+
+<p align="center">
+AI-powered Kubernetes Operations Assistant
+</p>
+
+<p align="center">
+Observe • Explain • Recommend • Act
+</p>
+
+<h4 align="center">
+
+![Python](https://img.shields.io/badge/Python-3.14-blue)
+![Helm](https://img.shields.io/badge/Helm-3-0F1689)
+![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-Enabled-6F2DBD)
+![Grafana](https://img.shields.io/badge/Grafana-Observability-F46800)
+![License](https://img.shields.io/badge/License-MIT-green)
+![Docker](https://img.shields.io/badge/Docker-Enabled-2496ED)
+![Ruff](https://img.shields.io/badge/Ruff-Linting-D7FF64)
+![MyPy](https://img.shields.io/badge/MyPy-Type_Checked-2A6DB0)
+
+</h4>
+
+<h4 align="center">
 
 ![CI](https://github.com/fdebar/KubeSage/actions/workflows/ci.yml/badge.svg)
 
-> AI-powered Kubernetes incident analysis assistant for DevOps and SRE teams.
+</h4>
 
 KubeSage is an intelligent Kubernetes troubleshooting assistant designed to accelerate incident investigation by combining:
 
@@ -17,6 +44,24 @@ Instead of simply summarizing logs, KubeSage correlates operational signals to i
 The goal is simple:
 
 **Reduce the time required to understand and troubleshoot Kubernetes incidents.**
+
+# 🚀 Quick Start
+
+```bash
+git clone https://github.com/fdebar/KubeSage.git
+
+cd KubeSage
+
+helm install kubesage deploy/kubesage \
+    -n kubesage \
+    --create-namespace
+```
+
+Analyze a pod:
+
+```bash
+kubesage analyze --namespace default --pod nginx
+```
 
 ---
 
@@ -34,6 +79,12 @@ Modern Kubernetes troubleshooting often requires switching between multiple tool
 KubeSage automates this workflow by collecting, correlating and explaining operational data in a single structured incident report.
 
 The AI component does not replace deterministic diagnostics. It enhances them by providing context-aware explanations and recommendations.
+
+---
+
+# 🏗️ Architecture
+
+<img src="docs/architecture.png" alt="KubeSage Architecture" />
 
 ---
 
@@ -71,62 +122,12 @@ The AI component does not replace deterministic diagnostics. It enhances them by
 
 * 💻 CLI interface
 * 🌐 REST API with FastAPI
+* 📦 Helm Chart
+* 🚀 One-command Kubernetes deployment
+* 🔄 Environment-specific configuration
 * ✅ Automated tests
 * 🔍 Static analysis
 * 🧹 Code formatting
-
----
-
-# Architecture
-
-```
-                           +----------------+
-                           |    CLI / API   |
-                           +--------+-------+
-                                    |
-                                    |
-                         +----------v-----------+
-                         |   IncidentService   |
-                         +----------+-----------+
-                                    |
-        +---------------------------+---------------------------+
-        |                           |                           |
-        |                           |                           |
-+-------v-------+          +--------v--------+        +---------v---------+
-| Kubernetes API|          | Metrics Server  |        |    Prometheus     |
-+---------------+          +-----------------+        +-------------------+
-                                    |
-                                    |
-                         +----------v-----------+
-                         |      Incident       |
-                         +----------+-----------+
-                                    |
-                         +----------v-----------+
-                         | Diagnostic Engine   |
-                         +----------+-----------+
-                                    |
-                            Plugin Rules
-                                    |
-                         +----------v-----------+
-                         |     Findings        |
-                         +----------+-----------+
-                                    |
-                         +----------v-----------+
-                         |  Context Builder    |
-                         +----------+-----------+
-                                    |
-                         +----------v-----------+
-                         |  Prompt Builder     |
-                         +----------+-----------+
-                                    |
-                         +----------v-----------+
-                         |    AI Service       |
-                         +----------+-----------+
-                                    |
-                         +----------v-----------+
-                         |    AI Report        |
-                         +---------------------+
-```
 
 ---
 
@@ -175,7 +176,7 @@ kubesage/
 
 ## Backend
 
-* Python 3.12+
+* Python 3.14+
 * FastAPI
 * Kubernetes Python Client
 * Requests
@@ -183,7 +184,10 @@ kubesage/
 
 ## Observability
 
+* Grafana Alloy
 * Prometheus
+* Loki
+* Tempo
 * Kubernetes Metrics Server
 * Structured logging
 
@@ -203,34 +207,88 @@ kubesage/
 
 # Prerequisites
 
-Before running KubeSage, ensure:
+Before installing KubeSage, ensure the following components are available.
 
-* Python 3.12+
-* Kubernetes cluster
-* `kubectl` configured
+## Kubernetes
+
+* Python 3.14+
+* Kubernetes 1.30+ cluster
+* `kubectl` configured and connected to the target cluster
 * Metrics Server installed
 * Prometheus installed
 
-For production:
-
-* OpenAI API key
-
-For local development:
-
-* Ollama running with a compatible model
-
----
-
-# Installation
-
-Clone the repository:
+Verify your cluster:
 
 ```bash
-git clone https://github.com/<your-account>/kubesage.git
-cd kubesage
+kubectl cluster-info
+kubectl get nodes
+kubectl top nodes
 ```
 
-Create the environment:
+## Observability stack
+
+KubeSage relies on a standard observability stack.
+
+Required components:
+
+* Grafana Alloy
+* Prometheus
+* Loki
+* Tempo
+
+The recommended installation method is Helm.
+You can use [Grafana Cloud](https://grafana.com/products/cloud/) for a production deployment.
+
+## AI Provider
+
+KubeSage supports multiple AI backends.
+
+### OpenAI (recommended)
+
+Provide an API key:
+
+```bash
+OPENAI_API_KEY=<your_api_key>
+```
+
+### Ollama (local development)
+
+Install and start Ollama, then pull a compatible model:
+
+```bash
+ollama pull llama3
+```
+
+### Helm
+
+Helm is the recommended deployment method.
+
+Verify your installation:
+
+```bash
+helm version
+```
+
+### Install KubeSage
+
+Deploy KubeSage using Helm:
+
+helm upgrade --install kubesage \
+    deploy/kubesage \
+    --namespace kubesage \
+    --create-namespace \
+    -f deploy/kubesage/values.yaml
+
+Verify the deployment:
+
+```bash
+kubectl get pods -n kubesage
+kubectl get svc -n kubesage
+```
+
+### Local development
+
+Create a virtual environment:
 
 ```bash
 python -m venv .venv
@@ -241,6 +299,20 @@ Install dependencies:
 
 ```bash
 pip install -e .
+```
+
+Run the CLI:
+
+```bash
+kubesage analyze \
+    --namespace default \
+    --pod ai-demo-app
+````
+
+Or start the REST API:
+
+```bash
+uvicorn kubesage.api.app:app --reload
 ```
 
 ---
@@ -352,58 +424,30 @@ Prometheus metrics include:
 
 ---
 
-# Example Workflow
+# Example Analysis
 
-```
-User Request
+```bash
+$ kubesage analyze --namespace production --pod payment-api
 
-      |
-      v
+✔ Kubernetes context collected
+✔ Metrics retrieved
+✔ Logs analyzed
+✔ Traces correlated
 
-CLI / REST API
+Severity: HIGH
 
-      |
-      v
+Root cause:
+OOMKilled after 12 restarts.
 
-Incident Collection
+AI explanation:
+The application exceeds its memory limit during startup.
 
-      |
-      +----------------+
-      |                |
-      v                v
+Recommendations:
+• Increase memory limit to 1Gi.
+• Investigate recent deployment changes.
+• Check JVM heap configuration.
 
-Kubernetes       Prometheus
-Data             Metrics
-
-      |
-      v
-
-Diagnostic Engine
-
-      |
-      v
-
-Findings
-
-      |
-      v
-
-Context Builder
-
-      |
-      v
-
-Prompt Builder
-
-      |
-      v
-
-LLM Analysis
-
-      |
-      v
-
-Incident Report
+Confidence: 94%
 ```
 
 ---
@@ -470,65 +514,21 @@ mypy .
 
 # Roadmap
 
-## Completed
-
-✅ Project architecture
-✅ CLI interface
-✅ Structured logging
-✅ Unit tests
-✅ Diagnostic engine
-✅ Plugin rules
-✅ OpenAI integration
-✅ Metrics Server integration
-✅ Prometheus integration
-✅ Context Builder
-✅ Prompt Builder
-✅ AI Report generation
-✅ FastAPI REST API
-
----
-
-## Next Steps
-
-🚧 Slack / Microsoft Teams integration
-
-🚧 Docker image
-
-🚧 Helm deployment
-
-🚧 GitHub Actions CI/CD
-
-🚧 Grafana dashboard
-
-🚧 Loki integration
-
-🚧 Alertmanager integration
-
-🚧 Multi-cluster support
-
-🚧 Web dashboard
-
----
-
-# Design Principles
-
-KubeSage follows several principles:
-
-* Deterministic diagnostics before AI reasoning
-* Structured outputs over free-form responses
-* AI as an assistant, not an autonomous operator
-* Extensible architecture through plugins
-* Production-oriented engineering practices
-
----
-
-# Future Improvements
-
-* Historical incident comparison
-* Incident timeline visualization
-* Root Cause Analysis graph
-* AI-generated remediation plans
-* Optional auto-remediation workflows
+| Feature | Status |
+|----------|--------|
+| CLI | ✅ |
+| REST API | ✅ |
+| Helm Chart | ✅ |
+| Grafana Integration | ✅ |
+| Prometheus | ✅ |
+| Loki | ✅ |
+| Tempo | ✅ |
+| Grafana Alloy | ✅ |
+| Docker Scout | ✅ |
+| GitHub Actions | ✅ |
+| GitOps | 🚧 |
+| Auto-remediation | 🚧 |
+| FinOps | 🚧 |
 
 ---
 
