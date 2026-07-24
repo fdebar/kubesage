@@ -75,7 +75,6 @@ class PrometheusService:
         unit: str,
         result: list,
     ) -> Metric | None:
-
         if not result:
             return None
 

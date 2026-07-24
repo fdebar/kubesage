@@ -6,7 +6,6 @@ from kubesage.models.incident import Incident
 
 
 def test_crashloopbackoff() -> None:
-
     incident = Incident(
         namespace="default",
         pod="demo",
@@ -32,7 +31,6 @@ def test_crashloopbackoff() -> None:
 
 
 def test_connectivity() -> None:
-
     incident = Incident(
         namespace="default",
         pod="demo",
@@ -50,7 +48,6 @@ def test_connectivity() -> None:
 
 
 def test_oomkilled() -> None:
-
     incident = Incident(
         namespace="default",
         pod="demo",

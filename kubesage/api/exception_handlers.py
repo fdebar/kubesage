@@ -12,7 +12,6 @@ from kubesage.utils.exceptions import (
 
 
 def register_exception_handlers(app: FastAPI) -> None:
-
     logger = get_logger(__name__)
 
     @app.exception_handler(PodNotFoundError)
