@@ -64,12 +64,12 @@ jobs:
       contents: read
       packages: write
     steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
       - name: Set outputs
         id: vars
         run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-
-      - name: Check out code
-        uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
