@@ -1,5 +1,5 @@
 # ---------- Builder ----------
-FROM python:3.12-slim AS builder
+FROM python:3.14-slim AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
@@ -14,10 +14,10 @@ COPY pyproject.toml README.md requirements.txt ./
 COPY kubesage ./kubesage
 
 RUN pip install --upgrade pip && \
-    pip install --prefix=/install -r requirements.txt  .
+    pip install --no-cache-dir --prefix=/install -r requirements.txt  .
 
 # ---------- Runtime ----------
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
