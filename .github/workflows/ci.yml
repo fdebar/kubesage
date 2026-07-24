@@ -86,14 +86,14 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ github.repository }}/kubesage:${{ steps.vars.outputs.sha_short }}
+          tags: ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.sha_short }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Scan Docker image
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: ghcr.io/${{ github.repository }}/kubesage:${{ steps.vars.outputs.sha_short }}
+          image-ref: ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.sha_short }}
           trivy-config: trivy.yaml
       
       - name: Run container
@@ -101,7 +101,7 @@ jobs:
           docker run -d \
             --name kubesage \
             -p 8000:8000 \
-            ghcr.io/${{ github.repository }}/kubesage:${{ steps.vars.outputs.sha_short }}
+            ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.sha_short }}
             
       - name: Wait container to be ready
         run: |
@@ -124,8 +124,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}/kubesage:${{ steps.vars.outputs.sha_short }}
-            ghcr.io/${{ github.repository }}/kubesage:latest
+            ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.sha_short }}
+            ghcr.io/${{ github.repository }}:latest
 
   helm:
     name: Helm
