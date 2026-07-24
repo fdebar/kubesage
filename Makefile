@@ -55,7 +55,9 @@ trivy: |
 	echo "Running Trivy vulnerability scan..."
 	trivy image ${IMAGE_NAME} --config trivy.yaml
 
-# Docker 
+security: bandit pip_audit trivy
+
+# Docker
 docker-build: |
 	echo "Building docker image..."
 	docker buildx build --platform linux/amd64 --no-cache .
@@ -66,8 +68,6 @@ docker-run: |
 	docker run -p 8000:8000 ${IMAGE_NAME}
 
 # Continuous Integration
-security: bandit pip_audit trivy
-
 ci: quality security docker-build
 
 # Clean
