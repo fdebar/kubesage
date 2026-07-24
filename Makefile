@@ -1,7 +1,8 @@
 # KubeSage development commands
-
 VENV := .venv
 PYTHON := $(if $(wildcard $(VENV)/bin/python),$(VENV)/bin/python,python3)
+SHORT_SHA := $(shell git rev-parse --short HEAD)
+IMAGE_NAME := kubesage:${SHORT_SHA}
 
 .PHONY: help install test lint format typecheck security quality docker-build docker-run ci
 
@@ -12,10 +13,13 @@ help:
 	@echo "  make lint        	Run Ruff linting"
 	@echo "  make typecheck   	Run MyPy type checking"
 	@echo "  make test        	Run test suite"
-	@echo "  make security    	Run security audit"
-	@echo "  make quality     	Run quality check"
+	@echo "  make bandit       	Run bandit static code analysis"
+	@echo "  make pip_audit   	Run pip audit"
+	@echo "  make trivy       	Run trivy vulnerability scan"
 	@echo "  make docker-build	Build the Docker image"
 	@echo "  make docker-run  	Run the Docker image"
+	@echo "  make quality     	Run quality check"
+	@echo "  make security    	Run security audit"
 	@echo "  make ci          	Run CI checks"
 
 # Install dependencies
@@ -39,18 +43,32 @@ typecheck:
 quality: format lint typecheck test
 
 # Security
-security:
+bandit: |
+	echo "Running bandit static code analysis..."
+	$(PYTHON) -m bandit -c pyproject.toml -r app kubesage
+
+pip_audit: |
+	echo "Running pip audit..."
 	$(PYTHON) -m pip_audit
 
-# Docker 
-docker-build:
-	docker buildx build --platform linux/amd64 -t kubesage:dev .
+trivy: |
+	echo "Running Trivy vulnerability scan..."
+	trivy image ${IMAGE_NAME} --config trivy.yaml
 
-docker-run:
-	docker run -p 8000:8000 kubesage:dev
+# Docker 
+docker-build: |
+	echo "Building docker image..."
+	docker buildx build --platform linux/amd64 --no-cache .
+	docker tag ${IMAGE_NAME} kubesage:latest
+
+docker-run: |
+	echo "Running docker image ${IMAGE_NAME} on port 8000..."
+	docker run -p 8000:8000 ${IMAGE_NAME}
 
 # Continuous Integration
-ci: lint typecheck test security docker-build
+security: bandit pip_audit trivy
+
+ci: quality security docker-build
 
 # Clean
 clean:

@@ -25,6 +25,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "bandit>=1.9.0",
     "pytest>=9.1.0",
     "ruff>=0.16.0",
     "mypy>=2.3.0",
@@ -54,3 +55,17 @@ select = ["B", "E", "F", "I", "UP"]
 
 [tool.ruff.lint.flake8-bugbear]
 extend-immutable-calls = ["fastapi.Depends", "fastapi.params.Depends"]
+
+[tool.bandit]
+# Exclude directories
+exclude_dirs = [
+    "tests",
+    ".venv",
+    ".git",
+    "__pycache__",
+]
+
+# Ignore les asserts dans les tests
+skips = [
+    "B101",
+]
