@@ -1,0 +1,71 @@
+name: Test and Deploy Helm Chart
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+
+      - name: Lint Helm chart
+        run: make helm-lint
+
+      - name: Build Docker image
+        run: |
+          docker build -t kubesage:${{ github.sha }} .
+
+      - name: Create Kind cluster
+        uses: helm/kind-action@v1.12.0
+        with:
+          cluster_name: kind-kubesage
+
+      - name: Load Docker image into Kind
+        run: |
+          kind load docker-image kubesage:${{ github.sha }} --name kind-kubesage
+
+      - name: Deploy Helm chart
+        run: |
+          helm upgrade --install kubesage ./charts/kubesage \
+            --namespace kubesage \
+            --create-namespace \
+            --set image.repository=kubesage \
+            --set image.tag=${{ github.sha }} \
+            --set image.pullPolicy=Never
+
+      - name: Verify deployment
+        run: |
+          kubectl rollout status deployment/kubesage \
+            -n kubesage \
+            --timeout=120s
+
+  publish:
+    needs: test-and-deploy 
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+
+      - name: Login to GHCR
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Package and Push
+        run: |
+          helm package ./charts/kubesage -d dist/
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          helm push dist/kubesage-*.tgz oci://ghcr.io/$OWNER/charts
