@@ -77,7 +77,7 @@ package: helm-lint helm-template kubeconform
 docker-build: |
 	echo "Building docker image..."
 	docker buildx build --platform linux/amd64 --no-cache .
-	docker tag ${IMAGE_NAME} kubesage:latest
+	docker tag kubesage:latest ${IMAGE_NAME}
 
 docker-run: |
 	echo "Running docker image ${IMAGE_NAME} on port 8000..."
