@@ -61,4 +61,10 @@ LOGS
 ========================
 
 {context.incident.logs}
+
+========================
+LOGS_COUNT
+========================
+
+{len(context.incident.logs)}
 """

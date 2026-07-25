@@ -1,3 +1,4 @@
+from enum import StrEnum
 from typing import Any
 
 import requests
@@ -9,6 +10,12 @@ from kubesage.services.loki import queries
 from kubesage.utils.config import settings
 
 logger = structlog.get_logger()
+
+
+class LogQueryType(StrEnum):
+    ALL = "all"
+    ERRORS = "errors"
+    WARNINGS = "warnings"
 
 
 class LokiService(LogProvider):
@@ -51,41 +58,32 @@ class LokiService(LogProvider):
             return {}
 
     def collect(
-        self,
-        namespace: str,
-        pod: str,
+        self, namespace: str, pod: str, query_type: LogQueryType = LogQueryType.ERRORS
     ) -> LogSnapshot | None:
-        logger.info(
-            "loki_collecting_logs",
-            namespace=namespace,
-            pod=pod,
-        )
+        logger.info("loki_collecting_logs", namespace=namespace, pod=pod)
 
-        payload = self.query(queries.pod_logs(namespace, pod))
+        if query_type == LogQueryType.ERRORS:
+            query = queries.pod_errors(namespace, pod)
+        elif query_type == LogQueryType.WARNINGS:
+            query = queries.pod_warnings(namespace, pod)
+        else:
+            query = queries.pod_logs(namespace, pod)
+
+        payload = self.query(query)
         if not payload:
             return None
 
         lines = self._extract_logs(payload)
         if not lines:
-            logger.warning(
-                "loki_no_logs_found",
-                namespace=namespace,
-                pod=pod,
-            )
+            logger.warning("loki_no_logs_found", namespace=namespace, pod=pod)
 
             return None
 
         logger.info(
-            "loki_logs_collected",
-            namespace=namespace,
-            pod=pod,
-            line_count=len(lines),
+            "loki_logs_collected", namespace=namespace, pod=pod, line_count=len(lines)
         )
 
-        return LogSnapshot(
-            source=LogSource.LOKI.value,
-            lines=lines,
-        )
+        return LogSnapshot(source=LogSource.LOKI.value, lines=lines)
 
     def _extract_logs(self, payload: dict) -> list[str]:
         lines: list[str] = []
