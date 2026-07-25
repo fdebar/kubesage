@@ -38,3 +38,10 @@ rate(
     }[5m]
 )
 """
+
+FILESYSTEM_USAGE_QUERY = """
+container_fs_usage_bytes{
+    namespace="%s",
+    pod="%s"
+}
+"""

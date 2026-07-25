@@ -100,7 +100,7 @@ def test_collect_all_none(mock_query: MagicMock) -> None:
     usage = service.collect("default", "my-pod")
 
     assert usage is None
-    assert mock_query.call_count == 5
+    assert mock_query.call_count == 6
 
 
 @patch.object(PrometheusService, "query")
@@ -112,6 +112,7 @@ def test_collect_success(mock_query: MagicMock) -> None:
         [{"value": [1002.0, "2"]}],  # Restarts
         [{"value": [1003.0, "100"]}],  # Network RX
         [{"value": [1004.0, "200"]}],  # Network TX
+        [{"value": [1005.0, "5368709120"]}],  # Filesystem
     ]
     usage = service.collect("default", "my-pod")
 
@@ -131,3 +132,6 @@ def test_collect_success(mock_query: MagicMock) -> None:
 
     assert isinstance(usage.network_tx, Metric)
     assert usage.network_tx.value == 200.0
+
+    assert isinstance(usage.filesystem, Metric)
+    assert usage.filesystem.value == 5368709120.0

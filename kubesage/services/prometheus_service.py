@@ -4,6 +4,7 @@ import structlog
 from kubesage.models.prometheus import Metric, ResourceUsage
 from kubesage.services.prometheus.queries import (
     CPU_QUERY,
+    FILESYSTEM_USAGE_QUERY,
     MEMORY_QUERY,
     NETWORK_RX_QUERY,
     NETWORK_TX_QUERY,
@@ -65,6 +66,7 @@ class PrometheusService:
         usage.restarts = self.collect_restarts(namespace, pod)
         usage.network_rx = self.collect_network_rx(namespace, pod)
         usage.network_tx = self.collect_network_tx(namespace, pod)
+        usage.filesystem = self.collect_filesystem(namespace, pod)
 
         if all(
             metric is None
@@ -167,3 +169,35 @@ class PrometheusService:
             "bytes/s",
             NETWORK_TX_QUERY % (namespace, pod),
         )
+
+    def collect_filesystem(
+        self,
+        namespace: str,
+        pod: str,
+    ) -> Metric | None:
+        return self._collect_metric(
+            "filesystem",
+            "bytes",
+            FILESYSTEM_USAGE_QUERY % (namespace, pod),
+        )
+
+    def collect_request_rate(
+        self,
+        namespace: str,
+        pod: str,
+    ) -> Metric | None:
+        return None
+
+    def collect_error_rate(
+        self,
+        namespace: str,
+        pod: str,
+    ) -> Metric | None:
+        return None
+
+    def collect_latency(
+        self,
+        namespace: str,
+        pod: str,
+    ) -> Metric | None:
+        return None
