@@ -3,7 +3,9 @@ from opentelemetry import trace
 
 from kubesage.analyzers.engine import DiagnosticEngine
 from kubesage.builders.context.context_builder import ContextBuilder
+from kubesage.builders.context.incident_builder import IncidentBuilder
 from kubesage.builders.prompt.prompt_builder import PromptBuilder
+from kubesage.models.incident import Incident
 from kubesage.services.ai_service import AIService
 from kubesage.services.kubernetes_service import KubernetesService
 from kubesage.services.metrics_service import MetricsService
@@ -15,6 +17,7 @@ logger = structlog.get_logger()
 
 class IncidentService:
     def __init__(self) -> None:
+        self.incident: Incident | None = None
         self.kubernetes = KubernetesService()
         self.engine = DiagnosticEngine()
         self.ai = AIService()
@@ -33,7 +36,7 @@ class IncidentService:
         with tracer.start_as_current_span("collect_kubernetes_data") as span:
             span.set_attribute("namespace", namespace)
             span.set_attribute("pod", pod)
-            incident = self.kubernetes.collect(namespace, pod)
+            kubernetes = self.kubernetes.collect(namespace, pod)
         trace.get_current_span()
 
         # Regarding the metrics, we should use the prometheus data instead of
@@ -42,13 +45,21 @@ class IncidentService:
         with tracer.start_as_current_span("collect_kubernetes_metrics") as span:
             span.set_attribute("namespace", namespace)
             span.set_attribute("pod", pod)
-            incident.metrics = self.metrics.collect(namespace, pod)
+            metrics = self.metrics.collect(namespace, pod)
         trace.get_current_span()
 
         with tracer.start_as_current_span("query_prometheus") as span:
             span.set_attribute("namespace", namespace)
             span.set_attribute("pod", pod)
-            incident.prometheus = self.prometheus.collect(namespace, pod)
+            prometheus = self.prometheus.collect(namespace, pod)
+        trace.get_current_span()
+
+        with tracer.start_as_current_span("build_incident") as span:
+            span.set_attribute("namespace", namespace)
+            span.set_attribute("pod", pod)
+            incident = IncidentBuilder().build(
+                kubernetes=kubernetes, prometheus=prometheus, metrics=metrics
+            )
         trace.get_current_span()
 
         with tracer.start_as_current_span("run_rules_engine") as span:

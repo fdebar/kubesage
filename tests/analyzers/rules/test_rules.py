@@ -3,6 +3,7 @@ from kubesage.analyzers.rules.crashloop import CrashLoopRule
 from kubesage.analyzers.rules.oom import OOMRule
 from kubesage.models.container import ContainerInfo
 from kubesage.models.incident import Incident
+from kubesage.models.log import LogSnapshot
 
 
 def test_crashloopbackoff() -> None:
@@ -10,7 +11,10 @@ def test_crashloopbackoff() -> None:
         namespace="default",
         pod="demo",
         phase="Running",
-        logs="connection refused redis",
+        kubernetes_logs=LogSnapshot(
+            source="kubernetes",
+            lines=["connection refused redis"],
+        ),
         containers=[
             ContainerInfo(
                 name="app",
@@ -35,7 +39,10 @@ def test_connectivity() -> None:
         namespace="default",
         pod="demo",
         phase="Running",
-        logs="error: connection refused by server",
+        kubernetes_logs=LogSnapshot(
+            source="kubernetes",
+            lines=["error: connection refused by server"],
+        ),
         containers=[],
         events=[],
         metrics=None,
@@ -52,7 +59,10 @@ def test_oomkilled() -> None:
         namespace="default",
         pod="demo",
         phase="Running",
-        logs="",
+        kubernetes_logs=LogSnapshot(
+            source="kubernetes",
+            lines=["error: connection refused by server"],
+        ),
         containers=[
             ContainerInfo(
                 name="app",

@@ -1,5 +1,5 @@
 import structlog
-from kubernetes.client.exceptions import ApiException  # type: ignore
+from kubernetes.client.exceptions import ApiException
 
 from kubesage.models.metrics import (
     ContainerMetrics,

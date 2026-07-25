@@ -5,7 +5,8 @@ from kubernetes.client.exceptions import ApiException
 
 from kubesage.models.container import ContainerInfo
 from kubesage.models.events import Event
-from kubesage.models.incident import Incident
+from kubesage.models.kubernetes import KubernetesSnapshot
+from kubesage.models.log import LogSnapshot
 from kubesage.utils.config import settings
 from kubesage.utils.exceptions import PodNotFoundError
 from kubesage.utils.kube_client import create_core_v1_api
@@ -17,39 +18,35 @@ class KubernetesService:
     def __init__(self) -> None:
         self.v1 = create_core_v1_api()
 
-    def collect(self, namespace: str, pod: str) -> Incident:
+    def collect(self, namespace: str, pod: str) -> KubernetesSnapshot:
         logger.info("kubernetes_collecting_data_for_pod", namespace=namespace, pod=pod)
 
         if self.v1 is None:
             logger.error("kubernetes_unavailable")
-            return self._empty_incident(namespace, pod)
+            return self._empty_snapshot(namespace, pod)
 
         try:
             pod_info = self.v1.read_namespaced_pod(name=pod, namespace=namespace)
         except ApiException as exc:
             if exc.status == 404:
                 logger.warning(
-                    "kubernetes_pod_not",
+                    "kubernetes_pod_not_found",
                     namespace=namespace,
                     pod=pod,
                 )
                 raise PodNotFoundError(
                     f"Pod '{pod}' not found in namespace '{namespace}'."
                 ) from None
-            else:
-                logger.error(
-                    "kubernetes_api_error", status=exc.status, reason=exc.reason
-                )
-            return self._empty_incident(namespace, pod)
+            return self._empty_snapshot(namespace, pod)
         except Exception as exc:  # noqa: BLE001
             logger.error("kubernetes_failed_to_collect_data: %s", exc)
-            return self._empty_incident(namespace, pod)
+            return self._empty_snapshot(namespace, pod)
 
         logs = self._collect_logs(namespace, pod)
         containers = self._collect_containers(pod_info)
         events = self._collect_events(namespace, pod)
 
-        return Incident(
+        return KubernetesSnapshot(
             namespace=namespace,
             pod=pod,
             phase=pod_info.status.phase or "Unknown",
@@ -58,9 +55,13 @@ class KubernetesService:
             events=events,
         )
 
-    def _collect_logs(self, namespace: str, pod: str) -> str:
+    def _collect_logs(self, namespace: str, pod: str) -> LogSnapshot:
         if self.v1 is None:
-            return ""
+            return LogSnapshot(
+                source="kubernetes",
+                lines=[],
+            )
+
         try:
             logs = self.v1.read_namespaced_pod_log(
                 name=pod,
@@ -69,15 +70,19 @@ class KubernetesService:
             )
         except ApiException as exc:
             logger.warning("kubernetes_failed_to_collect_logs: %s", exc.reason)
-            return ""
+            raise PodNotFoundError(
+                f"Pod '{pod}' not found in namespace '{namespace}'."
+            ) from None
         except Exception as exc:  # noqa: BLE001
             logger.warning("kubernetes_failed_to_collect_logs: %s", exc)
-            return ""
 
         if isinstance(logs, bytes):
-            return logs.decode("utf-8")
+            logs = logs.decode("utf-8")
 
-        return logs or ""
+        return LogSnapshot(
+            source="kubernetes",
+            lines=logs.split("\n") if logs else [],
+        )
 
     def _collect_containers(self, pod_info: Any) -> list[ContainerInfo]:
         containers = []
@@ -154,12 +159,15 @@ class KubernetesService:
         return warnings
 
     @staticmethod
-    def _empty_incident(namespace: str, pod: str) -> Incident:
-        return Incident(
+    def _empty_snapshot(namespace: str, pod: str) -> KubernetesSnapshot:
+        return KubernetesSnapshot(
             namespace=namespace,
             pod=pod,
             phase="Unknown",
-            logs="",
+            logs=LogSnapshot(
+                source="kubernetes",
+                lines=[],
+            ),
             containers=[],
             events=[],
         )

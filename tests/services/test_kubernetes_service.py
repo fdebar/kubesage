@@ -12,14 +12,15 @@ def test_collect_kubernetes_unavailable(mock_create_api: MagicMock) -> None:
     mock_create_api.return_value = None
     service = KubernetesService()
 
-    incident = service.collect("default", "my-pod")
+    kubernetes_service = service.collect("default", "my-pod")
 
-    assert incident.namespace == "default"
-    assert incident.pod == "my-pod"
-    assert incident.phase == "Unknown"
-    assert incident.logs == ""
-    assert incident.containers == []
-    assert incident.events == []
+    assert kubernetes_service.namespace == "default"
+    assert kubernetes_service.pod == "my-pod"
+    assert kubernetes_service.phase == "Unknown"
+    assert kubernetes_service.logs.source == "kubernetes"
+    assert kubernetes_service.logs.lines == []
+    assert kubernetes_service.containers == []
+    assert kubernetes_service.events == []
 
 
 @patch("kubesage.services.kubernetes_service.create_core_v1_api")
@@ -100,16 +101,16 @@ def test_collect_success(mock_create_api: MagicMock) -> None:
 
     service = KubernetesService()
 
-    incident = service.collect("default", "my-pod")
+    kubernetes_snapshot = service.collect("default", "my-pod")
 
-    assert incident.phase == "Running"
-    assert incident.logs == "Hello Logs"
-    assert len(incident.containers) == 1
-    assert incident.containers[0].name == "web"
-    assert incident.containers[0].ready is True
-    assert incident.containers[0].restart_count == 3
-    assert incident.containers[0].last_exit_code == 137
-    assert incident.containers[0].last_exit_reason == "OOMKilled"
-    assert len(incident.events) == 1
-    assert incident.events[0].reason == "FailedScheduling"
-    assert incident.events[0].message == "0/1 nodes are available"
+    assert kubernetes_snapshot.phase == "Running"
+    assert len(kubernetes_snapshot.containers) == 1
+    assert kubernetes_snapshot.containers[0].name == "web"
+    assert kubernetes_snapshot.containers[0].ready is True
+    assert kubernetes_snapshot.containers[0].restart_count == 3
+    assert kubernetes_snapshot.containers[0].last_exit_code == 137
+    assert kubernetes_snapshot.containers[0].last_exit_reason == "OOMKilled"
+    assert kubernetes_snapshot.logs.lines == ["Hello Logs"]
+    assert len(kubernetes_snapshot.events) == 1
+    assert kubernetes_snapshot.events[0].reason == "FailedScheduling"
+    assert kubernetes_snapshot.events[0].message == "0/1 nodes are available"
