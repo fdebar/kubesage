@@ -2,8 +2,8 @@ import structlog
 from opentelemetry import trace
 
 from kubesage.analyzers.engine import DiagnosticEngine
-from kubesage.builders.context_builder import ContextBuilder
-from kubesage.builders.prompt_builder import PromptBuilder
+from kubesage.builders.context.context_builder import ContextBuilder
+from kubesage.builders.prompt.prompt_builder import PromptBuilder
 from kubesage.services.ai_service import AIService
 from kubesage.services.kubernetes_service import KubernetesService
 from kubesage.services.metrics_service import MetricsService

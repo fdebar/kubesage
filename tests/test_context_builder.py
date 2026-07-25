@@ -1,8 +1,8 @@
 from unittest.mock import MagicMock
 
 from kubesage.analyzers.engine import DiagnosticEngine
-from kubesage.builders.context_builder import ContextBuilder
-from kubesage.builders.prompt_builder import PromptBuilder
+from kubesage.builders.context.context_builder import ContextBuilder
+from kubesage.builders.prompt.prompt_builder import PromptBuilder
 
 
 def test_summary_contains_findings() -> None:

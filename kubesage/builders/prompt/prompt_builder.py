@@ -5,7 +5,7 @@ from kubesage.models.ai_context import AIContext
 
 class PromptBuilder:
     def __init__(self) -> None:
-        template_path = Path(__file__).parent.parent / "prompts" / "sre_analysis.txt"
+        template_path = Path(__file__).parent / "sre_analysis.txt"
         self.template = template_path.read_text(encoding="utf-8")
 
     def build(self, context: AIContext) -> str:

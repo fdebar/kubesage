@@ -1,15 +1,16 @@
+import structlog
+
 from kubesage.analyzers.rule_loader import discover_rules
 from kubesage.models.finding import Finding
 from kubesage.models.incident import Incident
-from kubesage.observability.factory import get_logger
 
-logger = get_logger(__name__)
+logger = structlog.get_logger()
 
 
 class DiagnosticEngine:
     def __init__(self) -> None:
         self.rules = discover_rules()
-        logger.info("Loaded %d rules...", len(self.rules))
+        logger.info("rules_loaded", rules_count=len(self.rules))
 
     def analyze(self, incident: Incident) -> list[Finding]:
         findings = []
@@ -18,10 +19,8 @@ class DiagnosticEngine:
             findings.extend(rule.evaluate(incident))
 
         if not findings:
-            logger.info(
-                "No findings detected for pod: %s in namespace: %s",
-                incident.pod,
-                incident.namespace,
+            logger.warning(
+                "no_findings", namespace=incident.namespace, pod=incident.pod
             )
 
         return findings
