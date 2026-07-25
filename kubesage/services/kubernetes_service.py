@@ -7,6 +7,7 @@ from kubesage.models.container import ContainerInfo
 from kubesage.models.events import Event
 from kubesage.models.kubernetes import KubernetesSnapshot
 from kubesage.models.log import LogSnapshot
+from kubesage.providers.kubernetes_provider import KubernetesProvider
 from kubesage.utils.config import settings
 from kubesage.utils.exceptions import PodNotFoundError
 from kubesage.utils.kube_client import create_core_v1_api
@@ -14,7 +15,7 @@ from kubesage.utils.kube_client import create_core_v1_api
 logger = structlog.get_logger()
 
 
-class KubernetesService:
+class KubernetesService(KubernetesProvider):
     def __init__(self) -> None:
         self.v1 = create_core_v1_api()
 
@@ -22,7 +23,7 @@ class KubernetesService:
         logger.info("kubernetes_collecting_data_for_pod", namespace=namespace, pod=pod)
 
         if self.v1 is None:
-            logger.error("kubernetes_unavailable")
+            logger.warning("kubernetes_metrics_unavailable")
             return self._empty_snapshot(namespace, pod)
 
         try:

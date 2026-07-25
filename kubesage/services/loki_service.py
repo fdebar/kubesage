@@ -3,14 +3,15 @@ from typing import Any
 import requests
 import structlog
 
-from kubesage.models.log import LogSnapshot
+from kubesage.models.log import LogSnapshot, LogSource
+from kubesage.providers.log_provider import LogProvider
 from kubesage.services.loki import queries
 from kubesage.utils.config import settings
 
 logger = structlog.get_logger()
 
 
-class LokiService:
+class LokiService(LogProvider):
     def __init__(self) -> None:
         self.base_url = settings.loki_url
 
@@ -82,14 +83,16 @@ class LokiService:
         )
 
         return LogSnapshot(
-            source="loki",
+            source=LogSource.LOKI.value,
             lines=lines,
         )
 
     def _extract_logs(self, payload: dict) -> list[str]:
-        lines = []
-        for stream in payload["data"]["result"]:
-            for _, line in stream["values"]:
+        lines: list[str] = []
+
+        results = payload.get("data", {}).get("result", [])
+        for stream in results:
+            for _, line in stream.get("values", []):
                 lines.append(line)
 
         return lines

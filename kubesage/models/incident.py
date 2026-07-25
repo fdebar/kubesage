@@ -4,7 +4,7 @@ from kubesage.models.container import ContainerInfo
 from kubesage.models.events import Event
 from kubesage.models.log import LogSnapshot, LogSource
 from kubesage.models.metrics import PodMetrics
-from kubesage.models.prometheus import ResourceUsage
+from kubesage.models.prometheus import PrometheusResourceUsage
 
 
 @dataclass(slots=True)
@@ -18,7 +18,7 @@ class Incident:
     log_source: LogSource = LogSource.KUBERNETES
     kubernetes_logs: LogSnapshot | None = None
     loki_logs: LogSnapshot | None = None
-    prometheus: ResourceUsage | None = None
+    prometheus: PrometheusResourceUsage | None = None
 
     @property
     def logs(self) -> str:

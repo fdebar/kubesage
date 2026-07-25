@@ -1,7 +1,7 @@
 import requests
 import structlog
 
-from kubesage.models.prometheus import Metric, ResourceUsage
+from kubesage.models.prometheus import Metric, PrometheusResourceUsage
 from kubesage.services.prometheus.queries import (
     CPU_QUERY,
     FILESYSTEM_USAGE_QUERY,
@@ -52,14 +52,14 @@ class PrometheusService:
         self,
         namespace: str,
         pod: str,
-    ) -> ResourceUsage | None:
+    ) -> PrometheusResourceUsage | None:
         logger.info(
             "prometheus_collecting_data_for_pod",
             namespace=namespace,
             pod=pod,
         )
 
-        usage = ResourceUsage()
+        usage = PrometheusResourceUsage()
 
         usage.cpu = self.collect_cpu(namespace, pod)
         usage.memory = self.collect_memory(namespace, pod)

@@ -10,7 +10,7 @@ class Metric:
 
 
 @dataclass(slots=True)
-class ResourceUsage:
+class PrometheusResourceUsage:
     cpu: Metric | None = None
     memory: Metric | None = None
     restarts: Metric | None = None

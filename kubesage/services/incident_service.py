@@ -8,6 +8,7 @@ from kubesage.builders.prompt.prompt_builder import PromptBuilder
 from kubesage.models.incident import Incident
 from kubesage.services.ai_service import AIService
 from kubesage.services.kubernetes_service import KubernetesService
+from kubesage.services.loki_service import LokiService
 from kubesage.services.metrics_service import MetricsService
 from kubesage.services.prometheus_service import PrometheusService
 
@@ -23,68 +24,52 @@ class IncidentService:
         self.ai = AIService()
         self.metrics = MetricsService()
         self.prometheus = PrometheusService()
+        self.loki = LokiService()
         self.context_builder = ContextBuilder()
         self.prompt_builder = PromptBuilder()
 
     def analyze(self, namespace: str, pod: str) -> dict:
-        logger.info(
-            "analysis_started",
-            namespace=namespace,
-            pod=pod,
-        )
-
-        with tracer.start_as_current_span("collect_kubernetes_data") as span:
-            span.set_attribute("namespace", namespace)
-            span.set_attribute("pod", pod)
-            kubernetes = self.kubernetes.collect(namespace, pod)
-        trace.get_current_span()
-
-        # Regarding the metrics, we should use the prometheus data instead of
-        # the metrics-server one. Later, it can still be used as a fallback in case
-        # prometheus is down or unavailable for some reason.
-        with tracer.start_as_current_span("collect_kubernetes_metrics") as span:
-            span.set_attribute("namespace", namespace)
-            span.set_attribute("pod", pod)
-            metrics = self.metrics.collect(namespace, pod)
-        trace.get_current_span()
-
-        with tracer.start_as_current_span("query_prometheus") as span:
-            span.set_attribute("namespace", namespace)
-            span.set_attribute("pod", pod)
-            prometheus = self.prometheus.collect(namespace, pod)
-        trace.get_current_span()
+        logger.info("analysis_started", namespace=namespace, pod=pod)
 
         with tracer.start_as_current_span("build_incident") as span:
-            span.set_attribute("namespace", namespace)
-            span.set_attribute("pod", pod)
-            incident = IncidentBuilder().build(
-                kubernetes=kubernetes, prometheus=prometheus, metrics=metrics
+            span.set_attribute("incident.namespace", namespace)
+            span.set_attribute("incident.pod", pod)
+            self.builder = IncidentBuilder(
+                kubernetes_provider=self.kubernetes,
+                prometheus_provider=self.prometheus,
+                log_provider=self.loki,
+                metrics_provider=self.metrics,
             )
-        trace.get_current_span()
+
+            incident = self.builder.collect(
+                namespace,
+                pod,
+            )
 
         with tracer.start_as_current_span("run_rules_engine") as span:
-            span.set_attribute("namespace", namespace)
-            span.set_attribute("pod", pod)
+            span.set_attribute("rules.namespace", namespace)
+            span.set_attribute("rules.pod", pod)
             findings = self.engine.analyze(incident)
-        trace.get_current_span()
+
+            span.set_attribute("rules.count", len(findings))
 
         with tracer.start_as_current_span("build_ai_context") as span:
-            span.set_attribute("namespace", namespace)
-            span.set_attribute("pod", pod)
+            span.set_attribute("ai_context.namespace", namespace)
+            span.set_attribute("ai_context.pod", pod)
             ctxbuilder = self.context_builder.build(incident, findings)
-        trace.get_current_span()
 
         with tracer.start_as_current_span("build_ai_prompt") as span:
-            span.set_attribute("namespace", namespace)
-            span.set_attribute("pod", pod)
+            span.set_attribute("ai_prompt.namespace", namespace)
+            span.set_attribute("ai_prompt.pod", pod)
             prompt = self.prompt_builder.build(ctxbuilder)
-        trace.get_current_span()
 
-        with tracer.start_as_current_span("call_openai") as span:
-            span.set_attribute("namespace", namespace)
-            span.set_attribute("pod", pod)
+        with tracer.start_as_current_span("call_llm") as span:
+            span.set_attribute("llm.namespace", namespace)
+            span.set_attribute("llm.pod", pod)
             report = self.ai.analyze(prompt)
+
             span.set_attribute("llm.response_length", len(report.get("summary", "")))
-        trace.get_current_span()
+
+        logger.info("analysis_completed", namespace=namespace, pod=pod)
 
         return report

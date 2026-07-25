@@ -5,12 +5,13 @@ from kubesage.models.metrics import (
     ContainerMetrics,
     PodMetrics,
 )
+from kubesage.providers.metrics_provider import MetricsProvider
 from kubesage.utils.kube_client import create_custom_objects_api
 
 logger = structlog.get_logger()
 
 
-class MetricsService:
+class MetricsService(MetricsProvider):
     def __init__(self) -> None:
         self.api = create_custom_objects_api()
 
