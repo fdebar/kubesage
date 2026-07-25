@@ -1,9 +1,18 @@
+import structlog
+
 from kubesage.models.incident import Incident
+
+logger = structlog.get_logger()
 
 
 class MetricsBuilder:
     def build(self, incident: Incident) -> str:
         if incident.prometheus is None:
+            logger.warning(
+                "no_metrics_server_available",
+                namespace=incident.namespace,
+                pod=incident.pod,
+            )
             return "No metrics."
 
         metrics = []
