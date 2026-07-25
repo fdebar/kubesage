@@ -28,6 +28,11 @@ class KubernetesService:
             pod_info = self.v1.read_namespaced_pod(name=pod, namespace=namespace)
         except ApiException as exc:
             if exc.status == 404:
+                logger.warning(
+                    "kubernetes_pod_not",
+                    namespace=namespace,
+                    pod=pod,
+                )
                 raise PodNotFoundError(
                     f"Pod '{pod}' not found in namespace '{namespace}'."
                 ) from None
