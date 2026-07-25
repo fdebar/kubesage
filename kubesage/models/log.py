@@ -1,6 +1,11 @@
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
+
+
+class LogSource(StrEnum):
+    KUBERNETES = "kubernetes"
+    LOKI = "loki"
 
 
 @dataclass(slots=True)
@@ -19,8 +24,3 @@ class LogSnapshot:
 
     def tail(self, limit: int = 100) -> str:
         return "\n".join(self.lines[-limit:])
-
-
-class LogSource(Enum):
-    KUBERNETES = "kubernetes"
-    LOKI = "loki"
