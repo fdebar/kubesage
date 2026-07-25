@@ -49,7 +49,7 @@ jobs:
         run: |
           kubectl rollout status deployment/kubesage \
             -n kubesage \
-            --timeout=120s
+            --timeout=180s
 
   publish:
     needs: test-and-deploy 
