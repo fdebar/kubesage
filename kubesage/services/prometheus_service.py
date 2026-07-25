@@ -2,6 +2,13 @@ import requests
 import structlog
 
 from kubesage.models.prometheus import Metric, ResourceUsage
+from kubesage.services.prometheus.queries import (
+    CPU_QUERY,
+    MEMORY_QUERY,
+    NETWORK_RX_QUERY,
+    NETWORK_TX_QUERY,
+    RESTART_QUERY,
+)
 from kubesage.utils.config import settings
 
 logger = structlog.get_logger()
@@ -45,24 +52,29 @@ class PrometheusService:
         namespace: str,
         pod: str,
     ) -> ResourceUsage | None:
+        logger.info(
+            "prometheus_collecting_data_for_pod",
+            namespace=namespace,
+            pod=pod,
+        )
+
         usage = ResourceUsage()
-        logger.info("prometheus_collecting_data_for_pod", namespace=namespace, pod=pod)
 
-        cpu = self.query(self.CPU_QUERY % (namespace, pod))
-        memory = self.query(self.MEMORY_QUERY % (namespace, pod))
-        restarts = self.query(self.RESTART_QUERY % (namespace, pod))
-        rx = self.query(self.NETWORK_RX_QUERY % (namespace, pod))
-        tx = self.query(self.NETWORK_TX_QUERY % (namespace, pod))
-
-        usage.cpu = self._metric_from_result("cpu", "cores/s", cpu)
-        usage.memory = self._metric_from_result("memory", "bytes", memory)
-        usage.restarts = self._metric_from_result("restarts", "count", restarts)
-        usage.network_rx = self._metric_from_result("network_rx", "bytes/s", rx)
-        usage.network_tx = self._metric_from_result("network_tx", "bytes/s", tx)
+        usage.cpu = self.collect_cpu(namespace, pod)
+        usage.memory = self.collect_memory(namespace, pod)
+        usage.restarts = self.collect_restarts(namespace, pod)
+        usage.network_rx = self.collect_network_rx(namespace, pod)
+        usage.network_tx = self.collect_network_tx(namespace, pod)
 
         if all(
-            getattr(usage, field) is None
-            for field in ("cpu", "memory", "restarts", "network_rx", "network_tx")
+            metric is None
+            for metric in (
+                usage.cpu,
+                usage.memory,
+                usage.restarts,
+                usage.network_rx,
+                usage.network_tx,
+            )
         ):
             logger.warning("prometheus_data_unavailable_continuing_without_metrics")
             return None
@@ -87,43 +99,71 @@ class PrometheusService:
             timestamp=float(timestamp),
         )
 
-    CPU_QUERY = """
-    rate(
-    container_cpu_usage_seconds_total{
-    namespace="%s",
-    pod="%s"
-    }[5m]
-    )
-    """
+    def _collect_metric(
+        self,
+        name: str,
+        unit: str,
+        query: str,
+    ) -> Metric | None:
+        result = self.query(query)
 
-    MEMORY_QUERY = """
-    container_memory_working_set_bytes{
-    namespace="%s",
-    pod="%s"
-    }
-    """
+        return self._metric_from_result(
+            name=name,
+            unit=unit,
+            result=result,
+        )
 
-    RESTART_QUERY = """
-    kube_pod_container_status_restarts_total{
-    namespace="%s",
-    pod="%s"
-    }
-    """
+    def collect_cpu(
+        self,
+        namespace: str,
+        pod: str,
+    ) -> Metric | None:
+        return self._collect_metric(
+            "cpu",
+            "cores/s",
+            CPU_QUERY % (namespace, pod),
+        )
 
-    NETWORK_RX_QUERY = """
-    rate(
-    container_network_receive_bytes_total{
-    namespace="%s",
-    pod="%s"
-    }[5m]
-    )
-    """
+    def collect_memory(
+        self,
+        namespace: str,
+        pod: str,
+    ) -> Metric | None:
+        return self._collect_metric(
+            "memory",
+            "bytes",
+            MEMORY_QUERY % (namespace, pod),
+        )
 
-    NETWORK_TX_QUERY = """
-    rate(
-    container_network_transmit_bytes_total{
-    namespace="%s",
-    pod="%s"
-    }[5m]
-    )
-    """
+    def collect_restarts(
+        self,
+        namespace: str,
+        pod: str,
+    ) -> Metric | None:
+        return self._collect_metric(
+            "restarts",
+            "count",
+            RESTART_QUERY % (namespace, pod),
+        )
+
+    def collect_network_rx(
+        self,
+        namespace: str,
+        pod: str,
+    ) -> Metric | None:
+        return self._collect_metric(
+            "network_rx",
+            "bytes/s",
+            NETWORK_RX_QUERY % (namespace, pod),
+        )
+
+    def collect_network_tx(
+        self,
+        namespace: str,
+        pod: str,
+    ) -> Metric | None:
+        return self._collect_metric(
+            "network_tx",
+            "bytes/s",
+            NETWORK_TX_QUERY % (namespace, pod),
+        )

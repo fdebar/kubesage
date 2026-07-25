@@ -36,7 +36,10 @@ class IncidentService:
             incident = self.kubernetes.collect(namespace, pod)
         trace.get_current_span()
 
-        with tracer.start_as_current_span("collect_metrics") as span:
+        # Regarding the metrics, we should use the prometheus data instead of
+        # the metrics-server one. Later, it can still be used as a fallback in case
+        # prometheus is down or unavailable for some reason.
+        with tracer.start_as_current_span("collect_kubernetes_metrics") as span:
             span.set_attribute("namespace", namespace)
             span.set_attribute("pod", pod)
             incident.metrics = self.metrics.collect(namespace, pod)

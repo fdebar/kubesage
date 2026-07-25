@@ -1,6 +1,21 @@
 from dataclasses import dataclass
 
 
+@dataclass
+class PrometheusSnapshot:
+    cpu: float | None = None
+    memory: float | None = None
+    restarts: int | None = None
+
+    network_rx: float | None = None
+    network_tx: float | None = None
+
+    filesystem_usage: float | None = None
+    request_rate: float | None = None
+    error_rate: float | None = None
+    latency_p95: float | None = None
+
+
 @dataclass(slots=True)
 class Metric:
     name: str
