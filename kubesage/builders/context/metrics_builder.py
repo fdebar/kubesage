@@ -9,7 +9,7 @@ class MetricsBuilder:
     def build(self, incident: Incident) -> str:
         if incident.prometheus is None:
             logger.warning(
-                "no_metrics_server_available",
+                "prometheus_no_metrics_from_server",
                 namespace=incident.namespace,
                 pod=incident.pod,
             )
