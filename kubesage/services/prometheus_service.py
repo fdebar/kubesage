@@ -1,8 +1,11 @@
 import requests
 import structlog
 
+from kubesage.models.metrics import ContainerMetrics
 from kubesage.models.prometheus import Metric, PrometheusResourceUsage
 from kubesage.services.prometheus.queries import (
+    CONTAINER_CPU_QUERY,
+    CONTAINER_MEMORY_QUERY,
     CPU_QUERY,
     CPU_THROTTLING_QUERY,
     FILESYSTEM_USAGE_QUERY,
@@ -64,27 +67,89 @@ class PrometheusService:
 
         usage.cpu = self.collect_cpu(namespace, pod)
         usage.memory = self.collect_memory(namespace, pod)
+        usage.containers = self.collect_container_metrics(namespace, pod)
         usage.cpu_throttling = self.collect_cpu_throttling(namespace, pod)
         usage.restarts = self.collect_restarts(namespace, pod)
         usage.network_rx = self.collect_network_rx(namespace, pod)
         usage.network_tx = self.collect_network_tx(namespace, pod)
         usage.filesystem = self.collect_filesystem(namespace, pod)
 
-        if all(
-            metric is None
-            for metric in (
-                usage.cpu,
-                usage.memory,
-                usage.restarts,
-                usage.network_rx,
-                usage.network_tx,
-                usage.cpu_throttling,
+        if (
+            all(
+                metric is None
+                for metric in (
+                    usage.cpu,
+                    usage.memory,
+                    usage.cpu_throttling,
+                    usage.restarts,
+                    usage.network_rx,
+                    usage.network_tx,
+                    usage.filesystem,
+                )
             )
+            and len(usage.containers) == 0
         ):
             logger.warning("prometheus_data_unavailable_continuing_without_metrics")
             return None
 
         return usage
+
+    def _container_metrics_from_result(
+        self,
+        cpu_result: list,
+        memory_result: list,
+    ) -> list[ContainerMetrics]:
+        containers: dict[str, ContainerMetrics] = {}
+
+        for item in cpu_result:
+            name = item["metric"].get("container")
+            if not name:
+                continue
+            _, value = item["value"]
+            containers[name] = ContainerMetrics(
+                name=name,
+                cpu_usage=float(value),
+            )
+
+        for item in memory_result:
+            name = item["metric"].get("container")
+            if not name:
+                continue
+            _, value = item["value"]
+            if name not in containers:
+                containers[name] = ContainerMetrics(
+                    name=name,
+                )
+
+            containers[name].memory_usage = int(float(value))
+
+        return list(containers.values())
+
+    def collect_container_metrics(
+        self,
+        namespace: str,
+        pod: str,
+    ) -> list[ContainerMetrics]:
+        cpu_result = self.query(
+            CONTAINER_CPU_QUERY
+            % (
+                namespace,
+                pod,
+            )
+        )
+
+        memory_result = self.query(
+            CONTAINER_MEMORY_QUERY
+            % (
+                namespace,
+                pod,
+            )
+        )
+
+        return self._container_metrics_from_result(
+            cpu_result,
+            memory_result,
+        )
 
     def _metric_from_result(
         self,

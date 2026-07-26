@@ -61,3 +61,28 @@ sum by (pod) (
   }[5m])
 )
 """
+
+CONTAINER_CPU_QUERY = """
+sum by (container) (
+    rate(
+        container_cpu_usage_seconds_total{
+            namespace="%s",
+            pod="%s",
+            container!="POD",
+            container!=""
+        }[5m]
+    )
+)
+"""
+
+
+CONTAINER_MEMORY_QUERY = """
+sum by (container) (
+    container_memory_usage_bytes{
+        namespace="%s",
+        pod="%s",
+        container!="POD",
+        container!=""
+    }
+)
+"""

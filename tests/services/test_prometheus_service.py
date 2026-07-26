@@ -100,7 +100,38 @@ def test_collect_all_none(mock_query: MagicMock) -> None:
     usage = service.collect("default", "my-pod")
 
     assert usage is None
-    assert mock_query.call_count == 7
+    assert mock_query.call_count == 9
+
+
+def test_container_metrics_from_result() -> None:
+    service = PrometheusService()
+
+    cpu_result = [
+        {
+            "metric": {"container": "api"},
+            "value": [1000.0, "0.5"],
+        }
+    ]
+
+    memory_result = [
+        {
+            "metric": {"container": "api"},
+            "value": [1000.0, "1048576"],
+        }
+    ]
+
+    metrics = service._container_metrics_from_result(
+        cpu_result,
+        memory_result,
+    )
+
+    assert len(metrics) == 1
+
+    container = metrics[0]
+
+    assert container.name == "api"
+    assert container.cpu_usage == 0.5
+    assert container.memory_usage == 1048576
 
 
 @patch.object(PrometheusService, "query")
@@ -109,6 +140,18 @@ def test_collect_success(mock_query: MagicMock) -> None:
     mock_query.side_effect = [
         [{"value": [1000.0, "0.1"]}],  # CPU
         [{"value": [1001.0, "1048576"]}],  # Memory
+        [
+            {
+                "metric": {"container": "api"},
+                "value": [1001.5, "0.5"],
+            }
+        ],  # Container CPU
+        [
+            {
+                "metric": {"container": "api"},
+                "value": [1001.6, "536870912"],
+            }
+        ],  # Container Memory
         [{"value": [1002.0, "2"]}],  # CPU Throttling
         [{"value": [1002.0, "2"]}],  # Restarts
         [{"value": [1003.0, "100"]}],  # Network RX
@@ -130,6 +173,14 @@ def test_collect_success(mock_query: MagicMock) -> None:
 
     assert isinstance(usage.restarts, Metric)
     assert usage.restarts.value == 2.0
+
+    assert len(usage.containers) == 1
+
+    container = usage.containers[0]
+
+    assert container.name == "api"
+    assert container.cpu_usage == 0.5
+    assert container.memory_usage == 536870912
 
     assert isinstance(usage.network_rx, Metric)
     assert usage.network_rx.value == 100.0

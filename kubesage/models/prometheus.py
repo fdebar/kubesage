@@ -1,4 +1,6 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+
+from kubesage.models.metrics import ContainerMetrics
 
 
 @dataclass(slots=True)
@@ -25,3 +27,5 @@ class PrometheusResourceUsage:
     request_rate: Metric | None = None
     error_rate: Metric | None = None
     latency: Metric | None = None
+
+    containers: list[ContainerMetrics] = field(default_factory=list)
