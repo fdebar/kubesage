@@ -27,4 +27,6 @@ def discover_rules() -> list[BaseRule]:
             ):
                 rules.append(obj())
 
+    rules.sort(key=lambda rule: rule.name)
+
     return rules
