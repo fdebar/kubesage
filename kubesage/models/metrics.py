@@ -5,8 +5,8 @@ from dataclasses import dataclass, field
 class ContainerMetrics:
     name: str
 
-    cpu_usage: float
-    memory_usage: int
+    cpu_usage: float | None = None
+    memory_usage: int | None = None
 
     cpu_limit: float | None = None
     memory_limit: int | None = None
