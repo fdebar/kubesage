@@ -7,6 +7,10 @@ from kubesage.models.container import ContainerInfo
 from kubesage.models.events import Event
 from kubesage.models.kubernetes_snapshot import KubernetesSnapshot
 from kubesage.models.log import LogSnapshot
+from kubesage.models.resources import (
+    ContainerResourceLimits,
+    PodResources,
+)
 from kubesage.providers.kubernetes_provider import KubernetesProvider
 from kubesage.utils.config import settings
 from kubesage.utils.exceptions import PodNotFoundError
@@ -46,22 +50,21 @@ class KubernetesService(KubernetesProvider):
         logs = self._collect_logs(namespace, pod)
         containers = self._collect_containers(pod_info)
         events = self._collect_events(namespace, pod)
+        resources = self._collect_resources(pod_info)
 
         return KubernetesSnapshot(
             namespace=namespace,
             pod=pod,
-            phase=pod_info.status.phase or "Unknown",
+            phase=pod_info.status.phase,
             logs=logs,
             containers=containers,
             events=events,
+            resources=resources,
         )
 
     def _collect_logs(self, namespace: str, pod: str) -> LogSnapshot:
         if self.v1 is None:
-            return LogSnapshot(
-                source="kubernetes",
-                lines=[],
-            )
+            return LogSnapshot(source="kubernetes")
 
         try:
             logs = self.v1.read_namespaced_pod_log(
@@ -161,6 +164,29 @@ class KubernetesService(KubernetesProvider):
 
         return warnings
 
+    def _collect_resources(
+        self,
+        pod_info: Any,
+    ) -> PodResources:
+        containers = []
+
+        for container in pod_info.spec.containers or []:
+            resources = container.resources
+            limits = resources.limits or {}
+            req = resources.requests or {}
+
+            containers.append(
+                ContainerResourceLimits(
+                    name=container.name,
+                    cpu_limit=self._parse_cpu(limits.get("cpu")),
+                    memory_limit=self._parse_memory(limits.get("memory")),
+                    cpu_request=self._parse_cpu(req.get("cpu")),
+                    memory_request=self._parse_memory(req.get("memory")),
+                )
+            )
+
+        return PodResources(containers=containers)
+
     @staticmethod
     def _empty_snapshot(namespace: str, pod: str) -> KubernetesSnapshot:
         return KubernetesSnapshot(
@@ -173,4 +199,38 @@ class KubernetesService(KubernetesProvider):
             ),
             containers=[],
             events=[],
+            resources=None,
+            metrics=None,
         )
+
+    @staticmethod
+    def _parse_cpu(
+        value: str | None,
+    ) -> float | None:
+        if value is None:
+            return None
+
+        if value.endswith("m"):
+            return float(value[:-1]) / 1000
+
+        return float(value)
+
+    @staticmethod
+    def _parse_memory(
+        value: str | None,
+    ) -> int | None:
+        if value is None:
+            return None
+
+        multipliers = {
+            "Ki": 1024,
+            "Mi": 1024**2,
+            "Gi": 1024**3,
+            "Ti": 1024**4,
+        }
+
+        for suffix, multiplier in multipliers.items():
+            if value.endswith(suffix):
+                return int(float(value[: -len(suffix)]) * multiplier)
+
+        return int(value)
