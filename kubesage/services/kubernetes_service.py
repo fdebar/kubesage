@@ -5,7 +5,7 @@ from kubernetes.client.exceptions import ApiException
 
 from kubesage.models.container import ContainerInfo
 from kubesage.models.events import Event
-from kubesage.models.kubernetes import KubernetesSnapshot
+from kubesage.models.kubernetes_snapshot import KubernetesSnapshot
 from kubesage.models.log import LogSnapshot
 from kubesage.providers.kubernetes_provider import KubernetesProvider
 from kubesage.utils.config import settings

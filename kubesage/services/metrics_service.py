@@ -65,12 +65,17 @@ class MetricsService(MetricsProvider):
             return None
 
         result = PodMetrics()
+
         for container in metrics["containers"]:
+            usage = container.get("usage", {})
+            limit = container.get("limits", {})
             result.containers.append(
                 ContainerMetrics(
                     name=container["name"],
-                    cpu=container["usage"]["cpu"],
-                    memory=container["usage"]["memory"],
+                    cpu_usage=usage.get("cpu", "0"),
+                    memory_usage=usage.get("memory", "0"),
+                    cpu_limit=limit.get("cpu", "0"),
+                    memory_limit=limit.get("memory", "0"),
                 )
             )
 

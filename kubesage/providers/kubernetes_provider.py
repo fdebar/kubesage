@@ -1,6 +1,6 @@
 from typing import Protocol
 
-from kubesage.models.kubernetes import KubernetesSnapshot
+from kubesage.models.kubernetes_snapshot import KubernetesSnapshot
 
 
 class KubernetesProvider(Protocol):

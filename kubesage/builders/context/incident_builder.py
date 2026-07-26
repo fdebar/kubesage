@@ -1,5 +1,5 @@
 from kubesage.models.incident import Incident
-from kubesage.models.kubernetes import KubernetesSnapshot
+from kubesage.models.kubernetes_snapshot import KubernetesSnapshot
 from kubesage.models.log import LogSnapshot
 from kubesage.models.metrics import PodMetrics
 from kubesage.models.prometheus import PrometheusResourceUsage

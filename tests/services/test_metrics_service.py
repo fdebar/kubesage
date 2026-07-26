@@ -65,5 +65,5 @@ def test_collect_success(mock_create_api: MagicMock) -> None:
     assert metrics is not None
     assert len(metrics.containers) == 1
     assert metrics.containers[0].name == "web"
-    assert metrics.containers[0].cpu == "100m"
-    assert metrics.containers[0].memory == "256Mi"
+    assert metrics.containers[0].cpu_usage == "100m"
+    assert metrics.containers[0].memory_usage == "256Mi"
