@@ -1,11 +1,16 @@
 from abc import ABC, abstractmethod
 
-from kubesage.models.finding import Finding
+from kubesage.models.finding import Finding, ResourceRef
 from kubesage.models.incident import Incident
 
 
 class BaseRule(ABC):
-    name = "base"
+    """Base class for every diagnostic rule."""
+
+    @property
+    def name(self) -> str:
+        return self.__class__.__name__
+
     description = ""
     enabled = True
 
@@ -15,3 +20,11 @@ class BaseRule(ABC):
         incident: Incident,
     ) -> list[Finding]:
         pass
+
+    def _pod_resource(self, incident: Incident) -> ResourceRef:
+        return ResourceRef(
+            api_version="v1",
+            kind="Pod",
+            namespace=incident.namespace,
+            name=incident.pod,
+        )

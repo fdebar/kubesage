@@ -1,70 +1,68 @@
-from pathlib import Path
-
 from kubesage.models.ai_context import AIContext
 
 
 class PromptBuilder:
-    def __init__(self) -> None:
-        template_path = Path(__file__).parent / "sre_analysis.txt"
-        self.template = template_path.read_text(encoding="utf-8")
-
     def build(self, context: AIContext) -> str:
-        findings = "\n".join(
-            f"- [{f.severity}] {f.title}: {f.description}" for f in context.findings
-        )
-        events = "\n".join(
-            f"- {event.reason}: {event.message}" for event in context.incident.events
-        )
+        lines: list[str] = []
 
-        return f"""
-{self.template}
+        lines.append("# Kubernetes Incident")
+        lines.append(f"Namespace: {context.incident.namespace}")
+        lines.append(f"Pod: {context.incident.pod}")
+        lines.append(f"Phase: {context.incident.phase}")
+        lines.append("")
 
-========================
-INCIDENT
-========================
+        if context.findings:
+            lines.append("# Findings")
+            for finding in context.findings:
+                lines.append(f"- [{finding.severity.value.upper()}] {finding.title}")
+                lines.append(f"  Description: {finding.description}")
 
-Namespace:
-{context.incident.namespace}
+                if finding.evidences:
+                    lines.append("  Evidences:")
+                    for evidence in finding.evidences:
+                        lines.append(f"    - {evidence}")
 
-Pod:
-{context.incident.pod}
+                if finding.recommendations:
+                    lines.append("  Suggested actions:")
+                    for recommendation in finding.recommendations:
+                        lines.append(f"    - {recommendation}")
 
-Phase:
-{context.incident.phase}
+                lines.append("")
 
-========================
-FINDINGS
-========================
+        if context.incident.events:
+            lines.append("# Kubernetes Events")
+            for event in context.incident.events:
+                lines.append(f"- [{event.type}] {event.reason}: {event.message}")
 
-{findings}
+            lines.append("")
 
-========================
-METRICS
-========================
+        if context.incident.logs:
+            lines.append("# Logs")
+            lines.append(context.incident.logs)
+            lines.append("")
 
-{context.metrics_summary}
+        lines.append(
+            """
+You are a Senior Kubernetes Site Reliability Engineer.
 
-========================
-EVENTS
-========================
+Analyse this incident.
 
-{events}
+Your objectives are:
 
-========================
-LOG SOURCE
-========================
-
-{context.incident.log_source}
-
-========================
-LOGS
-========================
-
-{context.incident.logs}
-
-========================
-LOGS_COUNT
-========================
-
-{len(context.incident.logs)}
+1. Identify the most probable root cause.
+2. Explain why the issue occurred.
+3. Correlate the findings with events and logs.
+4. Ignore findings if the evidence contradicts them.
+5. Prioritize the suggested actions.
+6. Suggest additional investigations if required.
+7. Answer using JSON with the following format: 
+{
+    "summary": "<summary>",
+    "root_cause": "<root_cause>",
+    "evidence": [<evidence1>, <evidence2>, ...],
+    "additional_investigations": [<investigation1>, <investigation2>, ...] 
+}
 """
+        )
+
+        return "\n".join(lines)
