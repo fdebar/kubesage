@@ -7,6 +7,7 @@ class Metric:
     value: float
     unit: str
     timestamp: float
+    formatted_value: str | None = None
 
 
 @dataclass(slots=True)
