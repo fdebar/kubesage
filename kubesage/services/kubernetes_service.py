@@ -106,6 +106,7 @@ class KubernetesService(KubernetesProvider):
             containers.append(
                 ContainerInfo(
                     name=container.name,
+                    image=container.image,
                     ready=container.ready,
                     restart_count=container.restart_count,
                     waiting_reason=waiting_reason,
@@ -147,6 +148,7 @@ class KubernetesService(KubernetesProvider):
 
             warnings.append(
                 Event(
+                    type=event_item.type,
                     reason=event_item.reason,
                     message=event_item.message,
                     last_timestamp=(

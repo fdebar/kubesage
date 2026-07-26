@@ -1,5 +1,5 @@
 from kubesage.builders.context.summary_builder import SummaryBuilder
-from kubesage.models.finding import Finding, Severity
+from kubesage.models.finding import Finding, ResourceRef, Severity
 
 
 def test_summary_without_findings() -> None:
@@ -17,9 +17,14 @@ def test_summary_with_findings() -> None:
             description="...",
             severity=Severity.CRITICAL,
             confidence=0.86,
-            source="k8s-events",
-            category="Stability",
-            evidence=["pod is restarting"],
+            rule="...",
+            resource=ResourceRef(
+                api_version="v1",
+                kind="Pod",
+                namespace="default",
+                name="test-pod",
+            ),
+            evidences=["pod is restarting"],
         )
     ]
 

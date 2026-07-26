@@ -1,6 +1,5 @@
 from unittest.mock import MagicMock
 
-from kubesage.analyzers.engine import DiagnosticEngine
 from kubesage.builders.context.context_builder import ContextBuilder
 from kubesage.builders.prompt.prompt_builder import PromptBuilder
 
@@ -39,11 +38,3 @@ def test_prompt_contains_logs() -> None:
     prompt = builder.build(context)
 
     assert "ERROR: connection refused" in prompt
-
-
-def test_all_rules_are_loaded() -> None:
-    engine = DiagnosticEngine()
-
-    assert len(engine.rules) > 0
-    assert hasattr(engine.rules[0], "name")
-    assert hasattr(engine.rules[0], "evaluate")

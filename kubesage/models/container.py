@@ -4,6 +4,7 @@ from dataclasses import dataclass
 @dataclass(slots=True)
 class ContainerInfo:
     name: str
+    image: str
     ready: bool
     restart_count: int
 
