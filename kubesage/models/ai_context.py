@@ -8,7 +8,6 @@ from kubesage.models.incident import Incident
 class AIContext:
     incident: Incident
     findings: list[Finding] = field(default_factory=list)
-    summary: str = ""
     metrics_summary: str = ""
 
     @property

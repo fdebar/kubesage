@@ -1,25 +1,6 @@
 from unittest.mock import MagicMock
 
-from kubesage.builders.context.ai_context_builder import AIContextBuilder
 from kubesage.builders.prompt.prompt_builder import PromptBuilder
-
-
-def test_summary_contains_findings() -> None:
-    builder = AIContextBuilder()
-
-    finding1 = MagicMock()
-    finding1.title = "High CPU Usage"
-
-    finding2 = MagicMock()
-    finding2.title = "OOM Killed"
-
-    incident = MagicMock()
-    incident.prometheus = None
-
-    context = builder.build(incident=incident, findings=[finding1, finding2])
-
-    assert "High CPU Usage" in context.summary
-    assert "OOM Killed" in context.summary
 
 
 def test_prompt_contains_logs() -> None:

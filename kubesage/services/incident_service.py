@@ -59,7 +59,6 @@ class IncidentService:
             span.set_attribute("ai_prompt.namespace", namespace)
             span.set_attribute("ai_prompt.pod", pod)
             prompt = self.prompt_builder.build(ctxbuilder)
-            logger.debug(prompt)
 
         with tracer.start_as_current_span("call_llm") as span:
             span.set_attribute("llm.namespace", namespace)
