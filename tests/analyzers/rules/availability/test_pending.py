@@ -1,0 +1,116 @@
+import pytest
+
+from kubesage.analyzers.rules.availability.pending import PendingRule
+from kubesage.models.container import ContainerInfo
+from kubesage.models.events import Event
+from kubesage.models.incident import Incident
+
+
+@pytest.fixture
+def rule() -> PendingRule:
+    return PendingRule()
+
+
+@pytest.fixture
+def incident_no_event() -> Incident:
+    return Incident(
+        namespace="test",
+        pod="test",
+        phase="Running",
+        containers=[
+            ContainerInfo(
+                name="test",
+                image="test",
+                ready=True,
+                restart_count=0,
+            ),
+        ],
+        events=[],
+    )
+
+
+def test_pending_no_event(incident_no_event: Incident, rule: PendingRule) -> None:
+    findings = rule.evaluate(incident_no_event)
+
+    assert len(findings) == 0
+
+
+@pytest.fixture
+def incident_pending() -> Incident:
+    return Incident(
+        namespace="test",
+        pod="test",
+        phase="Pending",
+        containers=[
+            ContainerInfo(
+                name="test",
+                image="test",
+                ready=True,
+                restart_count=0,
+            ),
+        ],
+        events=[
+            Event(
+                type="Pending",
+                reason="FailedScheduling",
+                message="The pod is in Pending",
+                last_timestamp="2022-01-01T00:00:00Z",
+            ),
+            Event(
+                type="Scheduled",
+                reason="Scheduled",
+                message="The pod is scheduled",
+                last_timestamp="2022-01-01T00:00:00Z",
+            ),
+        ],
+    )
+
+
+def test_pending_not_ready(incident_pending: Incident, rule: PendingRule) -> None:
+    findings = rule.evaluate(incident_pending)
+
+    assert len(findings) == 1
+    assert findings[0].evidences == [
+        "Pod phase = Pending",
+        "FailedScheduling: The pod is in Pending",
+    ]
+    assert findings[0].recommendations == [
+        "Review the scheduler event message.",
+        "Check node resources (CPU, memory, ephemeral storage).",
+        "Verify node selectors, affinities and tolerations.",
+        "Verify PersistentVolumeClaims if applicable.",
+    ]
+    assert findings[0].metadata == {
+        "event_reason": "FailedScheduling",
+    }
+
+
+@pytest.fixture
+def incident_running() -> Incident:
+    return Incident(
+        namespace="test",
+        pod="test",
+        phase="Running",
+        containers=[
+            ContainerInfo(
+                name="test",
+                image="test",
+                ready=True,
+                restart_count=0,
+            ),
+        ],
+        events=[
+            Event(
+                type="Running",
+                reason="SomethingElse",
+                message="The pod is running",
+                last_timestamp="2022-01-01T00:00:00Z",
+            ),
+        ],
+    )
+
+
+def test_incident_other_event(incident_running: Incident, rule: PendingRule) -> None:
+    findings = rule.evaluate(incident_running)
+
+    assert len(findings) == 0

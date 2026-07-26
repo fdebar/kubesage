@@ -1,7 +1,16 @@
 from abc import ABC, abstractmethod
+from enum import StrEnum
 
 from kubesage.models.finding import Finding, ResourceRef
 from kubesage.models.incident import Incident
+
+
+class RuleCategory(StrEnum):
+    CONTAINER = "container"
+    POD = "pod"
+    EVENT = "event"
+    METRIC = "metric"
+    LOG = "log"
 
 
 class BaseRule(ABC):

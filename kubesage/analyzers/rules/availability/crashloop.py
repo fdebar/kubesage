@@ -1,4 +1,4 @@
-from kubesage.analyzers.rules.base import BaseRule
+from kubesage.analyzers.rules.base import BaseRule, RuleCategory
 from kubesage.models.finding import (
     Finding,
     Severity,
@@ -10,6 +10,7 @@ class CrashLoopRule(BaseRule):
     name = "CrashLoopBackOff"
     description = "Detect CrashLoopBackOff"
     title = "Container is crashing"
+    category = RuleCategory.CONTAINER
 
     def evaluate(self, incident: Incident) -> list[Finding]:
         findings: list[Finding] = []

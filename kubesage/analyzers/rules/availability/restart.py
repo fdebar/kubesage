@@ -1,4 +1,4 @@
-from kubesage.analyzers.rules.base import BaseRule
+from kubesage.analyzers.rules.base import BaseRule, RuleCategory
 from kubesage.models.finding import (
     Finding,
     Severity,
@@ -10,6 +10,7 @@ class RestartRule(BaseRule):
     name = "RestartCount"
     title = "Container restarted multiple times"
     description = "The container has restarted more than the expected threshold."
+    category = RuleCategory
 
     RESTART_THRESHOLD = 5
 

@@ -7,21 +7,20 @@ from kubesage.models.finding import (
 from kubesage.models.incident import Incident
 
 
-class ReadinessRule(BaseRule):
-    name = "Readiness"
-    title = "Container is not Ready"
-    description = "The container is not ready to receive traffic."
-    category = RuleCategory.CONTAINER
+class PendingRule(BaseRule):
+    name = "Pending"
+    title = "Pod cannot be scheduled"
+    description = "The pod is pending because Kubernetes cannot schedule it."
+    category = RuleCategory.EVENT
 
-    def evaluate(
-        self,
-        incident: Incident,
-    ) -> list[Finding]:
-
+    def evaluate(self, incident: Incident) -> list[Finding]:
         findings: list[Finding] = []
 
-        for container in incident.containers:
-            if container.ready:
+        if incident.phase != "Pending":
+            return findings
+
+        for event in incident.events:
+            if event.reason != "FailedScheduling":
                 continue
 
             findings.append(
@@ -37,15 +36,17 @@ class ReadinessRule(BaseRule):
                         name=incident.pod,
                     ),
                     evidences=[
-                        f"Container '{container.name}' ready = False.",
+                        f"Pod phase = {incident.phase}",
+                        f"{event.reason}: {event.message}",
                     ],
                     recommendations=[
-                        "Inspect the readiness probe configuration.",
-                        "Check the application startup logs.",
-                        "Verify dependencies such as databases or external services.",
+                        "Review the scheduler event message.",
+                        "Check node resources (CPU, memory, ephemeral storage).",
+                        "Verify node selectors, affinities and tolerations.",
+                        "Verify PersistentVolumeClaims if applicable.",
                     ],
                     metadata={
-                        "container": container.name,
+                        "event_reason": event.reason,
                     },
                 )
             )

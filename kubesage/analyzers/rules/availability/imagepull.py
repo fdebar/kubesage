@@ -1,4 +1,4 @@
-from kubesage.analyzers.rules.base import BaseRule
+from kubesage.analyzers.rules.base import BaseRule, RuleCategory
 from kubesage.models.finding import (
     Finding,
     Severity,
@@ -10,6 +10,7 @@ class ImagePullRule(BaseRule):
     name = "ImagePull"
     title = "Container image cannot be pulled"
     description = "The container image cannot be downloaded."
+    category = RuleCategory.CONTAINER
 
     WAITING_REASONS = {
         "ImagePullBackOff",
