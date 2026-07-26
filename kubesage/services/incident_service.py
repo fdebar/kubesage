@@ -2,7 +2,7 @@ import structlog
 from opentelemetry import trace
 
 from kubesage.analyzers.engine import DiagnosticEngine
-from kubesage.builders.context.context_builder import ContextBuilder
+from kubesage.builders.context.ai_context_builder import AIContextBuilder
 from kubesage.builders.context.incident_builder import IncidentBuilder
 from kubesage.builders.prompt.prompt_builder import PromptBuilder
 from kubesage.models.incident import Incident
@@ -25,7 +25,7 @@ class IncidentService:
         self.metrics = MetricsService()
         self.prometheus = PrometheusService()
         self.loki = LokiService()
-        self.context_builder = ContextBuilder()
+        self.ai_context_builder = AIContextBuilder()
         self.prompt_builder = PromptBuilder()
 
     def analyze(self, namespace: str, pod: str) -> dict:
@@ -53,7 +53,7 @@ class IncidentService:
         with tracer.start_as_current_span("build_ai_context") as span:
             span.set_attribute("ai_context.namespace", namespace)
             span.set_attribute("ai_context.pod", pod)
-            ctxbuilder = self.context_builder.build(incident, findings)
+            ctxbuilder = self.ai_context_builder.build(incident, findings)
 
         with tracer.start_as_current_span("build_ai_prompt") as span:
             span.set_attribute("ai_prompt.namespace", namespace)

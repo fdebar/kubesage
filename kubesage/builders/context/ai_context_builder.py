@@ -9,7 +9,7 @@ from kubesage.models.incident import Incident
 logger = structlog.get_logger()
 
 
-class ContextBuilder:
+class AIContextBuilder:
     def __init__(self) -> None:
         self.summary_builder = SummaryBuilder()
         self.metrics_builder = MetricsBuilder()

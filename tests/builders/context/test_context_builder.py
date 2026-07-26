@@ -1,11 +1,11 @@
 from unittest.mock import MagicMock
 
-from kubesage.builders.context.context_builder import ContextBuilder
+from kubesage.builders.context.ai_context_builder import AIContextBuilder
 from kubesage.builders.prompt.prompt_builder import PromptBuilder
 
 
 def test_summary_contains_findings() -> None:
-    builder = ContextBuilder()
+    builder = AIContextBuilder()
 
     finding1 = MagicMock()
     finding1.title = "High CPU Usage"

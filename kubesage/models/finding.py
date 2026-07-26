@@ -12,6 +12,17 @@ class Severity(StrEnum):
     HIGH = "HIGH"
     CRITICAL = "CRITICAL"
 
+    @property
+    def weight(self) -> int:
+        return {
+            Severity.INFO: 0,
+            Severity.LOW: 1,
+            Severity.MEDIUM: 2,
+            Severity.HIGH: 3,
+            Severity.CRITICAL: 4,
+            Severity.WARNING: 5,
+        }[self]
+
 
 class ResourceRef(BaseModel):
     api_version: str | None = None

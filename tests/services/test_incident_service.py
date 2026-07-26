@@ -5,7 +5,7 @@ from kubesage.services.incident_service import IncidentService
 
 
 @patch("kubesage.services.incident_service.DiagnosticEngine")
-@patch("kubesage.services.incident_service.ContextBuilder")
+@patch("kubesage.services.incident_service.AIContextBuilder")
 @patch("kubesage.services.incident_service.PromptBuilder")
 @patch("kubesage.services.incident_service.AIService")
 @patch("kubesage.services.incident_service.IncidentBuilder")
@@ -30,7 +30,7 @@ def test_analyze_flow(
     engine.analyze.return_value = findings
     engine_cls.return_value = engine
 
-    # ContextBuilder
+    # AIContextBuilder
     context = MagicMock()
 
     context_builder = MagicMock()

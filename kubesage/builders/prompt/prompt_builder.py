@@ -11,10 +11,16 @@ class PromptBuilder:
         lines.append(f"Phase: {context.incident.phase}")
         lines.append("")
 
-        if context.findings:
+        if context.has_findings:
             lines.append("# Findings")
+            lines.append(f"Count: {context.finding_count}")
+            if context.highest_severity:
+                lines.append(
+                    f"Highest Severity: {context.highest_severity.value.upper()}"
+                )
             for finding in context.findings:
-                lines.append(f"- [{finding.severity.value.upper()}] {finding.title}")
+                lines.append("### Finding")
+                lines.append(f"- [{finding.severity.value}] {finding.title}")
                 lines.append(f"  Description: {finding.description}")
 
                 if finding.evidences:
@@ -22,9 +28,9 @@ class PromptBuilder:
                     for evidence in finding.evidences:
                         lines.append(f"    - {evidence}")
 
-                if finding.recommendations:
+                if context.recommendations:
                     lines.append("  Suggested actions:")
-                    for recommendation in finding.recommendations:
+                    for recommendation in context.recommendations:
                         lines.append(f"    - {recommendation}")
 
                 lines.append("")
