@@ -45,3 +45,19 @@ container_fs_usage_bytes{
     pod="%s"
 }
 """
+
+CPU_THROTTLING_QUERY = """
+sum by (pod) (
+  rate(container_cpu_cfs_throttled_seconds_total{
+    namespace="%s",
+    pod="%s"
+  }[5m])
+)
+/
+sum by (pod) (
+  rate(container_cpu_cfs_periods_total{
+    namespace="%s",
+    pod="%s"
+  }[5m])
+)
+"""

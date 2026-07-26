@@ -100,7 +100,7 @@ def test_collect_all_none(mock_query: MagicMock) -> None:
     usage = service.collect("default", "my-pod")
 
     assert usage is None
-    assert mock_query.call_count == 6
+    assert mock_query.call_count == 7
 
 
 @patch.object(PrometheusService, "query")
@@ -109,6 +109,7 @@ def test_collect_success(mock_query: MagicMock) -> None:
     mock_query.side_effect = [
         [{"value": [1000.0, "0.1"]}],  # CPU
         [{"value": [1001.0, "1048576"]}],  # Memory
+        [{"value": [1002.0, "2"]}],  # CPU Throttling
         [{"value": [1002.0, "2"]}],  # Restarts
         [{"value": [1003.0, "100"]}],  # Network RX
         [{"value": [1004.0, "200"]}],  # Network TX
@@ -123,6 +124,9 @@ def test_collect_success(mock_query: MagicMock) -> None:
 
     assert isinstance(usage.memory, Metric)
     assert usage.memory.value == 1048576.0
+
+    assert isinstance(usage.cpu_throttling, Metric)
+    assert usage.cpu_throttling.value == 2.0
 
     assert isinstance(usage.restarts, Metric)
     assert usage.restarts.value == 2.0

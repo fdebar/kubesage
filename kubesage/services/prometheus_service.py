@@ -4,6 +4,7 @@ import structlog
 from kubesage.models.prometheus import Metric, PrometheusResourceUsage
 from kubesage.services.prometheus.queries import (
     CPU_QUERY,
+    CPU_THROTTLING_QUERY,
     FILESYSTEM_USAGE_QUERY,
     MEMORY_QUERY,
     NETWORK_RX_QUERY,
@@ -63,6 +64,7 @@ class PrometheusService:
 
         usage.cpu = self.collect_cpu(namespace, pod)
         usage.memory = self.collect_memory(namespace, pod)
+        usage.cpu_throttling = self.collect_cpu_throttling(namespace, pod)
         usage.restarts = self.collect_restarts(namespace, pod)
         usage.network_rx = self.collect_network_rx(namespace, pod)
         usage.network_tx = self.collect_network_tx(namespace, pod)
@@ -76,6 +78,7 @@ class PrometheusService:
                 usage.restarts,
                 usage.network_rx,
                 usage.network_tx,
+                usage.cpu_throttling,
             )
         ):
             logger.warning("prometheus_data_unavailable_continuing_without_metrics")
@@ -181,23 +184,19 @@ class PrometheusService:
             FILESYSTEM_USAGE_QUERY % (namespace, pod),
         )
 
-    def collect_request_rate(
+    def collect_cpu_throttling(
         self,
         namespace: str,
         pod: str,
     ) -> Metric | None:
-        return None
-
-    def collect_error_rate(
-        self,
-        namespace: str,
-        pod: str,
-    ) -> Metric | None:
-        return None
-
-    def collect_latency(
-        self,
-        namespace: str,
-        pod: str,
-    ) -> Metric | None:
-        return None
+        return self._collect_metric(
+            "cpu_throttling",
+            "ratio",
+            CPU_THROTTLING_QUERY
+            % (
+                namespace,
+                pod,
+                namespace,
+                pod,
+            ),
+        )

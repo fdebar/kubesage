@@ -14,6 +14,7 @@ class Metric:
 class PrometheusResourceUsage:
     cpu: Metric | None = None
     memory: Metric | None = None
+    cpu_throttling: Metric | None = None
     restarts: Metric | None = None
 
     network_rx: Metric | None = None
