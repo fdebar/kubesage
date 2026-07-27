@@ -1,7 +1,7 @@
 import pytest
 
 from kubesage.analyzers.rules.availability.oom_killed import OOMKilledRule
-from kubesage.models.container import ContainerInfo
+from kubesage.models.container import ContainerSnapshot
 from kubesage.models.incident import Incident
 
 
@@ -17,7 +17,7 @@ def incident_no_oom() -> Incident:
         pod="test",
         phase="Running",
         containers=[
-            ContainerInfo(
+            ContainerSnapshot(
                 name="test",
                 image="test",
                 ready=True,
@@ -41,7 +41,7 @@ def incident_oom() -> Incident:
         pod="test",
         phase="Running",
         containers=[
-            ContainerInfo(
+            ContainerSnapshot(
                 name="test",
                 image="test",
                 ready=True,

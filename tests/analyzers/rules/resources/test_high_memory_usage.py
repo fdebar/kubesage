@@ -1,11 +1,12 @@
 import pytest
 
 from kubesage.analyzers.rules.resources.high_memory_usage import HighMemoryUsageRule
+from kubesage.models.container import ContainerSnapshot
 from kubesage.models.finding import Severity
 from kubesage.models.incident import Incident
 from kubesage.models.log import LogSnapshot
-from kubesage.models.metrics import ContainerMetrics
-from kubesage.models.prometheus import PrometheusResourceUsage
+from kubesage.models.resources import ContainerResources
+from kubesage.models.usage import ContainerUsage
 
 
 @pytest.fixture
@@ -24,21 +25,27 @@ def test_high_memory_usage_detected(
             source="kubernetes",
             lines=["connection refused redis"],
         ),
-        containers=[],
-        events=[],
-        metrics=None,
-        prometheus=PrometheusResourceUsage(
-            containers=[
-                ContainerMetrics(
+        containers=[
+            ContainerSnapshot(
+                name="app",
+                image="python:3.12-slim",
+                ready=True,
+                restart_count=0,
+                usage=ContainerUsage(
                     name="app",
-                    cpu_usage=0.5,
-                    cpu_limit=1,
                     memory_usage=1024,
+                ),
+                resources=ContainerResources(
+                    name="app",
                     memory_limit=1280,
                 ),
-            ],
-        ),
+            ),
+        ],
+        events=[],
+        metrics=None,
+        prometheus=None,
     )
+
     findings = high_memory_usage_rule.evaluate(incident)
     assert len(findings) == 1
     assert findings[0].severity == Severity.WARNING
@@ -66,21 +73,27 @@ def test_high_memory_usage_below_threshold(
             source="kubernetes",
             lines=["connection refused redis"],
         ),
-        containers=[],
-        events=[],
-        metrics=None,
-        prometheus=PrometheusResourceUsage(
-            containers=[
-                ContainerMetrics(
+        containers=[
+            ContainerSnapshot(
+                name="app",
+                image="python:3.12-slim",
+                ready=True,
+                restart_count=0,
+                usage=ContainerUsage(
                     name="app",
-                    cpu_usage=0.5,
-                    cpu_limit=1,
                     memory_usage=128,
+                ),
+                resources=ContainerResources(
+                    name="app",
                     memory_limit=1280,
                 ),
-            ],
-        ),
+            ),
+        ],
+        events=[],
+        metrics=None,
+        prometheus=None,
     )
+
     findings = high_memory_usage_rule.evaluate(incident)
 
     assert len(findings) == 0
@@ -97,20 +110,24 @@ def test_missing_memory_limit_is_ignored(
             source="kubernetes",
             lines=["connection refused redis"],
         ),
-        containers=[],
+        containers=[
+            ContainerSnapshot(
+                name="app",
+                image="python:3.12-slim",
+                ready=True,
+                restart_count=0,
+                usage=ContainerUsage(
+                    name="app",
+                    memory_usage=1024,
+                ),
+                resources=ContainerResources(
+                    name="app",
+                ),
+            ),
+        ],
         events=[],
         metrics=None,
-        prometheus=PrometheusResourceUsage(
-            containers=[
-                ContainerMetrics(
-                    name="app",
-                    cpu_usage=0.5,
-                    cpu_limit=1,
-                    memory_usage=1024,
-                    memory_limit=None,
-                ),
-            ],
-        ),
+        prometheus=None,
     )
     findings = high_memory_usage_rule.evaluate(incident)
 

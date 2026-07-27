@@ -17,14 +17,20 @@ class HighMemoryUsageRule(BaseRule):
     ) -> list[Finding]:
         findings: list[Finding] = []
 
-        if incident.prometheus is None:
-            return findings
+        for container in incident.containers:
+            usage = container.usage
+            resources = container.resources
 
-        for container in incident.prometheus.containers:
-            if container.memory_usage is None or container.memory_limit is None:
+            if usage is None or resources is None:
                 continue
 
-            ratio = container.memory_usage / container.memory_limit
+            if usage.memory_usage is None or resources.memory_limit is None:
+                continue
+
+            if resources.memory_limit <= 0:
+                continue
+
+            ratio = usage.memory_usage / resources.memory_limit
             if ratio < self.threshold:
                 continue
 
@@ -41,8 +47,8 @@ class HighMemoryUsageRule(BaseRule):
                     resource=self._pod_resource(incident),
                     evidences=[
                         f"Container: {container.name}",
-                        (f"Memory usage: {container.memory_usage} bytes"),
-                        (f"Memory limit: {container.memory_limit} bytes"),
+                        (f"Memory usage: {usage.memory_usage} bytes"),
+                        (f"Memory limit: {resources.memory_limit} bytes"),
                         (f"Usage ratio: {ratio:.2%}"),
                     ],
                     recommendations=[
@@ -51,8 +57,8 @@ class HighMemoryUsageRule(BaseRule):
                     ],
                     metadata={
                         "container": container.name,
-                        "memory_usage": (container.memory_usage),
-                        "memory_limit": (container.memory_limit),
+                        "memory_usage": (usage.memory_usage),
+                        "memory_limit": (resources.memory_limit),
                         "usage_ratio": ratio,
                     },
                     confidence=0.95,

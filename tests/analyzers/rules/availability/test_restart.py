@@ -1,5 +1,5 @@
 from kubesage.analyzers.rules.availability.restart import RestartRule
-from kubesage.models.container import ContainerInfo
+from kubesage.models.container import ContainerSnapshot
 from kubesage.models.incident import Incident
 from kubesage.models.log import LogSnapshot
 
@@ -11,7 +11,7 @@ def test_restart_below_threshold_returns_no_finding() -> None:
         phase="Running",
         kubernetes_logs=LogSnapshot(source="kubernetes", lines=[""]),
         containers=[
-            ContainerInfo(
+            ContainerSnapshot(
                 name="app",
                 ready=True,
                 restart_count=2,
@@ -37,7 +37,7 @@ def test_restart_above_threshold_returns_finding() -> None:
         phase="Running",
         kubernetes_logs=LogSnapshot(source="kubernetes", lines=[""]),
         containers=[
-            ContainerInfo(
+            ContainerSnapshot(
                 name="app",
                 ready=True,
                 restart_count=15,
@@ -63,7 +63,7 @@ def test_restart_equal_threshold_returns_finding() -> None:
         phase="Running",
         kubernetes_logs=LogSnapshot(source="kubernetes", lines=[""]),
         containers=[
-            ContainerInfo(
+            ContainerSnapshot(
                 name="app",
                 ready=True,
                 restart_count=5,
@@ -89,7 +89,7 @@ def test_multiple_containers_return_multiple_findings() -> None:
         phase="Running",
         kubernetes_logs=LogSnapshot(source="kubernetes", lines=[""]),
         containers=[
-            ContainerInfo(
+            ContainerSnapshot(
                 name="app",
                 ready=True,
                 restart_count=15,
@@ -97,7 +97,7 @@ def test_multiple_containers_return_multiple_findings() -> None:
                 last_exit_code=1,
                 image="python:3.14",
             ),
-            ContainerInfo(
+            ContainerSnapshot(
                 name="app2",
                 ready=True,
                 restart_count=15,
@@ -123,7 +123,7 @@ def test_restart_rule_ignores_waiting_reason() -> None:
         phase="Running",
         kubernetes_logs=LogSnapshot(source="kubernetes", lines=[""]),
         containers=[
-            ContainerInfo(
+            ContainerSnapshot(
                 name="app",
                 ready=True,
                 restart_count=0,

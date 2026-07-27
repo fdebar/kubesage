@@ -1,7 +1,7 @@
 import pytest
 
 from kubesage.analyzers.rules.availability.pending import PendingRule
-from kubesage.models.container import ContainerInfo
+from kubesage.models.container import ContainerSnapshot
 from kubesage.models.events import Event
 from kubesage.models.incident import Incident
 
@@ -18,7 +18,7 @@ def incident_no_event() -> Incident:
         pod="test",
         phase="Running",
         containers=[
-            ContainerInfo(
+            ContainerSnapshot(
                 name="test",
                 image="test",
                 ready=True,
@@ -42,7 +42,7 @@ def incident_pending() -> Incident:
         pod="test",
         phase="Pending",
         containers=[
-            ContainerInfo(
+            ContainerSnapshot(
                 name="test",
                 image="test",
                 ready=True,
@@ -92,7 +92,7 @@ def incident_running() -> Incident:
         pod="test",
         phase="Running",
         containers=[
-            ContainerInfo(
+            ContainerSnapshot(
                 name="test",
                 image="test",
                 ready=True,

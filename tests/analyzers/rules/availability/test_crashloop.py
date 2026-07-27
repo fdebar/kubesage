@@ -1,5 +1,5 @@
 from kubesage.analyzers.rules.availability.crashloop import CrashLoopRule
-from kubesage.models.container import ContainerInfo
+from kubesage.models.container import ContainerSnapshot
 from kubesage.models.incident import Incident
 from kubesage.models.log import LogSnapshot
 
@@ -14,7 +14,7 @@ def test_running_container_returns_no_findings() -> None:
             lines=["connection refused redis"],
         ),
         containers=[
-            ContainerInfo(
+            ContainerSnapshot(
                 name="app",
                 ready=False,
                 restart_count=5,
@@ -43,7 +43,7 @@ def test_crashloop_returns_one_finding() -> None:
             lines=["connection refused redis"],
         ),
         containers=[
-            ContainerInfo(
+            ContainerSnapshot(
                 name="app",
                 ready=False,
                 restart_count=5,
@@ -72,7 +72,7 @@ def test_multiple_crashloops_return_multiple_findings() -> None:
             lines=["connection refused redis"],
         ),
         containers=[
-            ContainerInfo(
+            ContainerSnapshot(
                 name="app",
                 ready=False,
                 restart_count=5,
@@ -80,7 +80,7 @@ def test_multiple_crashloops_return_multiple_findings() -> None:
                 last_exit_code=1,
                 image="python:3.14",
             ),
-            ContainerInfo(
+            ContainerSnapshot(
                 name="app2",
                 ready=False,
                 restart_count=5,
@@ -109,7 +109,7 @@ def test_container_without_waiting_state() -> None:
             lines=["connection refused redis"],
         ),
         containers=[
-            ContainerInfo(
+            ContainerSnapshot(
                 name="app",
                 ready=False,
                 restart_count=5,
@@ -138,7 +138,7 @@ def test_container_waiting_for_creation_is_ignored() -> None:
             lines=["connection refused redis"],
         ),
         containers=[
-            ContainerInfo(
+            ContainerSnapshot(
                 name="app",
                 ready=False,
                 restart_count=0,

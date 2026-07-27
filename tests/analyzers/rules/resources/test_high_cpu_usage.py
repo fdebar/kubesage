@@ -1,10 +1,11 @@
 import pytest
 
 from kubesage.analyzers.rules.resources.high_cpu_usage import HighCPUUsageRule
+from kubesage.models.container import ContainerSnapshot
 from kubesage.models.finding import Severity
 from kubesage.models.incident import Incident
-from kubesage.models.metrics import ContainerMetrics
-from kubesage.models.prometheus import PrometheusResourceUsage
+from kubesage.models.resources import ContainerResources
+from kubesage.models.usage import ContainerUsage
 
 
 @pytest.fixture
@@ -19,18 +20,25 @@ def test_high_cpu_usage_high(
         namespace="default",
         pod="demo",
         phase="Running",
-        containers=[],
-        events=[],
-        metrics=None,
-        prometheus=PrometheusResourceUsage(
-            containers=[
-                ContainerMetrics(
+        containers=[
+            ContainerSnapshot(
+                name="app",
+                image="python:3.12-slim",
+                ready=True,
+                restart_count=0,
+                usage=ContainerUsage(
                     name="app",
                     cpu_usage=0.9,
-                    cpu_limit=1,
                 ),
-            ],
-        ),
+                resources=ContainerResources(
+                    name="app",
+                    cpu_limit=1.0,
+                ),
+            ),
+        ],
+        events=[],
+        metrics=None,
+        prometheus=None,
     )
 
     findings = high_cpu_usage_rule.evaluate(incident)
@@ -55,18 +63,25 @@ def test_high_cpu_usage_low(
         namespace="default",
         pod="demo",
         phase="Running",
-        containers=[],
-        events=[],
-        metrics=None,
-        prometheus=PrometheusResourceUsage(
-            containers=[
-                ContainerMetrics(
-                    name="app",
+        containers=[
+            ContainerSnapshot(
+                name="demo",
+                image="python:3.12-slim",
+                ready=True,
+                restart_count=0,
+                usage=ContainerUsage(
+                    name="demo",
                     cpu_usage=0.3,
+                ),
+                resources=ContainerResources(
+                    name="demo",
                     cpu_limit=1,
                 ),
-            ],
-        ),
+            ),
+        ],
+        events=[],
+        metrics=None,
+        prometheus=None,
     )
 
     findings = high_cpu_usage_rule.evaluate(incident)
@@ -81,17 +96,24 @@ def _test_cpu_usage_limit_missing(
         namespace="default",
         pod="demo",
         phase="Running",
-        containers=[],
-        events=[],
-        metrics=None,
-        prometheus=PrometheusResourceUsage(
-            containers=[
-                ContainerMetrics(
-                    name="app",
+        containers=[
+            ContainerSnapshot(
+                name="demo",
+                image="python:3.12-slim",
+                ready=True,
+                restart_count=0,
+                usage=ContainerUsage(
+                    name="demo",
                     cpu_usage=0.3,
                 ),
-            ],
-        ),
+                resources=ContainerResources(
+                    name="demo",
+                ),
+            ),
+        ],
+        events=[],
+        metrics=None,
+        prometheus=None,
     )
 
     findings = high_cpu_usage_rule.evaluate(incident)

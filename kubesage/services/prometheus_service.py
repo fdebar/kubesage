@@ -1,8 +1,8 @@
 import requests
 import structlog
 
-from kubesage.models.metrics import ContainerMetrics
 from kubesage.models.prometheus import Metric, PrometheusResourceUsage
+from kubesage.models.usage import ContainerUsage
 from kubesage.services.prometheus.queries import (
     CONTAINER_CPU_QUERY,
     CONTAINER_MEMORY_QUERY,
@@ -98,15 +98,21 @@ class PrometheusService:
         self,
         cpu_result: list,
         memory_result: list,
-    ) -> list[ContainerMetrics]:
-        containers: dict[str, ContainerMetrics] = {}
+    ) -> list[ContainerUsage]:
+        containers: dict[str, ContainerUsage] = {}
+
+        logger.debug(
+            "prometheus_processing_metrics_results",
+            cpu_result=cpu_result,
+            memory_result=memory_result,
+        )
 
         for item in cpu_result:
             name = item["metric"].get("container")
             if not name:
                 continue
             _, value = item["value"]
-            containers[name] = ContainerMetrics(
+            containers[name] = ContainerUsage(
                 name=name,
                 cpu_usage=float(value),
             )
@@ -117,7 +123,7 @@ class PrometheusService:
                 continue
             _, value = item["value"]
             if name not in containers:
-                containers[name] = ContainerMetrics(
+                containers[name] = ContainerUsage(
                     name=name,
                 )
 
@@ -129,7 +135,7 @@ class PrometheusService:
         self,
         namespace: str,
         pod: str,
-    ) -> list[ContainerMetrics]:
+    ) -> list[ContainerUsage]:
         cpu_result = self.query(
             CONTAINER_CPU_QUERY
             % (

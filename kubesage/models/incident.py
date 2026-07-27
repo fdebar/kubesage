@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from kubesage.models.container import ContainerInfo
+from kubesage.models.container import ContainerSnapshot
 from kubesage.models.events import Event
 from kubesage.models.log import LogSnapshot, LogSource
 from kubesage.models.metrics import PodMetrics
@@ -12,7 +12,7 @@ class Incident(BaseModel):
     pod: str
     phase: str
     events: list[Event] = Field(default_factory=list)
-    containers: list[ContainerInfo] = Field(default_factory=list)
+    containers: list[ContainerSnapshot] = Field(default_factory=list)
     metrics: PodMetrics | None = None
     log_source: LogSource = LogSource.KUBERNETES
     kubernetes_logs: LogSnapshot | None = None

@@ -3,12 +3,12 @@ from typing import Any
 import structlog
 from kubernetes.client.exceptions import ApiException
 
-from kubesage.models.container import ContainerInfo
+from kubesage.models.container import ContainerStatus
 from kubesage.models.events import Event
 from kubesage.models.kubernetes_snapshot import KubernetesSnapshot
 from kubesage.models.log import LogSnapshot
 from kubesage.models.resources import (
-    ContainerResourceLimits,
+    ContainerResources,
     PodResources,
 )
 from kubesage.providers.kubernetes_provider import KubernetesProvider
@@ -88,7 +88,7 @@ class KubernetesService(KubernetesProvider):
             lines=logs.split("\n") if logs else [],
         )
 
-    def _collect_containers(self, pod_info: Any) -> list[ContainerInfo]:
+    def _collect_containers(self, pod_info: Any) -> list[ContainerStatus]:
         containers = []
 
         for container in pod_info.status.container_statuses or []:
@@ -107,7 +107,7 @@ class KubernetesService(KubernetesProvider):
                 last_exit_reason = container.last_state.terminated.reason
 
             containers.append(
-                ContainerInfo(
+                ContainerStatus(
                     name=container.name,
                     image=container.image,
                     ready=container.ready,
@@ -176,7 +176,7 @@ class KubernetesService(KubernetesProvider):
             req = resources.requests or {}
 
             containers.append(
-                ContainerResourceLimits(
+                ContainerResources(
                     name=container.name,
                     cpu_limit=self._parse_cpu(limits.get("cpu")),
                     memory_limit=self._parse_memory(limits.get("memory")),
@@ -184,6 +184,7 @@ class KubernetesService(KubernetesProvider):
                     memory_request=self._parse_memory(req.get("memory")),
                 )
             )
+        logger.debug("kubernetes_collecting_resources_result", containers=containers)
 
         return PodResources(containers=containers)
 
@@ -199,7 +200,7 @@ class KubernetesService(KubernetesProvider):
             ),
             containers=[],
             events=[],
-            resources=None,
+            resources=PodResources(containers=[]),
             metrics=None,
         )
 

@@ -1,6 +1,6 @@
-from kubesage.models.container import ContainerInfo
 from kubesage.models.kubernetes_snapshot import KubernetesSnapshot
 from kubesage.models.log import LogSnapshot
+from kubesage.models.resources import ContainerResources, PodResources
 
 
 def test_kubernetes_snapshot() -> None:
@@ -12,20 +12,22 @@ def test_kubernetes_snapshot() -> None:
             source="kubernetes",
             lines=["log1", "log2", "log3"],
         ),
-        containers=[
-            ContainerInfo(
-                name="api",
-                image="python:3.11-alpine",
-                ready=True,
-                restart_count=0,
-            )
-        ],
+        resources=PodResources(
+            containers=[
+                ContainerResources(
+                    name="api",
+                    cpu_limit=1.0,
+                    memory_limit=1024,
+                ),
+            ]
+        ),
         events=[],
     )
 
     assert snapshot.namespace == "default"
     assert snapshot.pod == "pod1"
     assert snapshot.phase == "Running"
-    assert len(snapshot.containers) == 1
     assert len(snapshot.events) == 0
     assert snapshot.metrics is None
+    assert isinstance(snapshot.resources, PodResources)
+    assert isinstance(snapshot.resources.containers[0], ContainerResources)

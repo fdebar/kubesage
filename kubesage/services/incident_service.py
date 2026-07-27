@@ -3,13 +3,15 @@ from opentelemetry import trace
 
 from kubesage.analyzers.engine import DiagnosticEngine
 from kubesage.builders.context.ai_context_builder import AIContextBuilder
+from kubesage.builders.context.container_snapshot_builder import (
+    ContainerSnapshotBuilder,
+)
 from kubesage.builders.context.incident_builder import IncidentBuilder
 from kubesage.builders.prompt.prompt_builder import PromptBuilder
 from kubesage.models.incident import Incident
 from kubesage.services.ai_service import AIService
 from kubesage.services.kubernetes_service import KubernetesService
 from kubesage.services.loki_service import LokiService
-from kubesage.services.metrics_enricher import MetricsEnricher
 from kubesage.services.metrics_service import MetricsService
 from kubesage.services.prometheus_service import PrometheusService
 
@@ -28,7 +30,7 @@ class IncidentService:
         self.loki = LokiService()
         self.ai_context_builder = AIContextBuilder()
         self.prompt_builder = PromptBuilder()
-        self.metrics_enricher = MetricsEnricher()
+        self.container_snapshot_builder = ContainerSnapshotBuilder()
 
     def analyze(self, namespace: str, pod: str) -> dict:
         logger.info("analysis_started", namespace=namespace, pod=pod)
@@ -41,7 +43,7 @@ class IncidentService:
                 prometheus_provider=self.prometheus,
                 log_provider=self.loki,
                 metrics_provider=self.metrics,
-                metrics_enricher=self.metrics_enricher,
+                container_snapshot_builder=self.container_snapshot_builder,
             )
 
             incident = self.builder.collect(namespace, pod)

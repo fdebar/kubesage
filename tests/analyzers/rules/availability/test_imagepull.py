@@ -1,7 +1,7 @@
 import pytest
 
 from kubesage.analyzers.rules.availability.imagepull import ImagePullRule
-from kubesage.models.container import ContainerInfo
+from kubesage.models.container import ContainerSnapshot
 from kubesage.models.finding import ResourceRef
 from kubesage.models.incident import Incident
 
@@ -19,7 +19,7 @@ def test_imagepull_rule_with_waiting_reason_imagepullbackoff(
         pod="test",
         phase="Pending",
         containers=[
-            ContainerInfo(
+            ContainerSnapshot(
                 name="test",
                 image="test",
                 ready=False,
@@ -67,7 +67,7 @@ def test_imagepull_rule_with_waiting_reason_errorimagepull(
         pod="test",
         phase="Pending",
         containers=[
-            ContainerInfo(
+            ContainerSnapshot(
                 name="test",
                 image="test",
                 ready=False,
@@ -115,7 +115,7 @@ def test_imagepull_rule_without_waiting_reason(
         pod="test",
         phase="Running",
         containers=[
-            ContainerInfo(
+            ContainerSnapshot(
                 name="test",
                 image="test",
                 ready=True,
@@ -137,7 +137,7 @@ def test_imagepull_rule_with_multiple_containers(
         pod="test",
         phase="Pending",
         containers=[
-            ContainerInfo(
+            ContainerSnapshot(
                 name="test1",
                 image="test1",
                 ready=False,
@@ -145,7 +145,7 @@ def test_imagepull_rule_with_multiple_containers(
                 waiting_reason="ImagePullBackOff",
                 waiting_message="Test message",
             ),
-            ContainerInfo(
+            ContainerSnapshot(
                 name="test2",
                 image="test2",
                 ready=False,

@@ -1,7 +1,7 @@
 import pytest
 
 from kubesage.analyzers.rules.availability.readiness import ReadinessRule
-from kubesage.models.container import ContainerInfo
+from kubesage.models.container import ContainerSnapshot
 from kubesage.models.finding import ResourceRef
 from kubesage.models.incident import Incident
 
@@ -18,7 +18,7 @@ def incident() -> Incident:
         pod="test",
         phase="test",
         containers=[
-            ContainerInfo(
+            ContainerSnapshot(
                 name="test",
                 image="test",
                 ready=True,
@@ -55,13 +55,13 @@ def test_not_ready_container_returns_finding(
 
 def test_multiple_not_ready_containers(rule: ReadinessRule, incident: Incident) -> None:
     incident.containers = [
-        ContainerInfo(
+        ContainerSnapshot(
             name="test1",
             image="test1",
             ready=False,
             restart_count=1,
         ),
-        ContainerInfo(
+        ContainerSnapshot(
             name="test2",
             image="test2",
             ready=False,
@@ -81,13 +81,13 @@ def test_multiple_not_ready_containers(rule: ReadinessRule, incident: Incident) 
 
 def test_mixed_ready_and_not_ready(rule: ReadinessRule, incident: Incident) -> None:
     incident.containers = [
-        ContainerInfo(
+        ContainerSnapshot(
             name="test1",
             image="test1",
             ready=True,
             restart_count=0,
         ),
-        ContainerInfo(
+        ContainerSnapshot(
             name="test2",
             image="test2",
             ready=False,

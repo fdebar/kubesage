@@ -3,24 +3,36 @@ from unittest.mock import MagicMock, patch
 import pytest
 from kubernetes.client.exceptions import ApiException
 
+from kubesage.models.resources import PodResources
 from kubesage.services.kubernetes_service import KubernetesService
 from kubesage.utils.exceptions import PodNotFoundError
 
 
 @patch("kubesage.services.kubernetes_service.create_core_v1_api")
-def test_collect_kubernetes_unavailable(mock_create_api: MagicMock) -> None:
-    mock_create_api.return_value = None
+def test_collect_kubernetes_unavailable(
+    mock_create_api: MagicMock,
+) -> None:
+    mock_api = MagicMock()
+
+    mock_api.read_namespaced_pod.side_effect = ApiException(
+        reason="Service unavailable"
+    )
+
+    mock_create_api.return_value = mock_api
+
     service = KubernetesService()
 
-    kubernetes_service = service.collect("default", "my-pod")
+    snapshot = service.collect("default", "my-pod")
 
-    assert kubernetes_service.namespace == "default"
-    assert kubernetes_service.pod == "my-pod"
-    assert kubernetes_service.phase == "Unknown"
-    assert kubernetes_service.logs.source == "kubernetes"
-    assert kubernetes_service.logs.lines == []
-    assert kubernetes_service.containers == []
-    assert kubernetes_service.events == []
+    assert snapshot.namespace == "default"
+    assert snapshot.pod == "my-pod"
+    assert snapshot.phase == "Unknown"
+    assert snapshot.logs.source == "kubernetes"
+    assert snapshot.logs.lines == []
+    assert snapshot.containers == []
+    assert snapshot.events == []
+    assert snapshot.resources == PodResources(containers=[])
+    assert snapshot.metrics is None
 
 
 @patch("kubesage.services.kubernetes_service.create_core_v1_api")
@@ -120,7 +132,6 @@ def test_collect_success(mock_create_api: MagicMock) -> None:
 @patch("kubesage.services.kubernetes_service.settings.log_tail_lines", 0)
 def test_collect_resources(mock_create_api: MagicMock) -> None:
     mock_v1 = MagicMock()
-    mock_create_api.return_value = mock_v1
 
     # Mock pod_info
     mock_pod = MagicMock()
@@ -151,6 +162,7 @@ def test_collect_resources(mock_create_api: MagicMock) -> None:
     mock_events_list = MagicMock()
     mock_events_list.items = [mock_event]
     mock_v1.list_namespaced_event.return_value = mock_events_list
+    mock_create_api.return_value = mock_v1
 
     service = KubernetesService()
 

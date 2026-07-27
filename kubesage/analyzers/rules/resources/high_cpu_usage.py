@@ -17,18 +17,21 @@ class HighCPUUsageRule(BaseRule):
     ) -> list[Finding]:
         findings: list[Finding] = []
 
-        if incident.prometheus is None:
-            return findings
+        for container in incident.containers:
+            usage = container.usage
+            resources = container.resources
 
-        for container in incident.prometheus.containers:
-            if (
-                container.cpu_usage is None
-                or container.cpu_limit is None
-                or container.cpu_limit <= 0
-            ):
+            if usage is None or resources is None:
                 continue
 
-            ratio = container.cpu_usage / container.cpu_limit
+            if usage.cpu_usage is None or resources.cpu_limit is None:
+                continue
+
+            if resources.cpu_limit <= 0:
+                continue
+
+            ratio = usage.cpu_usage / resources.cpu_limit
+
             if ratio < self.threshold:
                 continue
 
@@ -45,8 +48,8 @@ class HighCPUUsageRule(BaseRule):
                     resource=self._pod_resource(incident),
                     evidences=[
                         f"Container: {container.name}",
-                        f"CPU usage: {container.cpu_usage:.3f} cores",
-                        f"CPU limit: {container.cpu_limit:.3f} cores",
+                        f"CPU usage: {usage.cpu_usage:.3f} cores",
+                        f"CPU limit: {resources.cpu_limit:.3f} cores",
                         f"Usage ratio: {ratio:.2%}",
                     ],
                     recommendations=[
@@ -56,8 +59,8 @@ class HighCPUUsageRule(BaseRule):
                     ],
                     metadata={
                         "container": container.name,
-                        "cpu_usage": container.cpu_usage,
-                        "cpu_limit": container.cpu_limit,
+                        "cpu_usage": usage.cpu_usage,
+                        "cpu_limit": resources.cpu_limit,
                         "usage_ratio": ratio,
                     },
                     confidence=0.95,
