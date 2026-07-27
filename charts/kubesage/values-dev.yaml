@@ -12,6 +12,12 @@ openai:
   endpoint: ""
   model: ""
 
+# If you use kube-prometheus-stack, configure the labels expected by your Prometheus instance.
+serviceMonitor:
+  create: true
+  additionalLabels:
+    release: monitoring
+
 # This is the observability configuration
 observability:
   # This sets the URL for Prometheus.
@@ -54,7 +60,8 @@ serviceAccount:
 podAnnotations: {}
 # This is for setting Kubernetes Labels to a Pod.
 # For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
-podLabels: {}
+podLabels:
+  release: monitoring # required for discovery by the Prometheus Operator (it must match helm release name)
 
 podSecurityContext: {}
 

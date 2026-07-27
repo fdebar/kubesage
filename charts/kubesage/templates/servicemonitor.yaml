@@ -1,19 +1,24 @@
----
+{{- if .Values.serviceMonitor.create }}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: kubesage
   namespace: monitoring
   labels:
-    release: monitoring # required for discovery by the Prometheus Operator (it must match helm release name)
+    {{- include "kubesage.labels" . | nindent 4 }}
+    {{- if .Values.serviceMonitor.additionalLabels }}
+      {{- toYaml .Values.serviceMonitor.additionalLabels | nindent 4 }}
+    {{- end }}
 spec:
   namespaceSelector:
     matchNames:
       - kubesage
   selector:
     matchLabels:
-      app: kubesage
+      app.kubernetes.io/name: {{ include "kubesage.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
   endpoints:
     - port: http
       path: /metrics
       interval: 15s
+{{- end }}

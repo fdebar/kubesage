@@ -12,6 +12,11 @@ openai:
   endpoint: ""
   model: ""
 
+# If you use kube-prometheus-stack, configure the labels expected by your Prometheus instance.
+serviceMonitor:
+  create: true
+  additionalLabels: {}
+
 # This is the observability configuration
 observability:
   # This sets the URL for Prometheus.
