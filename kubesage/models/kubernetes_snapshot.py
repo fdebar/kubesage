@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from pydantic import BaseModel, Field
 
 from kubesage.models.container import ContainerInfo
 from kubesage.models.events import Event
@@ -7,15 +7,14 @@ from kubesage.models.prometheus import PrometheusResourceUsage
 from kubesage.models.resources import PodResources
 
 
-@dataclass(slots=True)
-class KubernetesSnapshot:
+class KubernetesSnapshot(BaseModel):
     namespace: str
     pod: str
     phase: str
     logs: LogSnapshot
 
-    containers: list[ContainerInfo] = field(default_factory=list)
-    events: list[Event] = field(default_factory=list)
+    containers: list[ContainerInfo] = Field(default_factory=list)
+    events: list[Event] = Field(default_factory=list)
 
     metrics: PrometheusResourceUsage | None = None
     resources: PodResources | None = None
