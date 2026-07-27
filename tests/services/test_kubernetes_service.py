@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from kubernetes.client.exceptions import ApiException
 
-from kubesage.models.resources import PodResources
+from kubesage.models.container import PodResources
 from kubesage.services.kubernetes_service import KubernetesService
 from kubesage.utils.exceptions import PodNotFoundError
 

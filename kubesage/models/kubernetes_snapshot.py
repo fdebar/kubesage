@@ -1,10 +1,9 @@
 from pydantic import BaseModel, Field
 
-from kubesage.models.container import ContainerStatus
+from kubesage.models.container import ContainerStatus, PodResources
 from kubesage.models.events import Event
 from kubesage.models.log import LogSnapshot
 from kubesage.models.prometheus import PrometheusResourceUsage
-from kubesage.models.resources import PodResources
 
 
 class KubernetesSnapshot(BaseModel):

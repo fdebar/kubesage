@@ -1,7 +1,40 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
-from kubesage.models.resources import ContainerResources
-from kubesage.models.usage import ContainerUsage
+
+@dataclass(slots=True)
+class ContainerUsage:
+    """
+    Runtime container consumption metrics.
+    Source: Prometheus.
+    """
+
+    name: str
+
+    cpu_usage: float | None = None
+    memory_usage: int | None = None
+
+    cpu_throttling_ratio: float | None = None
+
+
+@dataclass(slots=True)
+class ContainerResources:
+    """
+    Kubernetes configured resources.
+    Source: Kubernetes API.
+    """
+
+    name: str
+
+    cpu_request: float | None = None
+    cpu_limit: float | None = None
+
+    memory_request: int | None = None
+    memory_limit: int | None = None
+
+
+@dataclass(slots=True)
+class PodResources:
+    containers: list[ContainerResources] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -33,6 +66,10 @@ class ContainerSnapshot:
 
 @dataclass(slots=True)
 class ContainerStatus:
+    """
+    Container state used for incident reporting.
+    """
+
     name: str
     image: str
     ready: bool

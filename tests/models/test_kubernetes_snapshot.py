@@ -1,6 +1,6 @@
+from kubesage.models.container import ContainerResources, PodResources
 from kubesage.models.kubernetes_snapshot import KubernetesSnapshot
 from kubesage.models.log import LogSnapshot
-from kubesage.models.resources import ContainerResources, PodResources
 
 
 def test_kubernetes_snapshot() -> None:

@@ -1,8 +1,8 @@
 import requests
 import structlog
 
+from kubesage.models.container import ContainerUsage
 from kubesage.models.prometheus import Metric, PrometheusResourceUsage
-from kubesage.models.usage import ContainerUsage
 from kubesage.services.prometheus.queries import (
     CONTAINER_CPU_QUERY,
     CONTAINER_MEMORY_QUERY,

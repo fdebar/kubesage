@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from kubesage.models.usage import ContainerUsage
+from kubesage.models.container import ContainerUsage
 
 
 @dataclass(slots=True)

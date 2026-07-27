@@ -3,14 +3,14 @@ from typing import Any
 import structlog
 from kubernetes.client.exceptions import ApiException
 
-from kubesage.models.container import ContainerStatus
+from kubesage.models.container import (
+    ContainerResources,
+    ContainerStatus,
+    PodResources,
+)
 from kubesage.models.events import Event
 from kubesage.models.kubernetes_snapshot import KubernetesSnapshot
 from kubesage.models.log import LogSnapshot
-from kubesage.models.resources import (
-    ContainerResources,
-    PodResources,
-)
 from kubesage.providers.kubernetes_provider import KubernetesProvider
 from kubesage.utils.config import settings
 from kubesage.utils.exceptions import PodNotFoundError

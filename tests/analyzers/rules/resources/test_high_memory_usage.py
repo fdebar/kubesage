@@ -1,12 +1,14 @@
 import pytest
 
 from kubesage.analyzers.rules.resources.high_memory_usage import HighMemoryUsageRule
-from kubesage.models.container import ContainerSnapshot
+from kubesage.models.container import (
+    ContainerResources,
+    ContainerSnapshot,
+    ContainerUsage,
+)
 from kubesage.models.finding import Severity
 from kubesage.models.incident import Incident
 from kubesage.models.log import LogSnapshot
-from kubesage.models.resources import ContainerResources
-from kubesage.models.usage import ContainerUsage
 
 
 @pytest.fixture
