@@ -76,7 +76,7 @@ package: helm-lint helm-template kubeconform
 # Docker
 docker-build: |
 	echo "Building docker image..."
-	docker buildx build --platform linux/amd64 --no-cache -t kubesage:latest .
+	docker buildx build --platform linux/amd64,linux/arm64 --no-cache -t kubesage:latest .
 	docker tag kubesage:latest ${IMAGE_NAME}
 
 docker-run: |
