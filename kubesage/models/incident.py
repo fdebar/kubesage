@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from pydantic import BaseModel, Field
 
 from kubesage.models.container import ContainerInfo
 from kubesage.models.events import Event
@@ -7,13 +7,12 @@ from kubesage.models.metrics import PodMetrics
 from kubesage.models.prometheus import PrometheusResourceUsage
 
 
-@dataclass(slots=True)
-class Incident:
+class Incident(BaseModel):
     namespace: str
     pod: str
     phase: str
-    events: list[Event] = field(default_factory=list)
-    containers: list[ContainerInfo] = field(default_factory=list)
+    events: list[Event] = Field(default_factory=list)
+    containers: list[ContainerInfo] = Field(default_factory=list)
     metrics: PodMetrics | None = None
     log_source: LogSource = LogSource.KUBERNETES
     kubernetes_logs: LogSnapshot | None = None
@@ -23,6 +22,7 @@ class Incident:
     @property
     def logs(self) -> str:
         """Preferred logs used by the AI."""
+
         if self.loki_logs:
             return self.loki_logs.content
 
