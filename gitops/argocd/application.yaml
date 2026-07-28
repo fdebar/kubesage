@@ -9,12 +9,12 @@ spec:
     repoURL: https://github.com/fdebar/kubesage.git
     targetRevision: main
     path: ./charts/kubesage
+    helm:
+      valueFiles:
+        - ../../charts/kubesage/values-dev.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: kubesage
-  helm:
-    valueFiles:
-      - ../../charts/kubesage/values-dev.yaml
   syncPolicy:
     automated:
       selfHeal: true
