@@ -27,7 +27,9 @@ Observe • Explain • Recommend • Act
 
 <h4 align="center">
 
-![CI](https://github.com/fdebar/KubeSage/actions/workflows/ci.yml/badge.svg)
+![Code Quality Checks](https://github.com/fdebar/KubeSage/actions/workflows/ci.yml/badge.svg)
+![Docker](https://github.com/fdebar/KubeSage/actions/workflows/docker.yml/badge.svg)
+![Helm](https://github.com/fdebar/KubeSage/actions/workflows/helm.yml/badge.svg)
 
 </h4>
 

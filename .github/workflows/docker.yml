@@ -27,6 +27,9 @@ jobs:
               - '.dockerignore'
               - 'pyproject.toml'
               - 'requirements.txt'
+              - '**/*' 
+# Temporary allow all '**/*' 
+
   docker:
     name: Docker
     needs: changes
