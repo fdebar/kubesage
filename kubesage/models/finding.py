@@ -50,7 +50,7 @@ class Finding(BaseModel):
     kind: FindingKind = FindingKind.OBSERVATION
     recommendations: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
-
+    priority: int = 0
     confidence: float = 1.0
 
     related_findings: list[str] = Field(default_factory=list)

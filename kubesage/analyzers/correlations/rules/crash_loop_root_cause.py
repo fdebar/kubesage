@@ -43,6 +43,7 @@ class CrashLoopRootCauseCorrelation(BaseCorrelation):
                     "Investigate application memory usage.",
                 ],
                 confidence=0.97,
+                priority=90,
             )
         )
 

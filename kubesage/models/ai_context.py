@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from kubesage.models.finding import Finding, Severity
+from kubesage.models.finding import Finding, FindingKind, Severity
 from kubesage.models.incident import Incident
 
 
@@ -45,6 +45,23 @@ class AIContext:
                     )
 
         return evidences
+
+    @property
+    def root_causes(self) -> list[Finding]:
+        return [
+            finding
+            for finding in self.findings
+            if finding.kind == FindingKind.DIAGNOSIS
+            and finding.severity == Severity.CRITICAL
+        ]
+
+    @property
+    def symptoms(self) -> list[Finding]:
+        return [
+            finding
+            for finding in self.findings
+            if finding.kind == FindingKind.OBSERVATION
+        ]
 
     @property
     def diagnoses(self) -> list[Finding]:

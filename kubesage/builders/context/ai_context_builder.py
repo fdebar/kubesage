@@ -4,6 +4,7 @@ from kubesage.builders.context.metrics_builder import MetricsBuilder
 from kubesage.models.ai_context import AIContext
 from kubesage.models.finding import Finding
 from kubesage.models.incident import Incident
+from kubesage.services.finding_ranker import FindingRanker
 
 logger = structlog.get_logger()
 
@@ -19,9 +20,10 @@ class AIContextBuilder:
             pod=incident.pod,
         )
 
+        ranked_findings = FindingRanker().rank(findings)
         context = AIContext(
             incident=incident,
-            findings=findings,
+            findings=ranked_findings,
             metrics_summary=self.metrics_builder.build(incident),
         )
 

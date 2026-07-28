@@ -54,6 +54,7 @@ class MemoryExhaustionCorrelation(BaseCorrelation):
                     "oom_killed",
                 ],
                 confidence=0.98,
+                priority=100,
             )
         )
 

@@ -50,6 +50,7 @@ class CPUContentionCorrelation(BaseCorrelation):
                     "cpu_throttling",
                 ],
                 confidence=0.95,
+                priority=90,
             )
         )
 
