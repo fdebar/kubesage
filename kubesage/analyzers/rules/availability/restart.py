@@ -42,6 +42,7 @@ class RestartRule(BaseRule):
                         "container": container.name,
                         "restart_count": container.restart_count,
                     },
+                    priority=20,
                 )
             )
 

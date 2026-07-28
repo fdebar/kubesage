@@ -50,6 +50,7 @@ class OOMKilledRule(BaseRule):
                         "last_exit_reason": container.last_exit_reason,
                         "restart_count": container.restart_count,
                     },
+                    priority=20,
                 )
             )
 

@@ -63,6 +63,7 @@ class HighMemoryUsageRule(BaseRule):
                         "usage_ratio": ratio,
                     },
                     confidence=0.95,
+                    priority=20,
                 )
             )
 

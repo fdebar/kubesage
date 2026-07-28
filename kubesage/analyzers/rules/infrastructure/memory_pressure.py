@@ -35,6 +35,7 @@ class MemoryPressureRule(BaseRule):
                             "Investigate memory consuming workloads.",
                         ],
                         confidence=0.95,
+                        priority=20,
                     )
                 )
 

@@ -48,6 +48,7 @@ class ReadinessRule(BaseRule):
                     metadata={
                         "container": container.name,
                     },
+                    priority=20,
                 )
             )
 

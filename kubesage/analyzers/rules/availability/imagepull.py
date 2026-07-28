@@ -54,6 +54,7 @@ class ImagePullRule(BaseRule):
                         "container": container.name,
                         "reason": container.waiting_reason,
                     },
+                    priority=20,
                 )
             )
 

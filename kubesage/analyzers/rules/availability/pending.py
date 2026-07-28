@@ -49,6 +49,7 @@ class PendingRule(BaseRule):
                     metadata={
                         "event_reason": event.reason,
                     },
+                    priority=20,
                 )
             )
 

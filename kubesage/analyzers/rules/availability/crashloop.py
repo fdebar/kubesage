@@ -33,6 +33,7 @@ class CrashLoopRule(BaseRule):
                             f"Container {container.name} waiting reason is CrashLoopBackOff.",  # noqa
                             f"Restart count = {container.restart_count}",  # noqa
                         ],
+                        priority=20,
                     )
                 )
 
