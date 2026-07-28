@@ -49,23 +49,18 @@ class AIContext:
     @property
     def root_causes(self) -> list[Finding]:
         return [
-            finding
-            for finding in self.findings
-            if finding.kind == FindingKind.DIAGNOSIS
-            and finding.severity == Severity.CRITICAL
+            f
+            for f in self.findings
+            if f.kind == FindingKind.DIAGNOSIS and f.severity == Severity.CRITICAL
         ]
 
     @property
-    def symptoms(self) -> list[Finding]:
-        return [
-            finding
-            for finding in self.findings
-            if finding.kind == FindingKind.OBSERVATION
-        ]
+    def observations(self) -> list[Finding]:
+        return [f for f in self.findings if f.kind == FindingKind.OBSERVATION]
 
     @property
     def diagnoses(self) -> list[Finding]:
-        return [finding for finding in self.findings if finding.kind == "diagnosis"]
+        return [f for f in self.findings if f.kind == FindingKind.DIAGNOSIS]
 
     @property
     def finding_count(self) -> int:

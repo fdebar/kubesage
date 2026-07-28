@@ -1,6 +1,7 @@
 from kubesage.analyzers.rules.base import BaseRule, RuleCategory
 from kubesage.models.finding import (
     Finding,
+    FindingKind,
     Severity,
 )
 from kubesage.models.incident import Incident
@@ -26,6 +27,7 @@ class RestartRule(BaseRule):
                 Finding(
                     rule=self.name,
                     severity=Severity.WARNING,
+                    kind=FindingKind.OBSERVATION,
                     title=self.title,
                     description=self.description,
                     resource=self._pod_resource(incident),

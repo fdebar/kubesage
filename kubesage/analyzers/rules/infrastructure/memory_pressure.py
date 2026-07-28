@@ -1,5 +1,5 @@
 from kubesage.analyzers.rules.base import BaseRule
-from kubesage.models.finding import Finding, Severity
+from kubesage.models.finding import Finding, FindingKind, Severity
 from kubesage.models.incident import Incident
 
 
@@ -23,6 +23,7 @@ class MemoryPressureRule(BaseRule):
                     Finding(
                         rule=self.name,
                         severity=Severity.HIGH,
+                        kind=FindingKind.OBSERVATION,
                         title=self.title,
                         description=self.description,
                         resource=self._pod_resource(incident),

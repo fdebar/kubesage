@@ -1,6 +1,7 @@
 from kubesage.analyzers.rules.base import BaseRule, RuleCategory
 from kubesage.models.finding import (
     Finding,
+    FindingKind,
     ResourceRef,
     Severity,
 )
@@ -28,6 +29,7 @@ class PendingRule(BaseRule):
                 Finding(
                     rule=self.name,
                     severity=Severity.WARNING,
+                    kind=FindingKind.OBSERVATION,
                     title=self.title,
                     description=self.description,
                     resource=ResourceRef(
