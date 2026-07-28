@@ -45,3 +45,6 @@ class Finding(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     confidence: float = 1.0
+
+    related_findings: list[str] = Field(default_factory=list)
+    caused_by: list[str] = Field(default_factory=list)

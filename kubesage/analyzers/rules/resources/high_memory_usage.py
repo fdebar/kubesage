@@ -4,6 +4,7 @@ from kubesage.models.incident import Incident
 
 
 class HighMemoryUsageRule(BaseRule):
+    rule_id = "high_memory_usage"
     name = "High Memory Usage"
     title = "Detect containers close to their memory limit."
     description = "Detect containers close to their memory limit."
