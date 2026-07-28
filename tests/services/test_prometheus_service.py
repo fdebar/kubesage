@@ -7,6 +7,17 @@ from kubesage.models.prometheus import Metric
 from kubesage.services.prometheus_service import PrometheusService
 
 
+@patch.object(PrometheusService, "is_available", return_value=False)
+def test_collect_when_prometheus_unavailable(
+    mock_available: MagicMock,
+) -> None:
+    service = PrometheusService()
+
+    usage = service.collect("default", "my-pod")
+
+    assert usage is None
+
+
 @patch("kubesage.services.prometheus_service.requests.get")
 def test_query_success(mock_get: MagicMock) -> None:
     mock_response = MagicMock()
@@ -92,8 +103,12 @@ def test_collect_metric(mock_query: MagicMock) -> None:
     mock_query.assert_called_once_with("some_query")
 
 
+@patch.object(PrometheusService, "is_available", return_value=True)
 @patch.object(PrometheusService, "query")
-def test_collect_all_none(mock_query: MagicMock) -> None:
+def test_collect_all_none(
+    mock_query: MagicMock,
+    mock_available: MagicMock,
+) -> None:
     service = PrometheusService()
     mock_query.return_value = []
 
@@ -134,8 +149,12 @@ def test_container_metrics_from_result() -> None:
     assert container.memory_usage == 1048576
 
 
+@patch.object(PrometheusService, "is_available", return_value=True)
 @patch.object(PrometheusService, "query")
-def test_collect_success(mock_query: MagicMock) -> None:
+def test_collect_success(
+    mock_query: MagicMock,
+    mock_available: MagicMock,
+) -> None:
     service = PrometheusService()
     mock_query.side_effect = [
         [{"value": [1000.0, "0.1"]}],  # CPU

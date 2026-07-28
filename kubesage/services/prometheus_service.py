@@ -22,6 +22,18 @@ logger = structlog.get_logger()
 class PrometheusService:
     def __init__(self) -> None:
         self.base_url = settings.prometheus_url
+        self._healthy = True
+
+    def is_available(self) -> bool:
+        try:
+            response = requests.get(
+                f"{self.base_url}/-/ready", timeout=settings.prometheus_timeout
+            )
+            self._healthy = response.status_code == 200
+        except requests.RequestException:
+            self._healthy = False
+
+        return self._healthy
 
     def query(self, promql: str) -> list:
         try:
@@ -36,21 +48,19 @@ class PrometheusService:
 
             return response.json()["data"]["result"]  # type: ignore
         except requests.exceptions.ConnectionError:
-            logger.warning("prometheus_server_unreachable_or_offline")
-            return []
+            logger.warning("prometheus_query_failed_connection_error", promql=promql)
         except requests.exceptions.Timeout:
-            logger.warning("prometheus_query_timed_out")
-            return []
+            logger.warning("prometheus_query_failed_timeout", promql=promql)
         except requests.exceptions.HTTPError as exc:
             logger.error(
-                "Prometheus returned HTTP error status %s: %s",
-                response.status_code,
-                exc,
+                "prometheus_query_failed_http_error",
+                code=response.status_code,
+                reason=exc,
             )
-            return []
         except requests.exceptions.RequestException as exc:
-            logger.error("Prometheus query failed: %s", exc)
-            return []
+            logger.error("prometheus_query_failed_request_exception", exc=exc)
+
+        return []
 
     def collect(
         self,
@@ -58,10 +68,16 @@ class PrometheusService:
         pod: str,
     ) -> PrometheusResourceUsage | None:
         logger.info(
-            "prometheus_collecting_data_for_pod",
+            "prometheus_starting_collecting_data",
             namespace=namespace,
             pod=pod,
         )
+
+        if not self.is_available():
+            logger.warning(
+                "prometheus_server_unreachable_or_offline", namespace=namespace, pod=pod
+            )
+            return None
 
         usage = PrometheusResourceUsage()
 
@@ -101,11 +117,8 @@ class PrometheusService:
     ) -> list[ContainerUsage]:
         containers: dict[str, ContainerUsage] = {}
 
-        logger.debug(
-            "prometheus_processing_metrics_results",
-            cpu_result=cpu_result,
-            memory_result=memory_result,
-        )
+        if cpu_result is None and memory_result is None:
+            logger.warning("prometheus_metrics_unavailable")
 
         for item in cpu_result:
             name = item["metric"].get("container")

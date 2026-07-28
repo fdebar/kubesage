@@ -21,7 +21,7 @@ class MetricsService(MetricsProvider):
         pod: str,
     ) -> PodMetrics | None:
         logger.info(
-            "kubernetes_metrics_collecting_data_for_pod", namespace=namespace, pod=pod
+            "kubernetes_starting_metrics_collecting_data", namespace=namespace, pod=pod
         )
 
         if self.api is None:

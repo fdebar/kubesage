@@ -24,7 +24,7 @@ class KubernetesService(KubernetesProvider):
         self.v1 = create_core_v1_api()
 
     def collect(self, namespace: str, pod: str) -> KubernetesSnapshot:
-        logger.info("kubernetes_collecting_data_for_pod", namespace=namespace, pod=pod)
+        logger.info("kubernetes_starting_collecting_data", namespace=namespace, pod=pod)
 
         if self.v1 is None:
             logger.warning("kubernetes_metrics_unavailable")
