@@ -8,6 +8,7 @@ from kubesage.builders.context.container_snapshot_builder import (
 )
 from kubesage.builders.context.incident_builder import IncidentBuilder
 from kubesage.builders.prompt.prompt_builder import PromptBuilder
+from kubesage.models.ai_report import AIReport
 from kubesage.models.incident import Incident
 from kubesage.services.ai_service import AIService
 from kubesage.services.kubernetes_service import KubernetesService
@@ -32,7 +33,7 @@ class IncidentService:
         self.prompt_builder = PromptBuilder()
         self.container_snapshot_builder = ContainerSnapshotBuilder()
 
-    def analyze(self, namespace: str, pod: str) -> dict:
+    def analyze(self, namespace: str, pod: str) -> AIReport:
         logger.info("analysis_started", namespace=namespace, pod=pod)
 
         with tracer.start_as_current_span("build_incident") as span:
@@ -47,6 +48,13 @@ class IncidentService:
             )
 
             incident = self.builder.collect(namespace, pod)
+            if incident.containers == [] and incident.events == []:
+                logger.error("kubernetes_no_data")
+                return AIReport(
+                    summary="AI analysis could not be completed due to unavailable Kubernetes data.",  # noqa
+                    root_cause="Kubernetes data collection failed. This could be due to authentication issues, network problems, or the pod not existing.",  # noqa
+                    evidence=[],
+                )
 
         with tracer.start_as_current_span("run_rules_engine") as span:
             span.set_attribute("rules.namespace", namespace)
@@ -70,7 +78,7 @@ class IncidentService:
             span.set_attribute("llm.pod", pod)
             report = self.ai.analyze(prompt)
 
-            span.set_attribute("llm.response_length", len(report.get("summary", "")))
+            span.set_attribute("llm.response_length", len(report.summary))
 
         logger.info("analysis_completed", namespace=namespace, pod=pod)
 

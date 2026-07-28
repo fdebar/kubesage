@@ -21,4 +21,4 @@ def analyze(
         pod=body.pod,
     )
 
-    return to_response(report)
+    return to_response(report.model_dump())

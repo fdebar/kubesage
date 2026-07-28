@@ -1,6 +1,9 @@
 from unittest.mock import MagicMock, patch
 
+from kubesage.models.ai_report import AIReport
+from kubesage.models.container import ContainerSnapshot
 from kubesage.models.incident import Incident
+from kubesage.models.log import LogSnapshot
 from kubesage.services.incident_service import IncidentService
 
 
@@ -17,7 +20,27 @@ def test_analyze_flow(
     engine_cls: MagicMock,
 ) -> None:
     # IncidentBuilder
-    incident = MagicMock(spec=Incident)
+    incident = Incident(
+        namespace="default",
+        pod="my-pod",
+        phase="Running",
+        containers=[
+            ContainerSnapshot(
+                name="nginx",
+                image="nginx:1.25.0",
+                ready=True,
+                restart_count=1,
+            )
+        ],
+        events=[],
+        kubernetes_logs=LogSnapshot(
+            source="kubernetes",
+            lines=[],
+        ),
+        loki_logs=None,
+        prometheus=None,
+        metrics=None,
+    )
 
     incident_builder = MagicMock()
     incident_builder.collect.return_value = incident
@@ -45,7 +68,10 @@ def test_analyze_flow(
     prompt_builder_cls.return_value = prompt_builder
 
     # AIService
-    report = {"summary": "AI diagnosis report"}
+    report = AIReport(
+        summary="Empty",
+        root_cause="Empty",
+    )
 
     ai = MagicMock()
     ai.analyze.return_value = report
@@ -65,12 +91,9 @@ def test_analyze_flow(
     )
 
     engine.analyze.assert_called_once_with(incident)
-
     context_builder.build.assert_called_once_with(
         incident,
         findings,
     )
-
     prompt_builder.build.assert_called_once_with(context)
-
     ai.analyze.assert_called_once_with(prompt)

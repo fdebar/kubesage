@@ -18,4 +18,4 @@ def analyze_command(args: argparse.Namespace) -> None:
         logger.error(exc)
         sys.exit(1)
 
-    print(json.dumps(report, indent=4, ensure_ascii=False))
+    print(json.dumps(report.model_dump(), indent=4, ensure_ascii=False))

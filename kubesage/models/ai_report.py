@@ -1,10 +1,9 @@
-from dataclasses import dataclass
+from pydantic import BaseModel, Field
 
 
-@dataclass(slots=True)
-class AIReport:
-    severity: str
+class AIReport(BaseModel):
     summary: str
     root_cause: str
-    recommendations: list[str]
-    kubectl_commands: list[str]
+    evidence: list[str] = Field(default_factory=list)
+    recommendations: list[str] = Field(default_factory=list)
+    additional_investigations: list[str] = Field(default_factory=list)

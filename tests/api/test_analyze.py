@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 from kubesage.api.app import app
 from kubesage.api.dependencies import get_incident_service
+from kubesage.models.ai_report import AIReport
 
 client = TestClient(app)
 
@@ -23,14 +24,14 @@ class FakeIncidentService:
         namespace: str,
         pod: str,
         context: str | None = None,
-    ) -> dict:
-        return {
-            "summary": "Pod is failing",
-            "severity": "critical",
-            "root_cause": "Redis unavailable",
-            "recommendations": ["Check redis connectivity"],
-            "kubectl_commands": ["kubectl logs pod"],
-        }
+    ) -> AIReport:
+        return AIReport(
+            summary="Pod is failing",
+            root_cause="Redis unavailable",
+            evidence=["Check redis connectivity"],
+            recommendations=["kubectl logs pod"],
+            additional_investigations=["kubectl logs pod"],
+        )
 
 
 def override_service() -> FakeIncidentService:
@@ -46,4 +47,4 @@ def test_analyze() -> None:
     assert response.status_code == 200
 
     body = response.json()
-    assert body["severity"] == "critical"
+    assert body["root_cause"] == "Redis unavailable"
