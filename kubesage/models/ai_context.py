@@ -30,6 +30,27 @@ class AIContext:
         return recommendations
 
     @property
+    def evidences(self) -> list[str]:
+        seen: set[str] = set()
+        evidences: list[str] = []
+
+        for finding in self.findings:
+            for evidence in finding.structured_evidences:
+                key = f"{finding.rule}:{evidence.name}:{evidence.value}"
+
+                if key not in seen:
+                    seen.add(key)
+                    evidences.append(
+                        f"{finding.rule}: {evidence.name}={evidence.value}"
+                    )
+
+        return evidences
+
+    @property
+    def diagnoses(self) -> list[Finding]:
+        return [finding for finding in self.findings if finding.kind == "diagnosis"]
+
+    @property
     def finding_count(self) -> int:
         return len(self.findings)
 

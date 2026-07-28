@@ -11,7 +11,6 @@ class Evidence(BaseModel):
     type: str
     name: str
     value: Any
-
+    source: str | None = None
     unit: str | None = None
-
     metadata: dict[str, Any] = {}

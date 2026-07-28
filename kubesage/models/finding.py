@@ -60,3 +60,13 @@ class Finding(BaseModel):
         default_factory=list
     )  # TODO: It will be replaced by structured_evidences later
     structured_evidences: list[Evidence] = Field(default_factory=list)
+
+    def evidences_by_source(
+        self,
+        source: str,
+    ) -> list[Evidence]:
+        return [
+            evidence
+            for evidence in self.structured_evidences
+            if evidence.source == source
+        ]

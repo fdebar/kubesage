@@ -36,11 +36,13 @@ class MemoryExhaustionCorrelation(BaseCorrelation):
                         type="container_state",
                         name="termination_reason",
                         value="OOMKilled",
+                        source="kubernetes",
                     ),
                     Evidence(
                         type="correlation",
                         name="trigger",
                         value="high_memory_usage",
+                        source="kubesage",
                     ),
                 ],
                 recommendations=[
