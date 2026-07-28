@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from enum import StrEnum
 
+from kubesage.models.evidence import Evidence
 from kubesage.models.finding import Finding, ResourceRef
 from kubesage.models.incident import Incident
 
@@ -38,3 +39,12 @@ class BaseRule(ABC):
             namespace=incident.namespace,
             name=incident.pod,
         )
+
+    def _evidence(
+        self,
+        type: str,
+        name: str,
+        value: object,
+        unit: str | None = None,
+    ) -> Evidence:
+        return Evidence(type=type, name=name, value=value, unit=unit)

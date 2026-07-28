@@ -3,6 +3,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from kubesage.models.evidence import Evidence
+
 
 class FindingKind(StrEnum):
     OBSERVATION = "observation"
@@ -46,7 +48,6 @@ class Finding(BaseModel):
     resource: ResourceRef
 
     kind: FindingKind = FindingKind.OBSERVATION
-    evidences: list[str] = Field(default_factory=list)
     recommendations: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
@@ -54,3 +55,8 @@ class Finding(BaseModel):
 
     related_findings: list[str] = Field(default_factory=list)
     caused_by: list[str] = Field(default_factory=list)
+
+    evidences: list[str] = Field(
+        default_factory=list
+    )  # TODO: It will be replaced by structured_evidences later
+    structured_evidences: list[Evidence] = Field(default_factory=list)

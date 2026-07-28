@@ -1,4 +1,5 @@
 from kubesage.analyzers.correlations.base import BaseCorrelation
+from kubesage.models.evidence import Evidence
 from kubesage.models.finding import Finding, FindingKind, Severity
 
 
@@ -25,14 +26,22 @@ class MemoryExhaustionCorrelation(BaseCorrelation):
         findings.append(
             Finding(
                 rule=self.name,
-                severity=Severity.CRITICAL,
                 kind=FindingKind.DIAGNOSIS,
+                severity=Severity.CRITICAL,
                 title=self.title,
                 description=self.description,
                 resource=source.resource,
-                evidences=[
-                    "OOMKilled detected",
-                    "High memory usage detected",
+                structured_evidences=[
+                    Evidence(
+                        type="container_state",
+                        name="termination_reason",
+                        value="OOMKilled",
+                    ),
+                    Evidence(
+                        type="correlation",
+                        name="trigger",
+                        value="high_memory_usage",
+                    ),
                 ],
                 recommendations=[
                     "Increase memory limits if required.",

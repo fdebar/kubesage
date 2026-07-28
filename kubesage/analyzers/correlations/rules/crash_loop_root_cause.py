@@ -16,7 +16,6 @@ class CrashLoopRootCauseCorrelation(BaseCorrelation):
         self,
         findings: list[Finding],
     ) -> list[Finding]:
-
         if not self._has(findings, "crash_loop"):
             return findings
 

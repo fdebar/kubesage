@@ -1,5 +1,5 @@
 from kubesage.analyzers.correlations.base import BaseCorrelation
-from kubesage.models.finding import Finding, Severity
+from kubesage.models.finding import Finding, FindingKind, Severity
 
 
 class CPUContentionCorrelation(BaseCorrelation):
@@ -28,6 +28,7 @@ class CPUContentionCorrelation(BaseCorrelation):
         findings.append(
             Finding(
                 rule=self.name,
+                kind=FindingKind.DIAGNOSIS,
                 severity=Severity.HIGH,
                 title="CPU contention detected",
                 description=(
