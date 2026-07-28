@@ -1,13 +1,16 @@
-name: Test and Deploy Helm Chart
+name: Kubesage Helm Chart
 on:
   push:
     branches: [ main ]
+    paths:
+      - "charts/**"
   pull_request:
     branches: [ main ]
-  workflow_dispatch:
+    paths:
+      - "charts/**"
 
 jobs:
-  test-and-deploy:
+  helm-test-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -58,7 +61,7 @@ jobs:
           kubectl logs deployment/kubesage -n kubesage --previous
 
   publish:
-    needs: test-and-deploy 
+    needs: helm-test-and-deploy
     runs-on: ubuntu-latest
     permissions:
       contents: read
