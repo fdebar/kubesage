@@ -18,10 +18,6 @@ spec:
       labels:
         {{- include "kubesage.selectorLabels" . | nindent 8 }}
     spec:
-      imagePullSecrets:
-      {{- range .Values.imagePullSecrets }}
-        - name: {{ .name }}
-      {{- end }}
       serviceAccountName: {{ include "kubesage.serviceAccountName" . }}
       containers:
       - name: {{ include "kubesage.fullname" . }}
