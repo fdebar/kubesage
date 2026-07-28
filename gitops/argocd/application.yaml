@@ -6,12 +6,12 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/fdebar/kubesage.git
+    repoURL: git@github.com:fdebar/kubesage.git
     targetRevision: main
     path: ./charts/kubesage
     helm:
       valueFiles:
-        - ../../charts/kubesage/values-dev.yaml
+        - values-dev.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: kubesage

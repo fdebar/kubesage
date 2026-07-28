@@ -8,9 +8,9 @@ application:
 
 # This is the OpenAI configuration
 openai:
-  apiKey: ""
-  endpoint: ""
-  model: ""
+  apiKey: "ollama"
+  endpoint: "http://host.minikube.internal:11434/v1"
+  model: "qwen2.5-coder:14b"
 
 # If you use kube-prometheus-stack, configure the labels expected by your Prometheus instance.
 serviceMonitor:
