@@ -4,6 +4,11 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 
+class FindingKind(StrEnum):
+    OBSERVATION = "observation"
+    DIAGNOSIS = "diagnosis"
+
+
 class Severity(StrEnum):
     INFO = "INFO"
     LOW = "LOW"
@@ -40,6 +45,7 @@ class Finding(BaseModel):
     description: str
     resource: ResourceRef
 
+    kind: FindingKind = FindingKind.OBSERVATION
     evidences: list[str] = Field(default_factory=list)
     recommendations: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)

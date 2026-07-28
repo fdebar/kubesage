@@ -1,11 +1,12 @@
 from kubesage.analyzers.correlations.base import BaseCorrelation
-from kubesage.models.finding import Finding, Severity
+from kubesage.models.finding import Finding, FindingKind, Severity
 
 
 class MemoryExhaustionCorrelation(BaseCorrelation):
     rule_id = "memory_exhaustion"
     name = "Memory exhaustion"
-    description = "Memory exhaustion detected"
+    title = "Memory exhaustion detected"
+    description = "The container was killed because it exceeded its memory limit."
 
     def apply(
         self,
@@ -25,10 +26,9 @@ class MemoryExhaustionCorrelation(BaseCorrelation):
             Finding(
                 rule=self.name,
                 severity=Severity.CRITICAL,
-                title="Memory exhaustion detected",
-                description=(
-                    "The container was killed because it exceeded its memory limit."
-                ),
+                kind=FindingKind.DIAGNOSIS,
+                title=self.title,
+                description=self.description,
                 resource=source.resource,
                 evidences=[
                     "OOMKilled detected",
