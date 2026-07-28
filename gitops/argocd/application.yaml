@@ -1,0 +1,19 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kubesage
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/fdebar/kubesage.git
+    targetRevision: main
+    path: ./charts/kubesage
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kubesage
+  syncPolicy:
+    automated:
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
