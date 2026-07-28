@@ -7,6 +7,7 @@ from kubesage.models.incident import Incident
 
 
 class RestartRule(BaseRule):
+    rule_id = "restart"
     name = "RestartCount"
     title = "Container restarted multiple times"
     description = "The container has restarted more than the expected threshold."

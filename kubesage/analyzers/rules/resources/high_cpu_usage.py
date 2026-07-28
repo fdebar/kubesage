@@ -4,6 +4,7 @@ from kubesage.models.incident import Incident
 
 
 class HighCPUUsageRule(BaseRule):
+    rule_id = "high_cpu_usage"
     name = "High CPU Usage"
     title = "Detect containers close to their CPU limit."
     description = "Detect containers close to their CPU limit."

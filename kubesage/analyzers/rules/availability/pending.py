@@ -8,6 +8,7 @@ from kubesage.models.incident import Incident
 
 
 class PendingRule(BaseRule):
+    rule_id = "pending"
     name = "Pending"
     title = "Pod cannot be scheduled"
     description = "The pod is pending because Kubernetes cannot schedule it."

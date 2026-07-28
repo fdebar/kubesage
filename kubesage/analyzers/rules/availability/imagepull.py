@@ -7,6 +7,7 @@ from kubesage.models.incident import Incident
 
 
 class ImagePullRule(BaseRule):
+    rule_id = "image_pull"
     name = "ImagePull"
     title = "Container image cannot be pulled"
     description = "The container image cannot be downloaded."

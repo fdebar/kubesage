@@ -7,6 +7,7 @@ from kubesage.models.incident import Incident
 
 
 class CrashLoopRule(BaseRule):
+    rule_id = "crashloop"
     name = "CrashLoopBackOff"
     description = "Detect CrashLoopBackOff"
     title = "Container is crashing"

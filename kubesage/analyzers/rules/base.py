@@ -16,12 +16,13 @@ class RuleCategory(StrEnum):
 class BaseRule(ABC):
     """Base class for every diagnostic rule."""
 
+    description: str
+    enabled: bool = True
+    rule_id: str | None = None
+
     @property
     def name(self) -> str:
-        return self.__class__.__name__
-
-    description = ""
-    enabled = True
+        return self.rule_id or self.__class__.__name__
 
     @abstractmethod
     def evaluate(

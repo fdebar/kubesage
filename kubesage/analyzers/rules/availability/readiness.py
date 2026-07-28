@@ -8,6 +8,7 @@ from kubesage.models.incident import Incident
 
 
 class ReadinessRule(BaseRule):
+    rule_id = "readiness"
     name = "Readiness"
     title = "Container is not Ready"
     description = "The container is not ready to receive traffic."
