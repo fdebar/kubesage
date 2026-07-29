@@ -12,10 +12,17 @@ kube-prometheus-stack:
   nodeExporter:
     enabled: true
 
+# Loki subchart configuration
 loki:
-  storage:
-    type: filesystem
-    bucketNames:
-      chunks: chunks
-      ruler: ruler
-      admin: admin
+  deploymentMode: SingleBinary
+  singleBinary:
+    replicas: 1
+  
+  # Inner Loki chart config
+  loki:
+    storage:
+      type: filesystem
+      bucketNames:
+        chunks: chunks
+        ruler: ruler
+        admin: admin
