@@ -1,27 +1,31 @@
-from dataclasses import dataclass, field
-
 from kubesage.models.finding import Finding, FindingKind, Severity
 from kubesage.models.incident import Incident
+from kubesage.models.prompt_context import PromptContext
 
 
-@dataclass(slots=True)
 class AIContext:
-    incident: Incident
-    findings: list[Finding] = field(default_factory=list)
-    metrics_summary: str = ""
+    def __init__(self, incident: Incident, findings: list[Finding]):
+        self.ctx = PromptContext(
+            namespace=incident.namespace,
+            pod=incident.pod,
+            phase=incident.phase,
+            logs=incident.logs,
+            events=incident.events,
+            findings=findings,
+        )
 
     @property
     def highest_severity(self) -> Severity | None:
-        if not self.findings:
+        if not self.ctx.findings:
             return None
-        return max(self.findings, key=lambda f: f.severity.weight).severity
+        return max(self.ctx.findings, key=lambda f: f.severity.weight).severity
 
     @property
     def recommendations(self) -> list[str]:
         seen: set[str] = set()
         recommendations: list[str] = []
 
-        for finding in self.findings:
+        for finding in self.ctx.findings:
             for recommendation in finding.recommendations:
                 if recommendation not in seen:
                     seen.add(recommendation)
@@ -34,7 +38,7 @@ class AIContext:
         seen: set[str] = set()
         evidences: list[str] = []
 
-        for finding in self.findings:
+        for finding in self.ctx.findings:
             for evidence in finding.structured_evidences:
                 key = f"{finding.rule}:{evidence.name}:{evidence.value}"
 
@@ -50,22 +54,22 @@ class AIContext:
     def root_causes(self) -> list[Finding]:
         return [
             f
-            for f in self.findings
+            for f in self.ctx.findings
             if f.kind == FindingKind.DIAGNOSIS and f.severity == Severity.CRITICAL
         ]
 
     @property
     def observations(self) -> list[Finding]:
-        return [f for f in self.findings if f.kind == FindingKind.OBSERVATION]
+        return [f for f in self.ctx.findings if f.kind == FindingKind.OBSERVATION]
 
     @property
     def diagnoses(self) -> list[Finding]:
-        return [f for f in self.findings if f.kind == FindingKind.DIAGNOSIS]
+        return [f for f in self.ctx.findings if f.kind == FindingKind.DIAGNOSIS]
 
     @property
     def finding_count(self) -> int:
-        return len(self.findings)
+        return len(self.ctx.findings)
 
     @property
     def has_findings(self) -> bool:
-        return bool(self.findings)
+        return bool(self.ctx.findings)

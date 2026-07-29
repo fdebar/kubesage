@@ -3,48 +3,46 @@ from kubesage.models.finding import Finding
 
 
 class PromptBuilder:
-    def build(self, context: AIContext) -> str:
+    def build(self, ai: AIContext) -> str:
         lines: list[str] = []
 
         lines.append("# Kubernetes Incident")
-        lines.append(f"Namespace: {context.incident.namespace}")
-        lines.append(f"Pod: {context.incident.pod}")
-        lines.append(f"Phase: {context.incident.phase}")
+        lines.append(f"Namespace: {ai.ctx.namespace}")
+        lines.append(f"Pod: {ai.ctx.pod}")
+        lines.append(f"Phase: {ai.ctx.phase}")
         lines.append("")
 
-        if context.has_findings:
+        if ai.has_findings:
             lines.append("# Diagnostic Summary")
-            lines.append(f"Count: {context.finding_count}")
-            if context.highest_severity:
-                lines.append(
-                    f"Highest Severity: {context.highest_severity.value.upper()}"
-                )
+            lines.append(f"Count: {ai.finding_count}")
+            if ai.highest_severity:
+                lines.append(f"Highest Severity: {ai.highest_severity.value.upper()}")
 
-            if context.diagnoses:
+            if ai.diagnoses:
                 lines.append("# Diagnoses")
-                for finding in context.diagnoses:
+                for finding in ai.diagnoses:
                     self._append_finding(lines, finding)
 
-            if context.observations:
+            if ai.observations:
                 lines.append("# Observations")
-                for finding in context.observations:
+                for finding in ai.observations:
                     self._append_finding(lines, finding)
 
-        if context.incident.events:
+        if ai.ctx.events:
             lines.append("# Kubernetes Events")
-            for event in context.incident.events:
+            for event in ai.ctx.events:
                 lines.append(f"- [{event.type}] {event.reason}: {event.message}")
             lines.append("")
 
-        if context.incident.logs:
+        if ai.ctx.logs:
             lines.append("# Logs")
-            lines.append(context.incident.logs)
+            lines.append(ai.ctx.logs)
             lines.append("")
 
-        if context.recommendations:
+        if ai.recommendations:
             lines.append("# Recommendations")
 
-            for recommendation in context.recommendations:
+            for recommendation in ai.recommendations:
                 lines.append(f"- {recommendation}")
 
             lines.append("")
@@ -66,7 +64,7 @@ Rules:
 7. Answer using JSON only.
 """
         )
-        print("\n".join(lines))
+
         return "\n".join(lines)
 
     def _append_finding(self, lines: list[str], finding: Finding) -> None:
