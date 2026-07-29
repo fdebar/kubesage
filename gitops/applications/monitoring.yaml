@@ -11,10 +11,11 @@ spec:
     path: gitops/charts/monitoring
     helm:
       valueFiles:
-        - gitops/environments/dev/grafana.yaml
-        - gitops/environments/dev/loki.yaml
-        - gitops/environments/dev/tempo.yaml
-        - gitops/environments/dev/kube-prometheus-stack.yaml
+      valueFiles:
+        - ../../environments/dev/grafana.yaml
+        - ../../environments/dev/loki.yaml
+        - ../../environments/dev/tempo.yaml
+        - ../../environments/dev/kube-prometheus-stack.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
