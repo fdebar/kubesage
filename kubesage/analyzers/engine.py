@@ -1,5 +1,6 @@
 import structlog
 
+from kubesage.analyzers.correlation_loader import discover_correlations
 from kubesage.analyzers.rule_loader import discover_rules
 from kubesage.models.finding import Finding
 from kubesage.models.incident import Incident
@@ -14,8 +15,11 @@ class DiagnosticEngine:
         correlator: FindingsCorrelator | None = None,
     ) -> None:
         self.rules = discover_rules()
+        self.correlations = discover_correlations()
         self.correlator = correlator or FindingsCorrelator()
+
         logger.info("rules_loaded", rules_count=len(self.rules))
+        logger.info("correlations_loaded", correlations_count=len(self.correlations))
 
     def analyze(self, incident: Incident) -> list[Finding]:
         findings = []
@@ -41,3 +45,7 @@ class DiagnosticEngine:
     def list_rules(self) -> None:
         for rule in self.rules:
             print(f"- {rule.name}: {rule.description}")
+
+    def list_correlations(self) -> None:
+        for correlation in self.correlations:
+            print(f"- {correlation.name}: {correlation.description}")
