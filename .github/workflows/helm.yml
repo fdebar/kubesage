@@ -24,8 +24,14 @@ jobs:
         run: make helm-lint
 
       - name: Build Docker image
-        run: |
-          docker build -t kubesage:helm-test .
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: |
+            kubesage:helm-test
 
       - name: Create Kind cluster
         uses: helm/kind-action@v1.12.0
