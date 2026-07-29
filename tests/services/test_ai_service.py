@@ -16,6 +16,8 @@ def test_analyze_success(mock_openai_class: MagicMock) -> None:
             )
         )
     ]
+    mock_response.usage = MagicMock()
+    mock_response.usage.total_tokens = 100
     mock_client.chat.completions.create.return_value = mock_response
 
     service = AIService()

@@ -32,11 +32,6 @@ KUBERNETES_ERRORS = Counter(
     "Kubernetes API errors",
 )
 
-OPENAI_DURATION = Histogram(
-    "kubesage_openai_duration_seconds",
-    "LLM request duration",
-)
-
 KUBERNETES_DURATION = Histogram(
     "kubesage_kubernetes_duration_seconds",
     "Kubernetes API duration",
@@ -45,4 +40,22 @@ KUBERNETES_DURATION = Histogram(
 PROMETHEUS_DURATION = Histogram(
     "kubesage_prometheus_duration_seconds",
     "Prometheus query duration",
+)
+
+OPENAI_REQUESTS = Counter(
+    "kubesage_openai_requests_total",
+    "Number of LLM requests",
+    [
+        "status",
+    ],
+)
+
+OPENAI_TOKENS = Histogram(
+    "kubesage_openai_tokens",
+    "Number of tokens sent to the LLM",
+)
+
+OPENAI_DURATION = Histogram(
+    "kubesage_openai_duration_seconds",
+    "LLM request duration",
 )

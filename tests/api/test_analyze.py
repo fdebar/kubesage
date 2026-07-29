@@ -13,9 +13,9 @@ client = TestClient(app)
 
 @pytest.fixture(autouse=True)
 def clear_overrides() -> Generator:
-    app.dependency_overrides = {}
+    app.dependency_overrides.clear()
     yield
-    app.dependency_overrides = {}
+    app.dependency_overrides.clear()
 
 
 class FakeIncidentService:
@@ -39,12 +39,17 @@ def override_service() -> FakeIncidentService:
 
 
 def test_analyze() -> None:
-    app.dependency_overrides[get_incident_service] = override_service
-    response = client.post(
-        "/api/v1/analyze", json={"namespace": "default", "pod": "ai-demo-app"}
-    )
+    with TestClient(app) as client:
+        app.dependency_overrides[get_incident_service] = override_service
 
-    assert response.status_code == 200
+        response = client.post(
+            "/api/v1/analyze",
+            json={
+                "namespace": "default",
+                "pod": "ai-demo-app",
+            },
+        )
 
-    body = response.json()
-    assert body["root_cause"] == "Redis unavailable"
+        assert response.status_code == 200
+
+        assert response.json()["root_cause"] == "Redis unavailable"
