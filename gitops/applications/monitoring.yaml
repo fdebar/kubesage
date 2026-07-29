@@ -11,7 +11,6 @@ spec:
     path: gitops/charts/monitoring
     helm:
       valueFiles:
-      valueFiles:
         - ../../environments/dev/kube-prometheus-stack.yaml
         - ../../environments/dev/grafana.yaml
         - ../../environments/dev/loki.yaml
