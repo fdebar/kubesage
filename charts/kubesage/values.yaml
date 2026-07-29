@@ -32,7 +32,7 @@ observability:
 image:
   repository: ghcr.io/fdebar/kubesage
   # This sets the pull policy for images.
-  pullPolicy: Always
+  pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: latest
 
