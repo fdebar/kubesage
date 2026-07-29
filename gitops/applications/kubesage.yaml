@@ -11,7 +11,7 @@ spec:
     path: charts/kubesage
     helm:
       valueFiles:
-        - ../../environments/dev/kubesage.yaml
+        - ../../gitops/environments/dev/kubesage.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: kubesage
@@ -21,3 +21,4 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - ServerSideApply=true
