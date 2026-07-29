@@ -8,7 +8,7 @@ from kubesage.models.container import (
     ContainerStatus,
     PodResources,
 )
-from kubesage.models.events import Event
+from kubesage.models.event import Event
 from kubesage.models.kubernetes_snapshot import KubernetesSnapshot
 from kubesage.models.log import LogSnapshot
 from kubesage.providers.kubernetes_provider import KubernetesProvider
@@ -155,9 +155,9 @@ class KubernetesService(KubernetesProvider):
                     reason=event_item.reason,
                     message=event_item.message,
                     last_timestamp=(
-                        str(event_item.last_timestamp)
+                        event_item.last_timestamp.timestamp()
                         if event_item.last_timestamp
-                        else ""
+                        else None
                     ),
                 )
             )

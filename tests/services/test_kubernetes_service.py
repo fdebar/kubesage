@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -105,7 +106,7 @@ def test_collect_success(mock_create_api: MagicMock) -> None:
     mock_event.type = "Warning"
     mock_event.reason = "FailedScheduling"
     mock_event.message = "0/1 nodes are available"
-    mock_event.last_timestamp = "2026-07-25T12:00:00Z"
+    mock_event.last_timestamp = datetime(2026, 7, 25, 12, 0, 0, tzinfo=UTC)
 
     mock_events_list = MagicMock()
     mock_events_list.items = [mock_event]
@@ -157,7 +158,6 @@ def test_collect_resources(mock_create_api: MagicMock) -> None:
     mock_event.type = "Warning"
     mock_event.reason = "FailedScheduling"
     mock_event.message = "0/1 nodes are available"
-    mock_event.last_timestamp = "2026-07-25T12:00:00Z"
 
     mock_events_list = MagicMock()
     mock_events_list.items = [mock_event]

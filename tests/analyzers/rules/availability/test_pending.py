@@ -1,8 +1,10 @@
+from datetime import datetime
+
 import pytest
 
 from kubesage.analyzers.rules.availability.pending import PendingRule
 from kubesage.models.container import ContainerSnapshot
-from kubesage.models.events import Event
+from kubesage.models.event import Event
 from kubesage.models.incident import Incident
 
 
@@ -54,13 +56,13 @@ def incident_pending() -> Incident:
                 type="Pending",
                 reason="FailedScheduling",
                 message="The pod is in Pending",
-                last_timestamp="2022-01-01T00:00:00Z",
+                last_timestamp=datetime.fromisoformat("2022-01-01T00:00:00Z"),
             ),
             Event(
                 type="Scheduled",
                 reason="Scheduled",
                 message="The pod is scheduled",
-                last_timestamp="2022-01-01T00:00:00Z",
+                last_timestamp=datetime.fromisoformat("2022-01-01T00:00:00Z"),
             ),
         ],
     )
@@ -104,7 +106,7 @@ def incident_running() -> Incident:
                 type="Running",
                 reason="SomethingElse",
                 message="The pod is running",
-                last_timestamp="2022-01-01T00:00:00Z",
+                last_timestamp=datetime.fromisoformat("2022-01-01T00:00:00Z"),
             ),
         ],
     )

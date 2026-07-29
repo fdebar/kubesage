@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 
 from kubesage.models.container import ContainerSnapshot
-from kubesage.models.events import Event
+from kubesage.models.event import Event
 from kubesage.models.log import LogSnapshot, LogSource
 from kubesage.models.metrics import PodMetrics
 from kubesage.models.prometheus import PrometheusResourceUsage

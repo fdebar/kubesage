@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from kubesage.models.events import Event
+from kubesage.models.event import Event
 from kubesage.models.finding import Finding
 
 

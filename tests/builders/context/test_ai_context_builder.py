@@ -1,6 +1,8 @@
+from datetime import datetime
+
 from kubesage.builders.prompt.prompt_builder import PromptBuilder
 from kubesage.models.ai_context import AIContext
-from kubesage.models.events import Event
+from kubesage.models.event import Event
 from kubesage.models.evidence import Evidence
 from kubesage.models.finding import (
     Finding,
@@ -22,7 +24,7 @@ def make_incident() -> Incident:
                 type="Warning",
                 reason="BackOff",
                 message="Back-off restarting failed container",
-                last_timestamp="2023-01-01T00:00:00Z",
+                last_timestamp=datetime.fromisoformat("2023-01-01T00:00:00Z"),
             )
         ],
         kubernetes_logs=LogSnapshot(
