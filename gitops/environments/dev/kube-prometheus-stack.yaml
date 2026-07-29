@@ -23,6 +23,11 @@ loki:
     replicas: 0
   backend:
     replicas: 0
+  gateway:
+    enabled: false
+  test:
+    enabled: false
+
   # Disable cache in dev and set low values to avoid the pod creation
   chunksCache:
     enabled: false
