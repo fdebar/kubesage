@@ -1,4 +1,3 @@
-import json
 import time
 
 import structlog
@@ -23,17 +22,17 @@ class AIService:
         )
 
     def analyze(self, prompt: str) -> AIReport:
-        logger.info("llm_analyze_start...")
+        logger.info("llm.analyze.start", model=settings.openai_model)
 
         try:
             start = time.perf_counter()
-            response = self.client.chat.completions.create(
+            response = self.client.chat.completions.parse(
                 model=settings.openai_model,
                 messages=[
                     {"role": "system", "content": "You are an expert Kubernetes SRE."},
                     {"role": "user", "content": prompt},
                 ],
-                response_format={"type": "json_object"},
+                response_format=AIReport,
             )
             OPENAI_DURATION.observe(time.perf_counter() - start)
             OPENAI_REQUESTS.labels(status="success").inc()
@@ -41,19 +40,20 @@ class AIService:
                 OPENAI_TOKENS.observe(response.usage.total_tokens)
 
         except Exception as exc:  # noqa: BLE001
-            logger.error("llm_analyze_failed", error=str(exc))
+            logger.error("llm.analyze.response.failed", reason=repr(exc))
             OPENAI_REQUESTS.labels(status="error").inc()
 
             return AIReport(
                 summary="AI analysis could not be completed.", root_cause=""
             )
-        content = response.choices[0].message.content
+        logger.debug("llm.analyze.response.raw", response=response)
 
-        logger.debug("llm_analyze_raw_response", content=content)
-        try:
-            content = json.loads(content or "{}")
-            return AIReport(**content)
-        except Exception as exc:
-            logger.error("llm_analyze_raw_response_failed", error=str(exc))
+        report: AIReport | None = response.choices[0].message.parsed
+        if report is None:
+            logger.error("llm.analyze.response.empty")
 
-            return AIReport(summary="AI response validation failed.", root_cause="")
+            return AIReport(
+                summary="AI analysis could not be completed.", root_cause=""
+            )
+
+        return report

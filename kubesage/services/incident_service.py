@@ -78,8 +78,6 @@ class IncidentService:
             span.set_attribute("llm.pod", pod)
             report = self.ai.analyze(prompt)
 
-            span.set_attribute("llm.response_length", len(report.summary))
-
         logger.info("analysis_completed", namespace=namespace, pod=pod)
 
         return report
