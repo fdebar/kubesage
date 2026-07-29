@@ -8,15 +8,16 @@ spec:
   source:
     repoURL: git@github.com:fdebar/kubesage.git
     targetRevision: main
-    path: ./charts/kubesage
-    helm:
-      valueFiles:
-        - values-dev.yaml
+    path: charts/kubesage
+    #helm:
+    #  valueFiles:
+    #    - values-dev.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: kubesage
   syncPolicy:
     automated:
+      prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
