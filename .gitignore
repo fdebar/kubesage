@@ -27,3 +27,9 @@ htmlcov/
 
 # Environment variables
 .env
+
+# Helm dependencies
+charts/*/charts/
+
+# Helm cache
+*.tgz

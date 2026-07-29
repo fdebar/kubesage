@@ -11,7 +11,7 @@ spec:
     path: gitops/charts/monitoring
     helm:
       valueFiles:
-        - ../../environments/dev/monitoring-values.yaml
+        - gitops/environments/dev/monitoring-values.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring

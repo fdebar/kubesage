@@ -1,0 +1,44 @@
+adminUser: admin
+adminPassword: kubesage-admin
+service:
+  type: ClusterIP
+  port: 80
+persistence:
+  enabled: true
+  size: 5Gi
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        access: proxy
+        url: http://monitoring-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090
+        isDefault: true
+
+      - name: Loki
+        type: loki
+        access: proxy
+        url: http://loki.monitoring.svc.cluster.local:3100
+
+      - name: Tempo
+        type: tempo
+        access: proxy
+        url: http://tempo.monitoring.svc.cluster.local:3200
+        jsonData:
+          tracesToLogs:
+            datasourceUid: loki
+            tags:
+              - key: namespace
+                value: namespace
+              - key: pod
+                value: pod
+plugins:
+  - grafana-piechart-panel
+grafana.ini:
+  server:
+    domain: localhost
+  users:
+    allow_sign_up: false
+  analytics:
+    reporting_enabled: false
