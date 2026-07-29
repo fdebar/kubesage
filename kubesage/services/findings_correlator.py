@@ -1,4 +1,4 @@
-from kubesage.analyzers.correlation_loader import (
+from kubesage.analyzers.correlations.correlation_loader import (
     discover_correlations,
 )
 from kubesage.models.finding import Finding

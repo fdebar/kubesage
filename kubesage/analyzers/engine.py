@@ -1,7 +1,7 @@
 import structlog
 
-from kubesage.analyzers.correlation_loader import discover_correlations
-from kubesage.analyzers.rule_loader import discover_rules
+from kubesage.analyzers.correlations.correlation_loader import discover_correlations
+from kubesage.analyzers.rules.rule_loader import discover_rules
 from kubesage.models.finding import Finding
 from kubesage.models.incident import Incident
 from kubesage.services.findings_correlator import FindingsCorrelator
