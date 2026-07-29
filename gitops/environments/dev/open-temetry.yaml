@@ -1,14 +1,15 @@
-image:
-  repository: otel/opentelemetry-collector-k8s
+opentelemetry-collector:
+  image:
+    repository: otel/opentelemetry-collector-k8s
 
-  # Deployment: Applications push OTLP traces, metrics, or logs directly to a central Service endpoint.
-  mode: deployment
+    # Deployment: Applications push OTLP traces, metrics, or logs directly to a central Service endpoint.
+    mode: deployment
 
-  resources:
-    limits:
-      cpu: 0.5
-      memory: 512Mi
-    requests:
-      cpu: 0.25
-      memory: 256Mi
+    resources:
+      limits:
+        cpu: 0.5
+        memory: 512Mi
+      requests:
+        cpu: 0.25
+        memory: 256Mi
 
