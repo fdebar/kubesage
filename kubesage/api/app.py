@@ -24,8 +24,8 @@ app.include_router(system_router)
 app.include_router(analysis_router, prefix="/api/v1")
 app.include_router(metrics_router)
 
+app.add_middleware(MetricsMiddleware)
 app.add_middleware(RequestIDMiddleware)
 app.add_middleware(LoggingMiddleware)
-app.add_middleware(MetricsMiddleware)
 
 register_exception_handlers(app)

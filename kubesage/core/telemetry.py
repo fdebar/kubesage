@@ -36,7 +36,4 @@ def setup_telemetry(app: FastAPI) -> None:
 
     trace.set_tracer_provider(provider)
 
-    if isinstance(provider, TracerProvider):
-        provider.shutdown()
-
     FastAPIInstrumentor.instrument_app(app, tracer_provider=provider)

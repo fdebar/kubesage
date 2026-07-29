@@ -36,7 +36,7 @@ class IncidentService:
     def analyze(self, namespace: str, pod: str) -> AIReport:
         logger.info("analysis_started", namespace=namespace, pod=pod)
 
-        with tracer.start_as_current_span("build_incident") as span:
+        with tracer.start_as_current_span("incident.build") as span:
             span.set_attribute("incident.namespace", namespace)
             span.set_attribute("incident.pod", pod)
             self.builder = IncidentBuilder(
@@ -56,24 +56,24 @@ class IncidentService:
                     evidence=[],
                 )
 
-        with tracer.start_as_current_span("run_rules_engine") as span:
+        with tracer.start_as_current_span("rules.engine.analyze") as span:
             span.set_attribute("rules.namespace", namespace)
             span.set_attribute("rules.pod", pod)
             findings = self.engine.analyze(incident)
 
             span.set_attribute("rules.count", len(findings))
 
-        with tracer.start_as_current_span("build_ai_context") as span:
+        with tracer.start_as_current_span("ai_context.build") as span:
             span.set_attribute("ai_context.namespace", namespace)
             span.set_attribute("ai_context.pod", pod)
             ctxbuilder = self.ai_context_builder.build(incident, findings)
 
-        with tracer.start_as_current_span("build_ai_prompt") as span:
+        with tracer.start_as_current_span("ai_prompt.build") as span:
             span.set_attribute("ai_prompt.namespace", namespace)
             span.set_attribute("ai_prompt.pod", pod)
             prompt = self.prompt_builder.build(ctxbuilder)
 
-        with tracer.start_as_current_span("call_llm") as span:
+        with tracer.start_as_current_span("llm.analyze") as span:
             span.set_attribute("llm.namespace", namespace)
             span.set_attribute("llm.pod", pod)
             report = self.ai.analyze(prompt)
