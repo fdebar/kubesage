@@ -12,10 +12,10 @@ spec:
     helm:
       valueFiles:
       valueFiles:
+        - ../../environments/dev/kube-prometheus-stack.yaml
         - ../../environments/dev/grafana.yaml
         - ../../environments/dev/loki.yaml
         - ../../environments/dev/tempo.yaml
-        - ../../environments/dev/kube-prometheus-stack.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
