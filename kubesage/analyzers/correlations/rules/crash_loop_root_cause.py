@@ -1,4 +1,5 @@
 from kubesage.analyzers.correlations.base import BaseCorrelation
+from kubesage.models.evidence import Evidence
 from kubesage.models.finding import (
     Finding,
     FindingKind,
@@ -34,13 +35,27 @@ class CrashLoopRootCauseCorrelation(BaseCorrelation):
                 title=self.title,
                 description=self.description,
                 resource=source.resource,
-                caused_by=[
-                    "crash_loop",
-                    "memory_exhaustion",
-                ],
                 recommendations=[
                     "Increase memory limits.",
                     "Investigate application memory usage.",
+                ],
+                structured_evidences=[
+                    Evidence(
+                        type="pod_status",
+                        name="reason",
+                        value="CrashLoopBackOff",
+                        source="kubernetes",
+                    ),
+                    Evidence(
+                        type="correlation",
+                        name="trigger",
+                        value="memory_exhaustion",
+                        source="kubesage",
+                    ),
+                ],
+                caused_by=[
+                    "crash_loop",
+                    "memory_exhaustion",
                 ],
                 confidence=0.97,
                 priority=90,

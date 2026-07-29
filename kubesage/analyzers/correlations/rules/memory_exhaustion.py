@@ -31,6 +31,10 @@ class MemoryExhaustionCorrelation(BaseCorrelation):
                 title=self.title,
                 description=self.description,
                 resource=source.resource,
+                recommendations=[
+                    "Increase memory limits if required.",
+                    "Investigate memory leaks.",
+                ],
                 structured_evidences=[
                     Evidence(
                         type="container_state",
@@ -44,10 +48,6 @@ class MemoryExhaustionCorrelation(BaseCorrelation):
                         value="high_memory_usage",
                         source="kubesage",
                     ),
-                ],
-                recommendations=[
-                    "Increase memory limits if required.",
-                    "Investigate memory leaks.",
                 ],
                 caused_by=[
                     "high_memory_usage",
