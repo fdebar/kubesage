@@ -72,10 +72,10 @@ def test_pending_not_ready(incident_pending: Incident, rule: PendingRule) -> Non
     findings = rule.evaluate(incident_pending)
 
     assert len(findings) == 1
-    assert findings[0].evidences == [
-        "Pod phase = Pending",
-        "FailedScheduling: The pod is in Pending",
-    ]
+    assert findings[0].structured_evidences[0].name == "phase"
+    assert findings[0].structured_evidences[0].value == "Pending"
+    assert findings[0].structured_evidences[1].name == "scheduling_failure"
+    assert findings[0].structured_evidences[1].value == "The pod is in Pending"
     assert findings[0].recommendations == [
         "Review the scheduler event message.",
         "Check node resources (CPU, memory, ephemeral storage).",

@@ -1,4 +1,5 @@
 from kubesage.analyzers.rules.base import BaseRule, RuleCategory
+from kubesage.models.evidence import Evidence, EvidenceType
 from kubesage.models.finding import (
     Finding,
     FindingKind,
@@ -31,9 +32,22 @@ class RestartRule(BaseRule):
                     title=self.title,
                     description=self.description,
                     resource=self._pod_resource(incident),
-                    evidences=[
-                        f"Container '{container.name}' restart count = {container.restart_count}.",  # noqa
-                        f"Restart threshold = {self.RESTART_THRESHOLD}.",
+                    structured_evidences=[
+                        Evidence(
+                            type=EvidenceType.CONTAINER_STATE,
+                            name="restart_count",
+                            value=str(container.restart_count),
+                            source="kubernetes",
+                            metadata={
+                                "container": container.name,
+                            },
+                        ),
+                        Evidence(
+                            type=EvidenceType.THRESHOLD,
+                            name="restart_threshold",
+                            value=str(self.RESTART_THRESHOLD),
+                            source="kubesage",
+                        ),
                     ],
                     recommendations=[
                         "Inspect the container logs.",

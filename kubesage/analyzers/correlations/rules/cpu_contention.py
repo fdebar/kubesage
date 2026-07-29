@@ -1,5 +1,5 @@
 from kubesage.analyzers.correlations.base import BaseCorrelation
-from kubesage.models.evidence import Evidence
+from kubesage.models.evidence import Evidence, EvidenceType
 from kubesage.models.finding import Finding, FindingKind, Severity
 
 
@@ -34,10 +34,6 @@ class CPUContentionCorrelation(BaseCorrelation):
                 title=self.title,
                 description=self.description,
                 resource=cpu_finding.resource,
-                evidences=[
-                    "High CPU usage detected",
-                    "CPU throttling detected",
-                ],
                 recommendations=[
                     "Increase CPU limits if workload requires it.",
                     "Investigate CPU-intensive operations.",
@@ -45,15 +41,21 @@ class CPUContentionCorrelation(BaseCorrelation):
                 ],
                 structured_evidences=[
                     Evidence(
-                        type="metric",
+                        type=EvidenceType.METRIC,
                         name="cpu_usage",
-                        value="High CPU Usage",
-                        source="kubernetes",
+                        value="High CPU usage detected",
+                        source="prometheus",
                     ),
                     Evidence(
-                        type="correlation",
+                        type=EvidenceType.METRIC,
+                        name="cpu_throttling",
+                        value="CPU throttling detected",
+                        source="prometheus",
+                    ),
+                    Evidence(
+                        type=EvidenceType.CORRELATION,
                         name="trigger",
-                        value="high_cpu_usage",
+                        value="high_cpu_usage + cpu_throttling",
                         source="kubesage",
                     ),
                 ],

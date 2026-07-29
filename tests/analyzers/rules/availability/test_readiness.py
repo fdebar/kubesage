@@ -2,6 +2,7 @@ import pytest
 
 from kubesage.analyzers.rules.availability.readiness import ReadinessRule
 from kubesage.models.container import ContainerSnapshot
+from kubesage.models.evidence import EvidenceType
 from kubesage.models.finding import ResourceRef
 from kubesage.models.incident import Incident
 
@@ -48,9 +49,9 @@ def test_not_ready_container_returns_finding(
         namespace=incident.namespace,
         name=incident.pod,
     )
-    assert findings[0].evidences == [
-        f"Container '{incident.containers[0].name}' ready = False.",
-    ]
+    assert findings[0].structured_evidences[0].value == "False"
+    assert findings[0].structured_evidences[0].name == "ready"
+    assert findings[0].structured_evidences[0].type == EvidenceType.CONTAINER_STATE
 
 
 def test_multiple_not_ready_containers(rule: ReadinessRule, incident: Incident) -> None:
@@ -71,12 +72,12 @@ def test_multiple_not_ready_containers(rule: ReadinessRule, incident: Incident) 
     findings = rule.evaluate(incident)
 
     assert len(findings) == 2
-    assert findings[0].evidences == [
-        f"Container '{incident.containers[0].name}' ready = False.",
-    ]
-    assert findings[1].evidences == [
-        f"Container '{incident.containers[1].name}' ready = False.",
-    ]
+    assert findings[0].structured_evidences[0].value == "False"
+    assert findings[0].structured_evidences[0].name == "ready"
+    assert findings[0].structured_evidences[0].type == EvidenceType.CONTAINER_STATE
+    assert findings[1].structured_evidences[0].value == "False"
+    assert findings[1].structured_evidences[0].name == "ready"
+    assert findings[1].structured_evidences[0].type == EvidenceType.CONTAINER_STATE
 
 
 def test_mixed_ready_and_not_ready(rule: ReadinessRule, incident: Incident) -> None:
@@ -97,6 +98,6 @@ def test_mixed_ready_and_not_ready(rule: ReadinessRule, incident: Incident) -> N
     findings = rule.evaluate(incident)
 
     assert len(findings) == 1
-    assert findings[0].evidences == [
-        f"Container '{incident.containers[1].name}' ready = False.",
-    ]
+    assert findings[0].structured_evidences[0].value == "False"
+    assert findings[0].structured_evidences[0].name == "ready"
+    assert findings[0].structured_evidences[0].type == EvidenceType.CONTAINER_STATE

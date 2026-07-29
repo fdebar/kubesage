@@ -56,10 +56,10 @@ def test_oom_killed(incident_oom: Incident, rule: OOMKilledRule) -> None:
     findings = rule.evaluate(incident_oom)
 
     assert len(findings) == 1
-    assert findings[0].evidences == [
-        "Container 'test' last exit reason = OOMKilled.",
-        "Restart count = 1",
-    ]
+    assert findings[0].structured_evidences[0].name == "last_exit_reason"
+    assert findings[0].structured_evidences[0].value == "OOMKilled"
+    assert findings[0].structured_evidences[1].name == "restart_count"
+    assert findings[0].structured_evidences[1].value == "1"
     assert findings[0].recommendations == [
         "Review the container memory usage.",
         "Increase the memory limit if appropriate.",
@@ -67,6 +67,4 @@ def test_oom_killed(incident_oom: Incident, rule: OOMKilledRule) -> None:
     ]
     assert findings[0].metadata == {
         "container": "test",
-        "last_exit_reason": "OOMKilled",
-        "restart_count": 1,
     }

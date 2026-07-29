@@ -1,4 +1,5 @@
 from kubesage.analyzers.rules.base import BaseRule, RuleCategory
+from kubesage.models.evidence import Evidence, EvidenceType
 from kubesage.models.finding import Finding, FindingKind, Severity
 from kubesage.models.incident import Incident
 
@@ -48,11 +49,42 @@ class HighCPUUsageRule(BaseRule):
                         "of its CPU limit."
                     ),
                     resource=self._pod_resource(incident),
-                    evidences=[
-                        f"Container: {container.name}",
-                        f"CPU usage: {usage.cpu_usage:.3f} cores",
-                        f"CPU limit: {resources.cpu_limit:.3f} cores",
-                        f"Usage ratio: {ratio:.2%}",
+                    structured_evidences=[
+                        Evidence(
+                            type=EvidenceType.METRIC,
+                            name="cpu_usage",
+                            value=str(usage.cpu_usage),
+                            source="prometheus",
+                            metadata={
+                                "container": container.name,
+                                "unit": "cores",
+                            },
+                        ),
+                        Evidence(
+                            type=EvidenceType.METRIC,
+                            name="cpu_limit",
+                            value=str(resources.cpu_limit),
+                            source="kubernetes",
+                            metadata={
+                                "container": container.name,
+                                "unit": "cores",
+                            },
+                        ),
+                        Evidence(
+                            type=EvidenceType.METRIC,
+                            name="cpu_usage_ratio",
+                            value=str(ratio),
+                            source="kubesage",
+                            metadata={
+                                "container": container.name,
+                            },
+                        ),
+                        Evidence(
+                            type=EvidenceType.THRESHOLD,
+                            name="cpu_usage_threshold",
+                            value=str(self.threshold),
+                            source="kubesage",
+                        ),
                     ],
                     recommendations=[
                         "Investigate CPU-intensive workloads.",

@@ -1,13 +1,14 @@
 from kubesage.analyzers.rules.base import BaseRule
+from kubesage.models.evidence import Evidence, EvidenceType
 from kubesage.models.finding import Finding, FindingKind, Severity
 from kubesage.models.incident import Incident
 
 
 class MemoryPressureRule(BaseRule):
-    rule_id = "memory_pressure"
-    name = "Memory Pressure"
-    title = "Detect Kubernetes memory pressure"
-    description = "Detect Kubernetes memory pressure events impacting a pod."
+    rule_id = "memory_pressure_eviction"
+    name = "Memory Pressure Eviction"
+    title = "Detect Kubernetes memory pressure eviction"
+    description = "Detect Kubernetes memory pressure eviction events."
 
     def evaluate(
         self,
@@ -18,26 +19,36 @@ class MemoryPressureRule(BaseRule):
         for event in incident.events:
             message = event.message.lower()
 
-            if event.reason == "Evicted" and "memory" in message:
-                findings.append(
-                    Finding(
-                        rule=self.name,
-                        severity=Severity.HIGH,
-                        kind=FindingKind.OBSERVATION,
-                        title=self.title,
-                        description=self.description,
-                        resource=self._pod_resource(incident),
-                        evidences=[
-                            event.message,
-                        ],
-                        recommendations=[
-                            "Increase node memory capacity.",
-                            "Review pod memory requests.",
-                            "Investigate memory consuming workloads.",
-                        ],
-                        confidence=0.95,
-                        priority=20,
-                    )
+            if event.reason != "Evicted" or "memory" not in message:
+                continue
+
+            findings.append(
+                Finding(
+                    rule=self.name,
+                    severity=Severity.HIGH,
+                    kind=FindingKind.OBSERVATION,
+                    title=self.title,
+                    description=self.description,
+                    resource=self._pod_resource(incident),
+                    structured_evidences=[
+                        Evidence(
+                            type=EvidenceType.EVENT,
+                            name="eviction_reason",
+                            value=event.message,
+                            source="kubernetes",
+                            metadata={
+                                "reason": event.reason,
+                            },
+                        ),
+                    ],
+                    recommendations=[
+                        "Increase node memory capacity.",
+                        "Review pod memory requests.",
+                        "Investigate memory consuming workloads.",
+                    ],
+                    confidence=0.95,
+                    priority=20,
                 )
+            )
 
         return findings

@@ -3,7 +3,7 @@ from datetime import datetime
 from kubesage.builders.prompt.prompt_builder import PromptBuilder
 from kubesage.models.ai_context import AIContext
 from kubesage.models.event import Event
-from kubesage.models.evidence import Evidence
+from kubesage.models.evidence import Evidence, EvidenceType
 from kubesage.models.finding import (
     Finding,
     FindingKind,
@@ -56,7 +56,7 @@ def make_diagnosis() -> Finding:
                 name="cpu_usage",
                 value="95",
                 unit="%",
-                type="prometheus",
+                type=EvidenceType.METRIC,
             )
         ],
         resource=make_resource(),

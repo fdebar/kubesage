@@ -56,9 +56,6 @@ class Finding(BaseModel):
     related_findings: list[str] = Field(default_factory=list)
     caused_by: list[str] = Field(default_factory=list)
 
-    evidences: list[str] = Field(
-        default_factory=list
-    )  # TODO: It will be replaced by structured_evidences later
     structured_evidences: list[Evidence] = Field(default_factory=list)
 
     def evidences_by_source(

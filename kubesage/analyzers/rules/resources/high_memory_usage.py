@@ -1,4 +1,5 @@
 from kubesage.analyzers.rules.base import BaseRule, RuleCategory
+from kubesage.models.evidence import Evidence, EvidenceType
 from kubesage.models.finding import Finding, FindingKind, Severity
 from kubesage.models.incident import Incident
 
@@ -47,11 +48,42 @@ class HighMemoryUsageRule(BaseRule):
                         "of its memory limit."
                     ),
                     resource=self._pod_resource(incident),
-                    evidences=[
-                        f"Container: {container.name}",
-                        (f"Memory usage: {usage.memory_usage} bytes"),
-                        (f"Memory limit: {resources.memory_limit} bytes"),
-                        (f"Usage ratio: {ratio:.2%}"),
+                    structured_evidences=[
+                        Evidence(
+                            type=EvidenceType.METRIC,
+                            name="memory_usage",
+                            value=str(usage.memory_usage),
+                            source="prometheus",
+                            metadata={
+                                "container": container.name,
+                                "unit": "bytes",
+                            },
+                        ),
+                        Evidence(
+                            type=EvidenceType.METRIC,
+                            name="memory_limit",
+                            value=str(resources.memory_limit),
+                            source="kubernetes",
+                            metadata={
+                                "container": container.name,
+                                "unit": "bytes",
+                            },
+                        ),
+                        Evidence(
+                            type=EvidenceType.METRIC,
+                            name="memory_usage_ratio",
+                            value=str(ratio),
+                            source="kubesage",
+                            metadata={
+                                "container": container.name,
+                            },
+                        ),
+                        Evidence(
+                            type=EvidenceType.THRESHOLD,
+                            name="memory_usage_threshold",
+                            value=str(self.threshold),
+                            source="kubesage",
+                        ),
                     ],
                     recommendations=[
                         ("Investigate possible memory leaks."),
@@ -59,8 +91,8 @@ class HighMemoryUsageRule(BaseRule):
                     ],
                     metadata={
                         "container": container.name,
-                        "memory_usage": (usage.memory_usage),
-                        "memory_limit": (resources.memory_limit),
+                        "memory_usage": usage.memory_usage,
+                        "memory_limit": resources.memory_limit,
                         "usage_ratio": ratio,
                     },
                     confidence=0.95,

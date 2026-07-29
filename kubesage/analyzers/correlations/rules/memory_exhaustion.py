@@ -1,5 +1,5 @@
 from kubesage.analyzers.correlations.base import BaseCorrelation
-from kubesage.models.evidence import Evidence
+from kubesage.models.evidence import Evidence, EvidenceType
 from kubesage.models.finding import Finding, FindingKind, Severity
 
 
@@ -37,15 +37,27 @@ class MemoryExhaustionCorrelation(BaseCorrelation):
                 ],
                 structured_evidences=[
                     Evidence(
-                        type="container_state",
+                        type=EvidenceType.CONTAINER_STATE,
                         name="termination_reason",
                         value="OOMKilled",
                         source="kubernetes",
+                        metadata={
+                            "triggered_by": "oom_killed",
+                        },
                     ),
                     Evidence(
-                        type="correlation",
-                        name="trigger",
-                        value="high_memory_usage",
+                        type=EvidenceType.METRIC,
+                        name="memory_usage",
+                        value="Memory usage exceeded limit",
+                        source="prometheus",
+                        metadata={
+                            "triggered_by": "high_memory_usage",
+                        },
+                    ),
+                    Evidence(
+                        type=EvidenceType.CORRELATION,
+                        name="root_cause",
+                        value="high_memory_usage + oom_killed",
                         source="kubesage",
                     ),
                 ],

@@ -1,4 +1,5 @@
 from kubesage.analyzers.rules.base import BaseRule, RuleCategory
+from kubesage.models.evidence import Evidence, EvidenceType
 from kubesage.models.finding import (
     Finding,
     FindingKind,
@@ -38,20 +39,32 @@ class OOMKilledRule(BaseRule):
                         namespace=incident.namespace,
                         name=incident.pod,
                     ),
-                    evidences=[
-                        f"Container '{container.name}' last exit reason = OOMKilled.",
-                        f"Restart count = {container.restart_count}",
+                    structured_evidences=[
+                        Evidence(
+                            type=EvidenceType.CONTAINER_STATE,
+                            name="last_exit_reason",
+                            value="OOMKilled",
+                            source="kubernetes",
+                            metadata={
+                                "container": container.name,
+                            },
+                        ),
+                        Evidence(
+                            type=EvidenceType.CONTAINER_STATE,
+                            name="restart_count",
+                            value=str(container.restart_count),
+                            source="kubernetes",
+                            metadata={
+                                "container": container.name,
+                            },
+                        ),
                     ],
                     recommendations=[
                         "Review the container memory usage.",
                         "Increase the memory limit if appropriate.",
                         "Inspect the application for memory leaks.",
                     ],
-                    metadata={
-                        "container": container.name,
-                        "last_exit_reason": container.last_exit_reason,
-                        "restart_count": container.restart_count,
-                    },
+                    metadata={"container": container.name},
                     priority=20,
                 )
             )

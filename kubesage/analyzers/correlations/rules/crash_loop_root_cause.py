@@ -1,5 +1,5 @@
 from kubesage.analyzers.correlations.base import BaseCorrelation
-from kubesage.models.evidence import Evidence
+from kubesage.models.evidence import Evidence, EvidenceType
 from kubesage.models.finding import (
     Finding,
     FindingKind,
@@ -41,15 +41,27 @@ class CrashLoopRootCauseCorrelation(BaseCorrelation):
                 ],
                 structured_evidences=[
                     Evidence(
-                        type="pod_status",
-                        name="reason",
+                        type=EvidenceType.CONTAINER_STATE,
+                        name="restart_reason",
                         value="CrashLoopBackOff",
                         source="kubernetes",
+                        metadata={
+                            "triggered_by": "crash_loop",
+                        },
                     ),
                     Evidence(
-                        type="correlation",
-                        name="trigger",
-                        value="memory_exhaustion",
+                        type=EvidenceType.METRIC,
+                        name="memory_exhaustion",
+                        value="Memory limit exceeded",
+                        source="prometheus",
+                        metadata={
+                            "triggered_by": "memory_exhaustion",
+                        },
+                    ),
+                    Evidence(
+                        type=EvidenceType.CORRELATION,
+                        name="root_cause",
+                        value="memory_exhaustion -> crash_loop",
                         source="kubesage",
                     ),
                 ],

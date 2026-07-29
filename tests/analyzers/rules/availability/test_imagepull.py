@@ -43,10 +43,10 @@ def test_imagepull_rule_with_waiting_reason_imagepullbackoff(
         namespace="test",
         name="test",
     )
-    assert findings[0].evidences == [
-        "Container 'test' waiting reason = ImagePullBackOff",
-        "Test message",
-    ]
+    assert findings[0].structured_evidences[0].name == "waiting_reason"
+    assert findings[0].structured_evidences[0].value == "ImagePullBackOff"
+    assert findings[0].structured_evidences[1].name == "waiting_message"
+    assert findings[0].structured_evidences[1].value == "Test message"
     assert findings[0].recommendations == [
         "Verify that the image exists.",
         "Verify the image tag.",
@@ -91,10 +91,10 @@ def test_imagepull_rule_with_waiting_reason_errorimagepull(
         namespace="test",
         name="test",
     )
-    assert findings[0].evidences == [
-        "Container 'test' waiting reason = ErrImagePull",
-        "Test message",
-    ]
+    assert findings[0].structured_evidences[0].name == "waiting_reason"
+    assert findings[0].structured_evidences[0].value == "ErrImagePull"
+    assert findings[0].structured_evidences[1].name == "waiting_message"
+    assert findings[0].structured_evidences[1].value == "Test message"
     assert findings[0].recommendations == [
         "Verify that the image exists.",
         "Verify the image tag.",
@@ -159,11 +159,9 @@ def test_imagepull_rule_with_multiple_containers(
     findings = imagepull_rule.evaluate(incident)
 
     assert len(findings) == 2
-    assert findings[0].evidences == [
-        "Container 'test1' waiting reason = ImagePullBackOff",
-        "Test message",
-    ]
-    assert findings[1].evidences == [
-        "Container 'test2' waiting reason = ErrImagePull",
-        "Test message",
-    ]
+    assert findings[0].structured_evidences[0].name == "waiting_reason"
+    assert findings[0].structured_evidences[0].value == "ImagePullBackOff"
+    assert findings[0].structured_evidences[1].name == "waiting_message"
+    assert findings[0].structured_evidences[1].value == "Test message"
+    assert findings[1].structured_evidences[0].name == "waiting_reason"
+    assert findings[1].structured_evidences[0].value == "ErrImagePull"

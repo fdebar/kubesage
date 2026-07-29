@@ -1,4 +1,5 @@
 from kubesage.analyzers.rules.base import BaseRule, RuleCategory
+from kubesage.models.evidence import Evidence, EvidenceType
 from kubesage.models.finding import (
     Finding,
     FindingKind,
@@ -38,9 +39,22 @@ class PendingRule(BaseRule):
                         namespace=incident.namespace,
                         name=incident.pod,
                     ),
-                    evidences=[
-                        f"Pod phase = {incident.phase}",
-                        f"{event.reason}: {event.message}",
+                    structured_evidences=[
+                        Evidence(
+                            type=EvidenceType.POD_STATE,
+                            name="phase",
+                            value="Pending",
+                            source="kubernetes",
+                        ),
+                        Evidence(
+                            type=EvidenceType.EVENT,
+                            name="scheduling_failure",
+                            value=event.message,
+                            source="kubernetes",
+                            metadata={
+                                "reason": event.reason,
+                            },
+                        ),
                     ],
                     recommendations=[
                         "Review the scheduler event message.",

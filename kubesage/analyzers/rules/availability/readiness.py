@@ -1,4 +1,5 @@
 from kubesage.analyzers.rules.base import BaseRule, RuleCategory
+from kubesage.models.evidence import Evidence, EvidenceType
 from kubesage.models.finding import (
     Finding,
     FindingKind,
@@ -38,8 +39,16 @@ class ReadinessRule(BaseRule):
                         namespace=incident.namespace,
                         name=incident.pod,
                     ),
-                    evidences=[
-                        f"Container '{container.name}' ready = False.",
+                    structured_evidences=[
+                        Evidence(
+                            type=EvidenceType.CONTAINER_STATE,
+                            name="ready",
+                            value="False",
+                            source="kubernetes",
+                            metadata={
+                                "container": container.name,
+                            },
+                        ),
                     ],
                     recommendations=[
                         "Inspect the readiness probe configuration.",

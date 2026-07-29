@@ -1,4 +1,5 @@
 from kubesage.analyzers.rules.base import BaseRule, RuleCategory
+from kubesage.models.evidence import Evidence, EvidenceType
 from kubesage.models.finding import (
     Finding,
     FindingKind,
@@ -38,19 +39,34 @@ class ImagePullRule(BaseRule):
                     title=self.title,
                     description=self.description,
                     resource=self._pod_resource(incident),
-                    evidences=[
-                        (
-                            f"Container '{container.name}' "
-                            f"waiting reason = {container.waiting_reason}"
-                        ),
-                        container.waiting_message
-                        or "No additional Kubernetes message.",
-                    ],
                     recommendations=[
                         "Verify that the image exists.",
                         "Verify the image tag.",
                         "Verify the imagePullSecrets.",
                         "Verify registry connectivity and authentication.",
+                    ],
+                    structured_evidences=[
+                        Evidence(
+                            type=EvidenceType.CONTAINER_STATE,
+                            name="waiting_reason",
+                            value=container.waiting_reason,
+                            source="kubernetes",
+                            metadata={
+                                "container": container.name,
+                            },
+                        ),
+                        Evidence(
+                            type=EvidenceType.EVENT,
+                            name="waiting_message",
+                            value=(
+                                container.waiting_message
+                                or "No additional Kubernetes message."
+                            ),
+                            source="kubernetes",
+                            metadata={
+                                "container": container.name,
+                            },
+                        ),
                     ],
                     metadata={
                         "container": container.name,
