@@ -23,6 +23,16 @@ loki:
     replicas: 0
   backend:
     replicas: 0
+  # Disable cache in dev and set low values to avoid the pod creation
+  chunksCache:
+    enabled: false
+    resources:
+      requests:
+        cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
   
   # Inner Loki chart config
   loki:
