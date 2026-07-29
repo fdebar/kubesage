@@ -14,6 +14,7 @@ spec:
         - ../../environments/dev/kube-prometheus-stack.yaml
         - ../../environments/dev/grafana.yaml
         - ../../environments/dev/tempo.yaml
+        - ../../environments/dev/open-telemetry.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring

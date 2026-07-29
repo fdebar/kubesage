@@ -9,9 +9,9 @@ spec:
     repoURL: git@github.com:fdebar/kubesage.git
     targetRevision: main
     path: charts/kubesage
-    #helm:
-    #  valueFiles:
-    #    - values-dev.yaml
+    helm:
+      valueFiles:
+        - ../../environments/dev/kubesage.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: kubesage
