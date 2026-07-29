@@ -1,15 +1,17 @@
 opentelemetry-collector:
+  # Deployment mode (daemonset, deployment, or statefulset)
+  # Deployment: Applications push OTLP traces, metrics, or logs directly to a central Service endpoint.
+  mode: deployment
+
+  # Image configuration
   image:
     repository: otel/opentelemetry-collector-k8s
 
-    # Deployment: Applications push OTLP traces, metrics, or logs directly to a central Service endpoint.
-    mode: deployment
-
-    resources:
-      limits:
-        cpu: 0.5
-        memory: 512Mi
-      requests:
-        cpu: 0.25
-        memory: 256Mi
-
+  # Resource limits & requests
+  resources:
+    limits:
+      cpu: 250m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
