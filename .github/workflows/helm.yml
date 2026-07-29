@@ -8,6 +8,7 @@ on:
     branches: [ main ]
     paths:
       - "charts/**"
+  workflow_dispatch:
 
 jobs:
   helm-test-and-deploy:
