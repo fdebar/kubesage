@@ -24,7 +24,7 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t kubesage:${{ github.sha }} .
+          docker build -t kubesage:helm-test .
 
       - name: Create Kind cluster
         uses: helm/kind-action@v1.12.0
@@ -33,7 +33,7 @@ jobs:
 
       - name: Load Docker image into Kind
         run: |
-          kind load docker-image kubesage:${{ github.sha }} --name kind-kubesage
+          kind load docker-image kubesage:helm-test --name kind-kubesage
 
       - name: Deploy Helm chart
         run: |
@@ -45,7 +45,7 @@ jobs:
             --namespace kubesage \
             --create-namespace \
             --set image.repository=kubesage \
-            --set image.tag=${{ github.sha }} \
+            --set image.tag=helm-test \
             --set openai.apiKey=ollama
 
       - name: Verify deployment
@@ -58,6 +58,7 @@ jobs:
         if: failure()
         run: |
           kubectl get pods -n kubesage
+          kubectl describe deployment/kubesage -n kubesage
           kubectl logs deployment/kubesage -n kubesage --previous
 
   publish:
