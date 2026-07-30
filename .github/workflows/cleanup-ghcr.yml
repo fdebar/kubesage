@@ -1,0 +1,29 @@
+name: Cleanup GHCR
+on:
+  schedule:
+    # Every Sunday at 02:00 UTC
+    - cron: "0 2 * * 0"
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - name: Delete untagged container images
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: kubesage
+          package-type: container
+          delete-only-untagged-versions: true
+          min-versions-to-keep: 5
+
+      # TODO: Remove this rule before going into production or when startgin to tag
+      #       images with semantic versioning
+      - name: Keep only the latest 2 versions
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: kubesage
+          package-type: container
+          min-versions-to-keep: 2
