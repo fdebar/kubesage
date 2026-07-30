@@ -5,6 +5,8 @@ import structlog
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from kubesage.observability.tracing import current_trace_context
+
 logger = structlog.get_logger(__name__)
 
 IGNORED_PATHS = {
@@ -21,12 +23,15 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         elapsed = time.perf_counter() - start
         path = request.url.path
+        ctx = current_trace_context()
 
         log_data = {
             "method": request.method,
             "path": path,
             "status_code": response.status_code,
             "elapsed": round(elapsed * 1000, 2),
+            "trace_id": ctx.trace_id,
+            "span_id": ctx.span_id,
         }
 
         if path in IGNORED_PATHS:

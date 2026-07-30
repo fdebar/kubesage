@@ -8,7 +8,7 @@ from kubesage.api.middlewares.request_id import RequestIDMiddleware
 from kubesage.api.routers.analysis import router as analysis_router
 from kubesage.api.routers.metrics import router as metrics_router
 from kubesage.api.routers.system import router as system_router
-from kubesage.core.telemetry import setup_telemetry
+from kubesage.observability.telemetry import setup_telemetry
 from kubesage.utils.config import settings
 
 app = FastAPI(
