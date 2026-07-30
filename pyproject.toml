@@ -7,7 +7,7 @@ name = "kubesage"
 version = "0.11.0"
 description = "AI-powered Kubernetes incident analysis assistant"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 
 dependencies = [
     "fastapi",
@@ -18,9 +18,9 @@ dependencies = [
     "opentelemetry-api",
     "opentelemetry-sdk",
     "opentelemetry-instrumentation-fastapi",
-    "opentelemetry-instrumentation-httpx",
     "opentelemetry-exporter-otlp",
-    "structlog"
+    "structlog",
+    "requests"
 ]
 
 [project.optional-dependencies]

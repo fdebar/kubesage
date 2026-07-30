@@ -24,8 +24,8 @@ build
 run
 *.egg-info
 
-deploy
-infrastructure
-kubernetes
-scripts
+charts
+docs
+examples
+gitops
 tests
