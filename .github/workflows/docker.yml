@@ -66,10 +66,34 @@ jobs:
             ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.sha_short }}
             ghcr.io/${{ github.repository }}:latest
 
-
       - name: Scan Docker image
         if: success()
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.sha_short }}
           trivy-config: trivy.yaml
+
+      - name: Install yq
+        run: |
+          wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 \
+            -O /usr/local/bin/yq
+          chmod +x /usr/local/bin/yq
+
+      - name: Update image tag
+        if: success()
+        run: |
+          yq -i '.image.tag = "${{ steps.vars.outputs.sha_short }}"' \
+            gitops/environments/dev/kubesage.yaml
+
+      - name: Commit updated values
+        if: success()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@noreply.github.com"
+
+          git add gitops/environments/dev/kubesage.yaml
+
+          git diff --cached --quiet && exit 0
+
+          git commit -m "chore: deploy ${{ steps.vars.outputs.sha_short }} [skip ci]"
+          git push
