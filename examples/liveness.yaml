@@ -1,0 +1,14 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kubesage-liveness-fail
+  namespace: default
+spec:
+  containers:
+    - name: nginx
+      image: nginx
+      livenessProbe:
+        exec:
+          command:
+            - false

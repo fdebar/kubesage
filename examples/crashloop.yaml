@@ -1,0 +1,11 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kubesage-crashloop
+  namespace: default
+spec:
+  containers:
+    - name: app
+      image: busybox
+      command: ["false"]
