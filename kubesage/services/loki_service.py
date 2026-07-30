@@ -21,6 +21,8 @@ class LogQueryType(StrEnum):
 class LokiService(LogProvider):
     def __init__(self) -> None:
         self.base_url = settings.loki_url
+        # TODO: We want to keep enable Loki multi-tenant - a configuration must be added
+        self.loki_tenant = "kubesage-fake"
 
     def query(
         self,
@@ -35,6 +37,7 @@ class LokiService(LogProvider):
                 f"{self.base_url}/loki/api/v1/query_range",
                 params=params,
                 timeout=settings.loki_timeout,
+                headers={"X-Scope-OrgID": self.loki_tenant},
             )
             response.raise_for_status()
 
