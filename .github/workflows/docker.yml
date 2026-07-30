@@ -3,12 +3,12 @@ permissions:
   contents: read
   packages: write
 on:
+  # TODO: Update the rules once the project is sufficiently mature
   push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+    tags:
+      - 'v\d+\.\d+\.\d+'
+  workflow_dispatch:
+
 jobs:
   changes:
     name: Detect docker changes
