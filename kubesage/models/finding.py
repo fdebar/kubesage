@@ -45,7 +45,7 @@ class Finding(BaseModel):
     severity: Severity
     title: str
     description: str
-    resource: ResourceRef
+    resource: ResourceRef | None = None
 
     kind: FindingKind = FindingKind.OBSERVATION
     recommendations: list[str] = Field(default_factory=list)

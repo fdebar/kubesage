@@ -1,6 +1,11 @@
+from uuid import UUID
+
 from kubesage.database.models.analysis import AnalysisModel
+from kubesage.mappers.ai_report_mapper import AIReportMapper
 from kubesage.mappers.finding_mapper import FindingMapper
+from kubesage.models.ai_report import AIReport
 from kubesage.models.analysis import Analysis
+from kubesage.models.incident import Incident
 
 
 class AnalysisMapper:
@@ -24,3 +29,27 @@ class AnalysisMapper:
         ]
 
         return model
+
+    @staticmethod
+    def to_domain(model: AnalysisModel) -> Analysis:
+        """Convert an AnalysisModel to an Analysis."""
+
+        return Analysis(
+            id=UUID(model.id),
+            incident=Incident(
+                namespace=model.namespace,
+                pod=model.pod,
+                phase="",
+            ),
+            findings=[FindingMapper.to_domain(f) for f in model.findings],
+            report=(
+                AIReportMapper.to_domain(model.report)
+                if model.report
+                else AIReport(
+                    summary="",
+                    raw_output="",
+                )
+            ),
+            duration_ms=model.duration_ms,
+            created_at=model.created_at,
+        )
