@@ -1,4 +1,3 @@
-# pyrefly: ignore [missing-import]
 from collections.abc import Generator
 
 import pytest
@@ -7,6 +6,8 @@ from fastapi.testclient import TestClient
 from kubesage.api.app import app
 from kubesage.api.dependencies import get_incident_service
 from kubesage.models.ai_report import AIReport
+from kubesage.models.analysis import Analysis
+from kubesage.models.incident import Incident
 
 client = TestClient(app)
 
@@ -24,13 +25,18 @@ class FakeIncidentService:
         namespace: str,
         pod: str,
         context: str | None = None,
-    ) -> AIReport:
-        return AIReport(
-            summary="Pod is failing",
-            root_cause="Redis unavailable",
-            evidence=["Check redis connectivity"],
-            recommendations=["kubectl logs pod"],
-            additional_investigations=["kubectl logs pod"],
+    ) -> Analysis:
+        return Analysis(
+            incident=Incident(namespace="default", pod="ai-demo-app", phase="Pending"),
+            findings=[],
+            report=AIReport(
+                summary="Pod is failing",
+                root_cause="Redis unavailable",
+                evidence=["Check redis connectivity"],
+                recommendations=["kubectl logs pod"],
+                additional_investigations=["kubectl logs pod"],
+            ),
+            duration_ms=1000,
         )
 
 
@@ -51,5 +57,4 @@ def test_analyze() -> None:
         )
 
         assert response.status_code == 200
-
         assert response.json()["root_cause"] == "Redis unavailable"

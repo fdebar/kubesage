@@ -4,7 +4,7 @@ PYTHON := $(if $(wildcard $(VENV)/bin/python),$(VENV)/bin/python,python3)
 SHORT_SHA := $(shell git rev-parse --short HEAD)
 IMAGE_NAME := kubesage:${SHORT_SHA}
 
-.PHONY: help install test lint format typecheck security quality docker-build docker-run ci helm-lint helm-template kubeconform package
+.PHONY: help install test lint format typecheck security quality docker-build docker-run ci helm-lint helm-template kubeconform package db-upgrade db-revision db-current db-history db-downgrade
 
 help:
 	@echo "[KubeSage] Available commands:"
@@ -25,6 +25,11 @@ help:
 	@echo "  make helm-template 	Run helm template"
 	@echo "  make kubeconform 		Run kubeconform"
 	@echo "  make package 			Run helm package"
+	@echo "  make db-upgrade 		Upgrade database schema"
+	@echo "  make db-revision 		Create new migration"
+	@echo "  make db-current 		Show current migration"
+	@echo "  make db-history 		Show migration history"
+	@echo "  make db-downgrade 		Downgrade database schema"
 
 # Install dependencies
 install:
@@ -85,6 +90,22 @@ docker-run: |
 
 # Continuous Integration
 ci: quality security docker-build
+
+# Database
+db-upgrade: |
+	$(PYTHON) -m alembic upgrade head
+
+db-revision: | 
+	$(PYTHON) -m alembic revision --autogenerate -m "$(MSG)"
+
+db-current: 
+	$(PYTHON) -m alembic current
+
+db-history: 
+	$(PYTHON) -m alembic history
+
+db-downgrade: | 
+	$(PYTHON) -m alembic downgrade -1
 
 # Clean
 clean:

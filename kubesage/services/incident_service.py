@@ -1,3 +1,5 @@
+import time
+
 import structlog
 from opentelemetry import trace
 
@@ -9,7 +11,8 @@ from kubesage.builders.context.container_snapshot_builder import (
 from kubesage.builders.context.incident_builder import IncidentBuilder
 from kubesage.builders.prompt.prompt_builder import PromptBuilder
 from kubesage.models.ai_report import AIReport
-from kubesage.models.incident import Incident
+from kubesage.models.analysis import Analysis
+from kubesage.repositories.analysis_repository import AnalysisRepository
 from kubesage.services.ai_service import AIService
 from kubesage.services.kubernetes_service import KubernetesService
 from kubesage.services.loki_service import LokiService
@@ -21,20 +24,34 @@ logger = structlog.get_logger()
 
 
 class IncidentService:
-    def __init__(self) -> None:
-        self.incident: Incident | None = None
-        self.kubernetes = KubernetesService()
-        self.engine = DiagnosticEngine()
-        self.ai = AIService()
-        self.metrics = MetricsService()
-        self.prometheus = PrometheusService()
-        self.loki = LokiService()
-        self.ai_context_builder = AIContextBuilder()
-        self.prompt_builder = PromptBuilder()
-        self.container_snapshot_builder = ContainerSnapshotBuilder()
+    def __init__(
+        self,
+        analysis_repository: AnalysisRepository,
+        kubernetes: KubernetesService,
+        prometheus: PrometheusService,
+        metrics: MetricsService,
+        loki: LokiService,
+        ai: AIService,
+        engine: DiagnosticEngine,
+        ai_context_builder: AIContextBuilder,
+        prompt_builder: PromptBuilder,
+        container_snapshot_builder: ContainerSnapshotBuilder,
+    ) -> None:
+        self.analysis_repository = analysis_repository
+        self.kubernetes = kubernetes
+        self.prometheus = prometheus
+        self.metrics = metrics
+        self.loki = loki
+        self.ai = ai
+        self.engine = engine
+        self.ai_context_builder = ai_context_builder
+        self.prompt_builder = prompt_builder
+        self.container_snapshot_builder = container_snapshot_builder
 
-    def analyze(self, namespace: str, pod: str) -> AIReport:
+    def analyze(self, namespace: str, pod: str) -> Analysis:
         logger.info("analysis_started", namespace=namespace, pod=pod)
+
+        start = time.perf_counter()
 
         with tracer.start_as_current_span("incident.build") as span:
             span.set_attribute("incident.namespace", namespace)
@@ -50,10 +67,15 @@ class IncidentService:
             incident = self.builder.collect(namespace, pod)
             if incident.containers == [] and incident.events == []:
                 logger.error("kubernetes_no_data")
-                return AIReport(
-                    summary="AI analysis could not be completed due to unavailable Kubernetes data.",  # noqa
-                    root_cause="Kubernetes data collection failed. This could be due to authentication issues, network problems, or the pod not existing.",  # noqa
-                    evidence=[],
+                return Analysis(
+                    report=AIReport(
+                        summary="AI analysis could not be completed due to unavailable Kubernetes data.",  # noqa
+                        root_cause="Kubernetes data collection failed. This could be due to authentication issues, network problems, or the pod not existing.",  # noqa
+                        evidence=[],
+                    ),
+                    incident=incident,
+                    findings=[],
+                    duration_ms=int((time.perf_counter() - start) * 1000),
                 )
 
         with tracer.start_as_current_span("rules.engine.analyze") as span:
@@ -80,4 +102,12 @@ class IncidentService:
 
         logger.info("analysis_completed", namespace=namespace, pod=pod)
 
-        return report
+        analysis = Analysis(
+            incident=incident,
+            findings=findings,
+            report=report,
+            duration_ms=int((time.perf_counter() - start) * 1000),
+        )
+        self.analysis_repository.save(analysis)
+
+        return analysis

@@ -1,7 +1,6 @@
 import os
 from dataclasses import dataclass
 
-# pyrefly: ignore [missing-import]
 from dotenv import load_dotenv
 
 
@@ -27,6 +26,8 @@ class Settings:
     loki_url: str = os.getenv("LOKI_URL", "")
     loki_timeout: int = int(os.getenv("LOKI_TIMEOUT", "5"))
     loki_query_limit: int = int(os.getenv("LOKI_QUERY_LIMIT", "500"))
+
+    database_url: str = os.getenv("DATABASE_URL", "sqlite:///./kubesage.db")
 
 
 settings = Settings()

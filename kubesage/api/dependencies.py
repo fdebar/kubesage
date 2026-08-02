@@ -1,7 +1,10 @@
+from fastapi import Depends
+from sqlalchemy.orm import Session
+
+from kubesage.bootstrap import create_incident_service
+from kubesage.database.dependencies import get_db
 from kubesage.services.incident_service import IncidentService
 
-incident_service = IncidentService()
 
-
-def get_incident_service() -> IncidentService:
-    return incident_service
+def get_incident_service(db: Session = Depends(get_db)) -> IncidentService:
+    return create_incident_service(db)
