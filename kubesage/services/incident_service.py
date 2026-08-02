@@ -108,6 +108,5 @@ class IncidentService:
             report=report,
             duration_ms=int((time.perf_counter() - start) * 1000),
         )
-        self.analysis_repository.save(analysis)
 
         return analysis

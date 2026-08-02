@@ -1,7 +1,7 @@
 from datetime import datetime
 
-from kubesage.api.models.analyses import Severity
 from kubesage.api.models.dashboard import DashboardRecentAnalysis, DashboardSummary
+from kubesage.models.finding import Severity
 
 
 class DashboardRepository:

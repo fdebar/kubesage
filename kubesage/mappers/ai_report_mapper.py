@@ -12,3 +12,13 @@ class AIReportMapper:
             root_cause=model.root_cause,
             evidence=[],
         )
+
+    @staticmethod
+    def to_model(report: AIReport, analysis_id: str) -> AIReportModel:
+        """Convert an AIReport to an AIReportModel."""
+
+        return AIReportModel(
+            analysis_id=analysis_id,
+            summary=report.summary,
+            root_cause=report.root_cause,
+        )

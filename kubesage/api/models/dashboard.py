@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-from kubesage.api.models.analyses import Severity
+from kubesage.models.finding import Severity
 
 
 class DashboardSummary(BaseModel):

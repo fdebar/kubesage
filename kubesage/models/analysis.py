@@ -14,6 +14,6 @@ class Analysis(BaseModel):
     id: UUID = Field(default_factory=uuid4)
     incident: Incident
     findings: list[Finding]
-    report: AIReport
+    report: AIReport | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     duration_ms: int

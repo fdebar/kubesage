@@ -1,6 +1,5 @@
-from kubesage.api.models.analyses import Severity
 from kubesage.database.models.finding import FindingModel
-from kubesage.models.finding import Finding, FindingKind
+from kubesage.models.finding import Finding, FindingKind, Severity
 
 
 class FindingMapper:
