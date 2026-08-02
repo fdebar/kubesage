@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends
 
-from kubesage.api.dependencies import get_incident_service
+from kubesage.api.dependencies import get_analysis_service
 from kubesage.api.mappers import to_response
 from kubesage.api.schemas.request import AnalyzeRequest
 from kubesage.api.schemas.response import AnalyzeResponse
-from kubesage.services.incident_service import IncidentService
+from kubesage.services.analysis_service import AnalysisService
 
 router = APIRouter(prefix="/analyze", tags=["Analysis"])
 
@@ -12,7 +12,7 @@ router = APIRouter(prefix="/analyze", tags=["Analysis"])
 @router.post("", response_model=AnalyzeResponse)
 def analyze(
     body: AnalyzeRequest,
-    service: IncidentService = Depends(get_incident_service),
+    service: AnalysisService = Depends(get_analysis_service),
 ) -> AnalyzeResponse:
     """Analyze a Kubernetes incident."""
 

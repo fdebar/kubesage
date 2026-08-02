@@ -5,7 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from kubesage.api.app import app
-from kubesage.api.dependencies import get_incident_service
+from kubesage.api.dependencies import get_analysis_service
 from kubesage.utils.exceptions import PodNotFoundError
 
 client = TestClient(app)
@@ -33,7 +33,7 @@ def override_service() -> FakeErrorService:
 
 
 def test_pod_not_found() -> None:
-    app.dependency_overrides[get_incident_service] = override_service
+    app.dependency_overrides[get_analysis_service] = override_service
     response = client.post(
         "/api/v1/analyze", json={"namespace": "default", "pod": "unknown-pod"}
     )

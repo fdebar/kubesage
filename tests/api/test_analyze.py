@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from kubesage.api.app import app
-from kubesage.api.dependencies import get_incident_service
+from kubesage.api.dependencies import get_analysis_service
 from kubesage.models.ai_report import AIReport
 from kubesage.models.analysis import Analysis
 from kubesage.models.incident import Incident
@@ -46,7 +46,7 @@ def override_service() -> FakeIncidentService:
 
 def test_analyze() -> None:
     with TestClient(app) as client:
-        app.dependency_overrides[get_incident_service] = override_service
+        app.dependency_overrides[get_analysis_service] = override_service
 
         response = client.post(
             "/api/v1/analyze",
