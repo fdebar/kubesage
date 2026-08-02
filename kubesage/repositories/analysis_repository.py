@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from kubesage.database.models.analysis import AnalysisModel
@@ -35,3 +35,17 @@ class AnalysisRepository:
 
         models = result.scalars().all()
         return [AnalysisMapper.to_domain(m) for m in models]
+
+    def count(self) -> int:
+        statement = select(func.count(AnalysisModel.id))
+        count = self.session.scalar(statement)
+
+        return count or 0
+
+    def count_by_severity(self, severity: str) -> int:
+        statement = select(func.count(AnalysisModel.id)).where(
+            AnalysisModel.highest_severity == severity
+        )
+        count = self.session.scalar(statement)
+
+        return count or 0

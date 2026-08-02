@@ -11,6 +11,7 @@ class DashboardSummary(BaseModel):
     total_analyses: int
     total_findings: int
     critical_findings: int
+    high_findings: int
     last_analysis_at: datetime | None
 
 
@@ -24,8 +25,22 @@ class DashboardRecentAnalysis(BaseModel):
     created_at: datetime
 
 
-class DashboardResponse(BaseModel):
-    """Represents the full dashboard response."""
+class DashboardAnalysisItem(BaseModel):
+    """Response model for a single analysis item on the dashboard"""
 
-    summary: DashboardSummary
-    recent_analyses: list[DashboardRecentAnalysis]
+    id: str
+    namespace: str
+    pod: str
+    severity: str | None
+    created_at: datetime
+    duration_ms: int
+
+
+class DashboardOverviewResponse(BaseModel):
+    """Response model for dashboard overview"""
+
+    total_analyses: int
+    critical_count: int
+    high_count: int
+
+    latest_analyses: list[DashboardAnalysisItem]

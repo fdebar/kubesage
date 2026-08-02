@@ -7,6 +7,7 @@ from kubesage.bootstrap import create_incident_service
 from kubesage.database.session import SessionLocal
 from kubesage.repositories.analysis_repository import AnalysisRepository
 from kubesage.services.analysis_service import AnalysisService
+from kubesage.services.dashboard_service import DashboardService
 
 
 def get_db() -> Generator[Session]:
@@ -23,9 +24,11 @@ def get_analysis_repository(session: Session = Depends(get_db)) -> AnalysisRepos
 
 
 def get_analysis_service(db: Session = Depends(get_db)) -> AnalysisService:
-    repository = AnalysisRepository(db)
-
     return AnalysisService(
         incident_service=create_incident_service(db),
-        repository=repository,
+        repository=AnalysisRepository(db),
     )
+
+
+def get_dashboard_service(db: Session = Depends(get_db)) -> DashboardService:
+    return DashboardService(AnalysisRepository(db))

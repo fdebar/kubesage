@@ -1,18 +1,15 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
-from kubesage.api.models.dashboard import DashboardResponse
-from kubesage.api.services import dashboard_service
-from kubesage.repositories import dashboard_repository
+from kubesage.api.dependencies import get_dashboard_service
+from kubesage.api.schemas.dashboard import DashboardOverviewResponse
+from kubesage.services.dashboard_service import DashboardService
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
 
-@router.get("", response_model=DashboardResponse)
-async def get_dashboard() -> DashboardResponse:
-    """Get the dashboard summary and recent analyses."""
+@router.get("/overview", response_model=DashboardOverviewResponse)
+def overview(
+    service: DashboardService = Depends(get_dashboard_service),
+) -> DashboardOverviewResponse:
 
-    repository = dashboard_repository.DashboardRepository()
-    service = dashboard_service.DashboardService(repository)
-    result = service.get_dashboard()
-
-    return result
+    return service.overview()

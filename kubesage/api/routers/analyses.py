@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 
 from kubesage.api.dependencies import get_analysis_repository
-from kubesage.api.models.analysis import AnalysisResponse
+from kubesage.api.schemas.analysis import AnalysisResponse
 from kubesage.repositories.analysis_repository import AnalysisRepository
 
 router = APIRouter(prefix="/analyses", tags=["Analyses"])

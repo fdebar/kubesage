@@ -17,3 +17,10 @@ class Analysis(BaseModel):
     report: AIReport | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     duration_ms: int
+
+    @property
+    def highest_severity(self) -> str | None:
+        if not self.findings:
+            return None
+
+        return max(self.findings, key=lambda f: f.severity.weight).severity.value
