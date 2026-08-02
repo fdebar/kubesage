@@ -10,6 +10,7 @@ readme = "README.md"
 requires-python = ">=3.14"
 
 dependencies = [
+    "alembic",
     "fastapi",
     "uvicorn[standard]",
     "openai",
