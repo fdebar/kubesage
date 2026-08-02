@@ -4,6 +4,7 @@ import sys
 
 from kubesage.bootstrap import create_incident_service
 from kubesage.database.session import SessionLocal
+from kubesage.models.ai_report import AIReport
 from kubesage.observability import get_logger
 from kubesage.services.analysis_service import AnalysisService
 from kubesage.utils.exceptions import KubeSageError
@@ -25,5 +26,10 @@ def analyze_command(args: argparse.Namespace) -> None:
         logger = get_logger(__name__)
         logger.error(exc)
         sys.exit(1)
+
+    if analysis.report is None:
+        analysis.report = AIReport(
+            summary="AI analysis could not produce a report.",
+        )
 
     print(json.dumps(analysis.report.model_dump(), indent=4, ensure_ascii=False))

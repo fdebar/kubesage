@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from kubesage.api.dependencies import get_analysis_service
 from kubesage.api.mappers import to_response
@@ -14,11 +14,17 @@ def analyze(
     body: AnalyzeRequest,
     service: AnalysisService = Depends(get_analysis_service),
 ) -> AnalyzeResponse:
-    """Analyze a Kubernetes incident."""
+    """Analyze an incident."""
 
     analysis = service.analyze(
         namespace=body.namespace,
         pod=body.pod,
     )
+
+    if analysis.report is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI analysis could not produce a report",
+        )
 
     return to_response(analysis.report.model_dump())

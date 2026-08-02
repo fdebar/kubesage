@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, Field
 
 from kubesage.models.ai_report import AIReport
-from kubesage.models.finding import Finding
+from kubesage.models.finding import Finding, Severity
 from kubesage.models.incident import Incident
 
 
@@ -19,8 +19,8 @@ class Analysis(BaseModel):
     duration_ms: int
 
     @property
-    def highest_severity(self) -> str | None:
+    def highest_severity(self) -> Severity | None:
         if not self.findings:
             return None
 
-        return max(self.findings, key=lambda f: f.severity.weight).severity.value
+        return max(self.findings, key=lambda f: f.severity.weight).severity

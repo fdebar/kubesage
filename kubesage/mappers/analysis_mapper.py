@@ -4,7 +4,6 @@ from kubesage.database.models.analysis import AnalysisModel
 from kubesage.mappers.ai_report_mapper import AIReportMapper
 from kubesage.mappers.finding_mapper import FindingMapper
 from kubesage.models.analysis import Analysis
-from kubesage.models.finding import Severity
 from kubesage.models.incident import Incident
 
 
@@ -19,6 +18,9 @@ class AnalysisMapper:
             pod=analysis.incident.pod,
             duration_ms=analysis.duration_ms,
             summary=analysis.report.summary if analysis.report else None,
+            highest_severity=(
+                analysis.highest_severity.value if analysis.highest_severity else None
+            ),
         )
 
         model.findings = [
@@ -41,9 +43,6 @@ class AnalysisMapper:
                 namespace=model.namespace,
                 pod=model.pod,
                 phase="",
-            ),
-            highest_severity=(
-                Severity(model.highest_severity) if model.highest_severity else None
             ),
             findings=[FindingMapper.to_domain(f) for f in model.findings],
             report=(AIReportMapper.to_domain(model.report) if model.report else None),
