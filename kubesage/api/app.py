@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from kubesage.api.exception_handlers import register_exception_handlers
 from kubesage.api.lifespan import lifespan
@@ -31,5 +32,14 @@ app.include_router(metrics_router)
 app.add_middleware(MetricsMiddleware)
 app.add_middleware(RequestIDMiddleware)
 app.add_middleware(LoggingMiddleware)
+
+if settings.environment == "development":
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:5173"],
+        allow_credentials=False,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 register_exception_handlers(app)
