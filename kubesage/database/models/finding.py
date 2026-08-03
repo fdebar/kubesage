@@ -16,4 +16,10 @@ class FindingModel(Base):
     severity: Mapped[str] = mapped_column(String(50), nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
+    evidences = relationship(
+        "EvidenceModel", back_populates="finding", cascade="all, delete-orphan"
+    )
+    recommendations = relationship(
+        "RecommendationModel", back_populates="finding", cascade="all, delete-orphan"
+    )
     analysis = relationship("AnalysisModel", back_populates="findings")
