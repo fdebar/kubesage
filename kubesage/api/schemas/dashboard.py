@@ -44,4 +44,4 @@ class DashboardOverviewResponse(BaseModel):
     cluster: ClusterStatus
     metrics: DashboardMetrics
     severities: SeveritySummary
-    latest_analyses: list[DashboardAnalysisItem]
+    recent_analyses: list[DashboardAnalysisItem]

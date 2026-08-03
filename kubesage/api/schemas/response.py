@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field
 
+from kubesage.api.schemas.finding import FindingResponse
+
 
 class AnalyzeResponse(BaseModel):
     summary: str = Field(
@@ -12,12 +14,6 @@ class AnalyzeResponse(BaseModel):
     root_cause: str
     recommendations: list = Field(default_factory=list)
     kubectl_commands: list = Field(default_factory=list)
-
-
-class FindingResponse(BaseModel):
-    title: str
-    description: str
-    severity: str
 
 
 class AnalyzeDetailedResponse(AnalyzeResponse):

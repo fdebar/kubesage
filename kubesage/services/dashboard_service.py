@@ -62,7 +62,7 @@ class DashboardService:
                 health_score=health_score,
             ),
             severities=severities,
-            latest_analyses=recent,
+            recent_analyses=recent,
         )
 
     def _health_score(self, severity: SeveritySummary) -> int:

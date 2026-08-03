@@ -1,5 +1,13 @@
 from uuid import UUID
 
+from kubesage.api.schemas.analysis import (
+    AIReportResponse,
+    AnalysisResponse,
+    EvidenceResponse,
+    FindingDetailResponse,
+    IncidentResponse,
+    ResourceResponse,
+)
 from kubesage.database.models.analysis import AnalysisModel
 from kubesage.mappers.ai_report_mapper import AIReportMapper
 from kubesage.mappers.finding_mapper import FindingMapper
@@ -48,4 +56,58 @@ class AnalysisMapper:
             report=(AIReportMapper.to_domain(model.report) if model.report else None),
             duration_ms=model.duration_ms,
             created_at=model.created_at,
+        )
+
+    @staticmethod
+    def to_detail_response(
+        analysis: Analysis,
+    ) -> AnalysisResponse:
+
+        findings = sorted(
+            analysis.findings,
+            key=lambda f: (
+                -f.severity.weight,
+                -f.priority,
+                -f.confidence,
+            ),
+        )
+
+        return AnalysisResponse(
+            id=analysis.id,
+            incident=IncidentResponse(
+                namespace=analysis.incident.namespace,
+                pod=analysis.incident.pod,
+                phase=analysis.incident.phase,
+            ),
+            findings=[
+                FindingDetailResponse(
+                    rule=f.rule,
+                    severity=f.severity,
+                    kind=f.kind,
+                    title=f.title,
+                    description=f.description,
+                    resource=(
+                        ResourceResponse(**f.resource.model_dump())
+                        if f.resource
+                        else None
+                    ),
+                    recommendations=f.recommendations,
+                    priority=f.priority,
+                    confidence=f.confidence,
+                    related_findings=f.related_findings,
+                    caused_by=f.caused_by,
+                    evidences=[
+                        EvidenceResponse(**e.model_dump())
+                        for e in f.structured_evidences
+                    ],
+                )
+                for f in findings
+            ],
+            report=(
+                AIReportResponse(**analysis.report.model_dump())
+                if analysis.report
+                else None
+            ),
+            created_at=analysis.created_at,
+            duration_ms=analysis.duration_ms,
         )
