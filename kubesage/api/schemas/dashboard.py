@@ -5,24 +5,26 @@ from pydantic import BaseModel
 from kubesage.models.finding import Severity
 
 
-class DashboardSummary(BaseModel):
-    """Represents the overall security posture of the cluster."""
-
-    total_analyses: int
-    total_findings: int
-    critical_findings: int
-    high_findings: int
-    last_analysis_at: datetime | None
+class ClusterStatus(BaseModel):
+    name: str
+    version: str
+    status: str
 
 
-class DashboardRecentAnalysis(BaseModel):
-    """A single recent analysis entry for the dashboard."""
+class DashboardMetrics(BaseModel):
+    pods: int
+    nodes: int
+    analyses: int
+    findings: int
+    health_score: int
 
-    id: str
-    namespace: str
-    pod: str
-    severity: Severity
-    created_at: datetime
+
+class SeveritySummary(BaseModel):
+    critical: int
+    high: int
+    warning: int
+    low: int
+    info: int
 
 
 class DashboardAnalysisItem(BaseModel):
@@ -31,7 +33,7 @@ class DashboardAnalysisItem(BaseModel):
     id: str
     namespace: str
     pod: str
-    severity: str | None
+    severity: Severity | None
     created_at: datetime
     duration_ms: int
 
@@ -39,8 +41,7 @@ class DashboardAnalysisItem(BaseModel):
 class DashboardOverviewResponse(BaseModel):
     """Response model for dashboard overview"""
 
-    total_analyses: int
-    critical_count: int
-    high_count: int
-
+    cluster: ClusterStatus
+    metrics: DashboardMetrics
+    severities: SeveritySummary
     latest_analyses: list[DashboardAnalysisItem]

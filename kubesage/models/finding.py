@@ -14,7 +14,6 @@ class FindingKind(StrEnum):
 class Severity(StrEnum):
     INFO = "INFO"
     LOW = "LOW"
-    MEDIUM = "MEDIUM"
     WARNING = "WARNING"
     HIGH = "HIGH"
     CRITICAL = "CRITICAL"
@@ -25,9 +24,8 @@ class Severity(StrEnum):
             Severity.INFO: 0,
             Severity.LOW: 1,
             Severity.WARNING: 2,
-            Severity.MEDIUM: 3,
-            Severity.HIGH: 4,
-            Severity.CRITICAL: 5,
+            Severity.HIGH: 3,
+            Severity.CRITICAL: 4,
         }[self]
 
 

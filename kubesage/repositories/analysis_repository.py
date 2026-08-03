@@ -4,6 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from kubesage.database.models.analysis import AnalysisModel
+from kubesage.database.models.finding import FindingModel
 from kubesage.mappers.analysis_mapper import AnalysisMapper
 from kubesage.models.analysis import Analysis
 
@@ -42,10 +43,15 @@ class AnalysisRepository:
 
         return count or 0
 
-    def count_by_severity(self, severity: str) -> int:
-        statement = select(func.count(AnalysisModel.id)).where(
-            AnalysisModel.highest_severity == severity
+    def count_findings_by_severity(self, severity: str) -> int:
+        statement = select(func.count(FindingModel.id)).where(
+            FindingModel.severity == severity
         )
         count = self.session.scalar(statement)
 
         return count or 0
+
+    def count_findings(self) -> int:
+        statement = select(func.count(FindingModel.id))
+
+        return self.session.scalar(statement) or 0

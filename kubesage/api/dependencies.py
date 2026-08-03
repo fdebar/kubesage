@@ -8,6 +8,7 @@ from kubesage.database.session import SessionLocal
 from kubesage.repositories.analysis_repository import AnalysisRepository
 from kubesage.services.analysis_service import AnalysisService
 from kubesage.services.dashboard_service import DashboardService
+from kubesage.services.kubernetes_service import KubernetesService
 
 
 def get_db() -> Generator[Session]:
@@ -31,4 +32,4 @@ def get_analysis_service(db: Session = Depends(get_db)) -> AnalysisService:
 
 
 def get_dashboard_service(db: Session = Depends(get_db)) -> DashboardService:
-    return DashboardService(AnalysisRepository(db))
+    return DashboardService(AnalysisRepository(db), KubernetesService())

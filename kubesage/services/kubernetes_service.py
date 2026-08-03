@@ -1,8 +1,11 @@
 from typing import Any
 
 import structlog
+from kubernetes import client
 from kubernetes.client.exceptions import ApiException
+from kubernetes.config import list_kube_config_contexts
 
+from kubesage.models.cluster_info import ClusterInfo
 from kubesage.models.container import (
     ContainerResources,
     ContainerStatus,
@@ -235,3 +238,39 @@ class KubernetesService(KubernetesProvider):
                 return int(float(value[: -len(suffix)]) * multiplier)
 
         return int(value)
+
+    def count_pods(self) -> int:
+        if self.v1 is None:
+            return 0
+
+        pods = self.v1.list_pod_for_all_namespaces()
+
+        return len(pods.items)
+
+    def get_cluster_info(self) -> ClusterInfo:
+
+        contexts, active = list_kube_config_contexts()
+        if self.v1 is None:
+            return ClusterInfo(
+                name="unknown",
+                kubernetes_version="unknown",
+                node_count=0,
+                namespace_count=0,
+                api_server="unknown",
+            )
+
+        return ClusterInfo(
+            name=active["context"]["cluster"],
+            kubernetes_version=client.VersionApi().get_code().git_version,
+            node_count=len(self.v1.list_node().items),
+            namespace_count=len(self.v1.list_namespace().items),
+            api_server=client.Configuration.get_default_copy().host,
+        )
+
+    def count_nodes(self) -> int:
+        if self.v1 is None:
+            return 0
+
+        nodes = self.v1.list_node()
+
+        return len(nodes.items)
