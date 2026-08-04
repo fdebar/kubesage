@@ -61,7 +61,6 @@ def test_analyze_flow(incident_builder_cls: MagicMock) -> None:
     ai.analyze.return_value = report
 
     service = IncidentService(
-        analysis_repository=MagicMock(),
         kubernetes=MagicMock(),
         prometheus=MagicMock(),
         metrics=MagicMock(),

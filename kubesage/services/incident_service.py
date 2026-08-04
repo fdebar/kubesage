@@ -12,7 +12,6 @@ from kubesage.builders.context.incident_builder import IncidentBuilder
 from kubesage.builders.prompt.prompt_builder import PromptBuilder
 from kubesage.models.ai_report import AIReport
 from kubesage.models.analysis import Analysis
-from kubesage.repositories.analysis_repository import AnalysisRepository
 from kubesage.services.ai_service import AIService
 from kubesage.services.kubernetes_service import KubernetesService
 from kubesage.services.loki_service import LokiService
@@ -26,7 +25,6 @@ logger = structlog.get_logger()
 class IncidentService:
     def __init__(
         self,
-        analysis_repository: AnalysisRepository,
         kubernetes: KubernetesService,
         prometheus: PrometheusService,
         metrics: MetricsService,
@@ -37,7 +35,6 @@ class IncidentService:
         prompt_builder: PromptBuilder,
         container_snapshot_builder: ContainerSnapshotBuilder,
     ) -> None:
-        self.analysis_repository = analysis_repository
         self.kubernetes = kubernetes
         self.prometheus = prometheus
         self.metrics = metrics
