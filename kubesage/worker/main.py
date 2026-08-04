@@ -2,6 +2,7 @@ import structlog
 
 from kubesage.bootstrap import create_analysis_service
 from kubesage.database.session import SessionLocal
+from kubesage.watchers.incident_deduplicator import IncidentDeduplicator
 from kubesage.watchers.kubernetes_event_source import (
     KubernetesPodEventSource,
 )
@@ -18,6 +19,7 @@ def run_worker() -> None:
         watcher = KubernetesWatcher(
             analysis_service=analysis_service,
             event_filter=PodEventFilter(),
+            deduplicator=IncidentDeduplicator(),
         )
         event_source = KubernetesPodEventSource()
         logger.info("kubesage_worker_started")

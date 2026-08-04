@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from unittest.mock import Mock
 
 from kubesage.models.analysis import Analysis
+from kubesage.watchers.incident_deduplicator import IncidentDeduplicator
 from kubesage.watchers.kubernetes_watcher import KubernetesWatcher
 from kubesage.watchers.models import IncidentTrigger, PodWatchEvent
 from kubesage.watchers.pod_event_filter import PodEventFilter
@@ -25,6 +26,7 @@ def test_watcher_triggers_analysis() -> None:
     watcher = KubernetesWatcher(
         analysis_service=analysis_service,
         event_filter=PodEventFilter(),
+        deduplicator=IncidentDeduplicator(),
     )
 
     trigger = IncidentTrigger(
@@ -52,6 +54,7 @@ def test_watcher_starts_analysis_for_incident() -> None:
     watcher = KubernetesWatcher(
         analysis_service=analysis_service,
         event_filter=PodEventFilter(),
+        deduplicator=IncidentDeduplicator(),
     )
     event_source = FakeEventSource(build_event(build_pod("CrashLoopBackOff")))
     watcher.start(event_source)

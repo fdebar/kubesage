@@ -3,6 +3,7 @@ import structlog
 from kubesage.models.analysis import Analysis
 from kubesage.services.analysis_service import AnalysisService
 from kubesage.watchers.event_source import EventSource
+from kubesage.watchers.incident_deduplicator import IncidentDeduplicator
 from kubesage.watchers.models import IncidentTrigger
 from kubesage.watchers.pod_event_filter import PodEventFilter
 
@@ -14,9 +15,11 @@ class KubernetesWatcher:
         self,
         analysis_service: AnalysisService,
         event_filter: PodEventFilter,
+        deduplicator: IncidentDeduplicator,
     ):
         self.analysis_service = analysis_service
         self.event_filter = event_filter
+        self.deduplicator = deduplicator
 
     def start(self, event_source: EventSource) -> None:
         logger.info("watcher_started")
@@ -24,6 +27,15 @@ class KubernetesWatcher:
         for event in event_source.watch():
             trigger = self.event_filter.build_trigger(event)
             if trigger is None:
+                continue
+
+            if not self.deduplicator.should_process(trigger):
+                logger.info(
+                    "incident_ignored_duplicate",
+                    namespace=trigger.namespace,
+                    pod=trigger.pod,
+                    reason=trigger.reason,
+                )
                 continue
 
             self.handle(trigger)
