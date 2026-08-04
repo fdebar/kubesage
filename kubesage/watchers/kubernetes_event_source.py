@@ -1,4 +1,6 @@
+import time
 from collections.abc import Iterator
+from typing import Any
 
 import structlog
 from kubernetes import watch
@@ -29,15 +31,22 @@ class KubernetesPodEventSource:
         logger.info("kubernetes_pod_watcher_started")
         while True:
             try:
-                for event in self.watcher.stream(
-                    self.api.list_pod_for_all_namespaces,
-                    timeout_seconds=300,
-                ):
+                for event in self._stream():
                     pod = event.get("object")
                     if pod is None:
                         continue
 
                     yield PodWatchEvent(type=event["type"], pod=pod)
-
             except Exception:
-                logger.warning("kubernetes_pod_watcher_restarting")
+                logger.warning("kubernetes_pod_watcher_restart_failed")
+                time.sleep(5)
+                logger.info("kubernetes_pod_watcher_retrying")
+
+    def _stream(self) -> Any:
+        if self.api is None:
+            raise RuntimeError("Unable to initialize Kubernetes client.")
+
+        return self.watcher.stream(
+            self.api.list_pod_for_all_namespaces,
+            timeout_seconds=300,
+        )
