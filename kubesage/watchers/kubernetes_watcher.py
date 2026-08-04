@@ -2,7 +2,7 @@ import structlog
 
 from kubesage.models.analysis import Analysis
 from kubesage.services.analysis_service import AnalysisService
-from kubesage.watchers.kubernetes_event_source import KubernetesEventSource
+from kubesage.watchers.event_source import EventSource
 from kubesage.watchers.models import IncidentTrigger
 from kubesage.watchers.pod_event_filter import PodEventFilter
 
@@ -18,7 +18,7 @@ class KubernetesWatcher:
         self.analysis_service = analysis_service
         self.event_filter = event_filter
 
-    def start(self, event_source: KubernetesEventSource) -> None:
+    def start(self, event_source: EventSource) -> None:
         logger.info("watcher_started")
 
         for event in event_source.watch():
