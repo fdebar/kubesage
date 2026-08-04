@@ -6,7 +6,9 @@ from sqlalchemy.orm import Session
 from kubesage.database.models.analysis import AnalysisModel
 from kubesage.database.models.finding import FindingModel
 from kubesage.mappers.analysis_mapper import AnalysisMapper
+from kubesage.mappers.analysis_summary_mapper import AnalysisSummaryMapper
 from kubesage.models.analysis import Analysis
+from kubesage.models.analysis_summary import AnalysisSummary
 
 
 class AnalysisRepository:
@@ -28,7 +30,7 @@ class AnalysisRepository:
 
         return AnalysisMapper.to_domain(model)
 
-    def list(self, limit: int = 20, offset: int = 0) -> list[Analysis] | None:
+    def list_analyses(self, limit: int = 20, offset: int = 0) -> list[Analysis]:
         statement = (
             select(AnalysisModel)
             .order_by(AnalysisModel.created_at.desc())
@@ -36,9 +38,21 @@ class AnalysisRepository:
             .limit(limit)
         )
         result = self.session.execute(statement)
-
         models = result.scalars().all()
+
         return [AnalysisMapper.to_domain(m) for m in models]
+
+    def list_summaries(self, limit: int = 20, offset: int = 0) -> list[AnalysisSummary]:
+        statement = (
+            select(AnalysisModel)
+            .order_by(AnalysisModel.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+        result = self.session.execute(statement)
+        models = result.scalars().all()
+
+        return [AnalysisSummaryMapper.to_domain(m) for m in models]
 
     def count(self) -> int:
         statement = select(func.count(AnalysisModel.id))

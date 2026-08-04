@@ -1,4 +1,7 @@
+from uuid import UUID
+
 from kubesage.models.analysis import Analysis
+from kubesage.models.analysis_summary import AnalysisSummary
 from kubesage.repositories.analysis_repository import AnalysisRepository
 from kubesage.services.incident_service import IncidentService
 
@@ -21,3 +24,15 @@ class AnalysisService:
         self.repository.save(analysis)
 
         return analysis
+
+    def get(self, analysis_id: UUID) -> Analysis | None:
+        return self.repository.get(analysis_id)
+
+    def list_analyses(self, limit: int = 20, offset: int = 0) -> list[Analysis]:
+        return self.repository.list_analyses(limit=limit, offset=offset)
+
+    def list_summaries(self, limit: int = 20, offset: int = 0) -> list[AnalysisSummary]:
+        return self.repository.list_summaries(limit=limit, offset=offset)
+
+    def count(self) -> int:
+        return self.repository.count()
