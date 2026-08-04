@@ -6,6 +6,7 @@ from kubesage.bootstrap import create_incident_service
 from kubesage.database.session import SessionLocal
 from kubesage.models.ai_report import AIReport
 from kubesage.observability import get_logger
+from kubesage.repositories.analysis_repository import AnalysisRepository
 from kubesage.services.analysis_service import AnalysisService
 from kubesage.utils.exceptions import KubeSageError
 
@@ -14,12 +15,12 @@ def analyze_command(args: argparse.Namespace) -> None:
     """Manage the execution of the analyze command."""
 
     with SessionLocal() as db:
-        incident_service = create_incident_service(db)
+        incident_service = create_incident_service()
 
     try:
         analysis_service = AnalysisService(
             incident_service=incident_service,
-            repository=incident_service.analysis_repository,
+            repository=AnalysisRepository(db),
         )
         analysis = analysis_service.analyze(namespace=args.namespace, pod=args.pod)
     except KubeSageError as exc:

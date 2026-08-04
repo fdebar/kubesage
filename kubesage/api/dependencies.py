@@ -26,7 +26,7 @@ def get_analysis_repository(session: Session = Depends(get_db)) -> AnalysisRepos
 
 def get_analysis_service(db: Session = Depends(get_db)) -> AnalysisService:
     return AnalysisService(
-        incident_service=create_incident_service(db),
+        incident_service=create_incident_service(),
         repository=AnalysisRepository(db),
     )
 
