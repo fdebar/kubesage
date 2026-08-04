@@ -248,8 +248,6 @@ class KubernetesService(KubernetesProvider):
         return len(pods.items)
 
     def get_cluster_info(self) -> ClusterInfo:
-
-        contexts, active = list_kube_config_contexts()
         if self.v1 is None:
             return ClusterInfo(
                 name="unknown",
@@ -259,6 +257,7 @@ class KubernetesService(KubernetesProvider):
                 api_server="unknown",
             )
 
+        contexts, active = list_kube_config_contexts()
         return ClusterInfo(
             name=active["context"]["cluster"],
             kubernetes_version=client.VersionApi().get_code().git_version,
