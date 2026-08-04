@@ -20,7 +20,7 @@ class DashboardService:
         self.kubernetes_service = kubernetes_service
 
     def overview(self) -> DashboardOverviewResponse:
-        analyses = self.repository.list_recent(limit=10) or []
+        analyses = self.repository.list(limit=10) or []
 
         severities = SeveritySummary(
             critical=self.repository.count_findings_by_severity(Severity.CRITICAL),

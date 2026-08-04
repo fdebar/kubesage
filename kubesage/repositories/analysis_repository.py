@@ -28,9 +28,12 @@ class AnalysisRepository:
 
         return AnalysisMapper.to_domain(model)
 
-    def list_recent(self, limit: int = 20) -> list[Analysis] | None:
+    def list(self, limit: int = 20, offset: int = 0) -> list[Analysis] | None:
         statement = (
-            select(AnalysisModel).order_by(AnalysisModel.created_at.desc()).limit(limit)
+            select(AnalysisModel)
+            .order_by(AnalysisModel.created_at.desc())
+            .offset(offset)
+            .limit(limit)
         )
         result = self.session.execute(statement)
 

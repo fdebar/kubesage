@@ -34,7 +34,7 @@ def get_analysis(
 def list_analyses(
     repository: AnalysisRepository = Depends(get_analysis_repository),
 ) -> list[AnalysisResponse] | None:
-    analyses = repository.list_recent()
+    analyses = repository.list()
     if not analyses:
         return None
 
