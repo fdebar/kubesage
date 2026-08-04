@@ -32,6 +32,110 @@ def analysis() -> Analysis:
     )
 
 
+def test_analysis_mapper_creates_complete_model(analysis: Analysis) -> None:
+    model = AnalysisMapper.to_model(analysis)
+
+    assert model.id == str(analysis.id)
+    assert model.namespace == "default"
+    assert model.pod == "my-pod"
+    assert model.duration_ms == 1000
+
+    assert model.summary == "Test summary"
+    assert model.phase == "Running"
+
+    assert model.findings_count == 1
+    assert len(model.findings) == 1
+    assert model.findings[0].rule == "crash_loop"
+
+    assert model.report is not None
+    assert model.report.summary == "Test summary"
+
+    assert model.incident_snapshot is not None
+    assert model.incident_snapshot.data["namespace"] == "default"
+
+
+def test_to_model_without_report() -> None:
+    analysis = Analysis(
+        incident=Incident(
+            namespace="default",
+            pod="test-pod",
+            phase="Failed",
+        ),
+        duration_ms=500,
+        findings=[],
+    )
+    model = AnalysisMapper.to_model(analysis)
+
+    assert model.report is None
+    assert model.summary is None
+
+
+def test_to_model_calculates_findings_count() -> None:
+    analysis = Analysis(
+        incident=Incident(
+            namespace="default",
+            pod="pod",
+            phase="Running",
+        ),
+        findings=[
+            Finding(
+                rule="rule1",
+                severity=Severity.HIGH,
+                title="Finding 1",
+                description="desc",
+            ),
+            Finding(
+                rule="rule2",
+                severity=Severity.LOW,
+                title="Finding 2",
+                description="desc",
+            ),
+        ],
+        duration_ms=500,
+    )
+    model = AnalysisMapper.to_model(analysis)
+
+    assert model.findings_count == 2
+
+
+def test_to_model_maps_highest_severity() -> None:
+    analysis = Analysis(
+        incident=Incident(
+            namespace="default",
+            pod="pod",
+            phase="Running",
+        ),
+        findings=[
+            Finding(
+                rule="critical_rule",
+                severity=Severity.CRITICAL,
+                title="Critical finding",
+                description="Critical issue detected",
+            )
+        ],
+        duration_ms=500,
+    )
+    model = AnalysisMapper.to_model(analysis)
+
+    assert model.highest_severity == Severity.CRITICAL.value
+
+
+def test_to_domain_restores_analysis(analysis: Analysis) -> None:
+    model = AnalysisMapper.to_model(analysis)
+    domain = AnalysisMapper.to_domain(model)
+
+    assert domain.id == analysis.id
+    assert domain.incident.namespace == "default"
+    assert domain.incident.pod == "my-pod"
+    assert domain.incident.phase == "Running"
+
+    assert len(domain.findings) == 1
+    assert domain.findings[0].rule == "crash_loop"
+
+    assert domain.report is not None
+    assert domain.report.summary == "Test summary"
+
+
 def test_analysis_mapper_creates_model(analysis: Analysis) -> None:
     model = AnalysisMapper.to_model(analysis)
 

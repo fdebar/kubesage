@@ -18,7 +18,7 @@ class AnalysisSummaryMapper:
                 Severity(model.highest_severity) if model.highest_severity else None
             ),
             summary=model.summary,
-            findings_count=len(model.findings),
+            findings_count=model.findings_count,
             duration_ms=model.duration_ms,
             created_at=model.created_at,
         )

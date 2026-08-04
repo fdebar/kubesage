@@ -31,6 +31,8 @@ class AnalysisMapper:
                 analysis.highest_severity.value if analysis.highest_severity else None
             ),
             phase=analysis.incident.phase,
+            findings_count=len(analysis.findings),
+            created_at=analysis.created_at,
         )
 
         model.findings = [

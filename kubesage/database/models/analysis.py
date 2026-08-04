@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from sqlalchemy import DateTime, Integer, String
+from sqlalchemy import DateTime, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from kubesage.database.base import Base
@@ -9,6 +9,12 @@ from kubesage.database.base import Base
 
 class AnalysisModel(Base):
     __tablename__ = "analyses"
+
+    __table_args__ = (
+        Index("ix_analysis_created_at", "created_at"),
+        Index("ix_analysis_namespace", "namespace"),
+        Index("ix_analysis_highest_severity", "highest_severity"),
+    )
 
     id: Mapped[str] = mapped_column(primary_key=True, default=lambda: str(uuid4()))
     namespace: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -21,10 +27,9 @@ class AnalysisModel(Base):
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
     findings = relationship(
-        "FindingModel",
-        back_populates="analysis",
-        cascade="all, delete-orphan",
+        "FindingModel", back_populates="analysis", cascade="all, delete-orphan"
     )
+    findings_count: Mapped[int] = mapped_column(Integer, nullable=False)
     report = relationship(
         "AIReportModel",
         back_populates="analysis",

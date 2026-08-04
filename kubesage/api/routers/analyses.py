@@ -7,6 +7,7 @@ from kubesage.api.schemas.analysis import (
     AnalysisResponse,
 )
 from kubesage.api.schemas.analysis_summary import AnalysisSummaryResponse
+from kubesage.api.schemas.paginated_response import PaginatedResponse
 from kubesage.mappers.analysis_mapper import AnalysisMapper
 from kubesage.mappers.analysis_summary_mapper import AnalysisSummaryMapper
 from kubesage.repositories.analysis_repository import AnalysisRepository
@@ -29,12 +30,17 @@ def get_analysis(
     return AnalysisMapper.to_detail_response(analysis)
 
 
-@router.get("", response_model=list[AnalysisSummaryResponse])
+@router.get("", response_model=PaginatedResponse[AnalysisSummaryResponse])
 def list_analyses(
     limit: int = 20,
     offset: int = 0,
     repository: AnalysisRepository = Depends(get_analysis_repository),
-) -> list[AnalysisSummaryResponse]:
+) -> PaginatedResponse[AnalysisSummaryResponse]:
     analyses = repository.list_summaries(limit=limit, offset=offset)
 
-    return AnalysisSummaryMapper.to_response(analyses)
+    return PaginatedResponse(
+        items=AnalysisSummaryMapper.to_response(analyses),
+        total=repository.count(),
+        page=offset // limit + 1,
+        page_size=limit,
+    )
