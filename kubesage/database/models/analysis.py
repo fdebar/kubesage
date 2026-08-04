@@ -13,6 +13,7 @@ class AnalysisModel(Base):
     id: Mapped[str] = mapped_column(primary_key=True, default=lambda: str(uuid4()))
     namespace: Mapped[str] = mapped_column(String(255), nullable=False)
     pod: Mapped[str] = mapped_column(String(255), nullable=False)
+    phase: Mapped[str] = mapped_column(String(50), nullable=False)
     highest_severity: Mapped[str | None] = mapped_column(String(50), nullable=True)
     summary: Mapped[str | None] = mapped_column(nullable=True)
     duration_ms: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -26,6 +27,12 @@ class AnalysisModel(Base):
     )
     report = relationship(
         "AIReportModel",
+        back_populates="analysis",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+    incident_snapshot = relationship(
+        "IncidentSnapshotModel",
         back_populates="analysis",
         uselist=False,
         cascade="all, delete-orphan",

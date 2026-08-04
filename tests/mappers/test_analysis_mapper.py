@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 import pytest
 
 from kubesage.mappers.analysis_mapper import AnalysisMapper
@@ -36,3 +38,20 @@ def test_analysis_mapper_creates_model(analysis: Analysis) -> None:
     assert model.namespace == "default"
     assert len(model.findings) == 1
     assert model.findings[0].rule == "crash_loop"
+
+
+def test_to_model_keeps_incident_phase() -> None:
+    analysis = Analysis(
+        id=uuid4(),
+        incident=Incident(
+            namespace="default",
+            pod="test-pod",
+            phase="Running",
+        ),
+        findings=[],
+        duration_ms=1000,
+    )
+
+    model = AnalysisMapper.to_model(analysis)
+
+    assert model.phase == "Running"

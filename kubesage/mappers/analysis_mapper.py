@@ -9,6 +9,7 @@ from kubesage.api.schemas.analysis import (
     ResourceResponse,
 )
 from kubesage.database.models.analysis import AnalysisModel
+from kubesage.database.models.incident_snapshot import IncidentSnapshotModel
 from kubesage.mappers.ai_report_mapper import AIReportMapper
 from kubesage.mappers.finding_mapper import FindingMapper
 from kubesage.models.analysis import Analysis
@@ -29,12 +30,18 @@ class AnalysisMapper:
             highest_severity=(
                 analysis.highest_severity.value if analysis.highest_severity else None
             ),
+            phase=analysis.incident.phase,
         )
 
         model.findings = [
             FindingMapper.to_model(finding, str(analysis.id))
             for finding in analysis.findings
         ]
+
+        model.incident_snapshot = IncidentSnapshotModel(
+            analysis_id=str(analysis.id),
+            data=analysis.incident.model_dump(mode="json"),
+        )
 
         if analysis.report:
             model.report = AIReportMapper.to_model(analysis.report, str(analysis.id))
@@ -50,7 +57,7 @@ class AnalysisMapper:
             incident=Incident(
                 namespace=model.namespace,
                 pod=model.pod,
-                phase="",
+                phase=model.phase,
             ),
             findings=[FindingMapper.to_domain(f) for f in model.findings],
             report=(AIReportMapper.to_domain(model.report) if model.report else None),
@@ -62,6 +69,7 @@ class AnalysisMapper:
     def to_detail_response(
         analysis: Analysis,
     ) -> AnalysisResponse:
+        """Convert an Analysis to an AnalysisResponse."""
 
         findings = sorted(
             analysis.findings,
