@@ -1,4 +1,4 @@
-from kubernetes import client, config
+from kubernetes import client, config, watch
 from kubernetes.config.config_exception import ConfigException
 
 from kubesage.observability.factory import get_logger
@@ -40,3 +40,7 @@ def create_custom_objects_api() -> client.CustomObjectsApi | None:
         return None
 
     return client.CustomObjectsApi()
+
+
+def create_watch() -> watch.Watch:
+    return watch.Watch()

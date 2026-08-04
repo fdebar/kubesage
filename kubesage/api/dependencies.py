@@ -3,7 +3,7 @@ from collections.abc import Generator
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
-from kubesage.bootstrap import create_incident_service
+from kubesage.bootstrap import create_analysis_service
 from kubesage.database.session import SessionLocal
 from kubesage.repositories.analysis_repository import AnalysisRepository
 from kubesage.services.analysis_service import AnalysisService
@@ -25,10 +25,7 @@ def get_analysis_repository(session: Session = Depends(get_db)) -> AnalysisRepos
 
 
 def get_analysis_service(db: Session = Depends(get_db)) -> AnalysisService:
-    return AnalysisService(
-        incident_service=create_incident_service(),
-        repository=AnalysisRepository(db),
-    )
+    return create_analysis_service(db)
 
 
 def get_dashboard_service(db: Session = Depends(get_db)) -> DashboardService:

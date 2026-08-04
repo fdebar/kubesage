@@ -5,6 +5,7 @@ from argparse import _SubParsersAction
 from kubesage.cli.commands.analyze import analyze_command
 from kubesage.cli.commands.correlations import correlations_command
 from kubesage.cli.commands.rules import rules_command
+from kubesage.cli.commands.watch import watch_command
 from kubesage.observability import setup_logging
 from kubesage.observability.context import set_request_id
 
@@ -22,6 +23,7 @@ def main() -> None:
     add_analyze_command(subparsers)
     add_correlations_command(subparsers)
     add_rules_command(subparsers)
+    add_watch_command(subparsers)
 
     args = parser.parse_args()
 
@@ -54,6 +56,11 @@ def add_analyze_command(subparsers: _SubParsersAction) -> None:
     parser_analyze.add_argument("--namespace", default="default")
     parser_analyze.add_argument("--pod", required=True)
     parser_analyze.set_defaults(func=analyze_command)
+
+
+def add_watch_command(subparsers: _SubParsersAction) -> None:
+    parser_watch = subparsers.add_parser("watch", help="Watch for incidents")
+    parser_watch.set_defaults(func=watch_command)
 
 
 if __name__ == "__main__":
