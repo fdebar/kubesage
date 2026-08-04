@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from kubesage.api.dependencies import get_analysis_repository
 from kubesage.api.schemas.analysis import (
@@ -32,15 +32,20 @@ def get_analysis(
 
 @router.get("", response_model=PaginatedResponse[AnalysisSummaryResponse])
 def list_analyses(
-    limit: int = 20,
-    offset: int = 0,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
     repository: AnalysisRepository = Depends(get_analysis_repository),
 ) -> PaginatedResponse[AnalysisSummaryResponse]:
-    analyses = repository.list_summaries(limit=limit, offset=offset)
+    offset = (page - 1) * page_size
+
+    analyses = repository.list_summaries(
+        limit=page_size,
+        offset=offset,
+    )
 
     return PaginatedResponse(
         items=AnalysisSummaryMapper.to_response(analyses),
         total=repository.count(),
-        page=offset // limit + 1,
-        page_size=limit,
+        page=page,
+        page_size=page_size,
     )
