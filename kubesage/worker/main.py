@@ -11,7 +11,7 @@ from kubesage.watchers.pod_event_filter import PodEventFilter
 logger = structlog.get_logger()
 
 
-def main() -> None:
+def run_worker() -> None:
     db = SessionLocal()
     try:
         analysis_service = create_analysis_service(db)
@@ -28,6 +28,10 @@ def main() -> None:
 
     finally:
         db.close()
+
+
+def main() -> None:
+    run_worker()
 
 
 if __name__ == "__main__":

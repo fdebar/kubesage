@@ -36,6 +36,7 @@ dev = [
 
 [project.scripts]
 kubesage = "kubesage.cli.main:main"
+kubesage-worker = "kubesage.worker.main:main"
 
 [tool.setuptools]
 include-package-data = true

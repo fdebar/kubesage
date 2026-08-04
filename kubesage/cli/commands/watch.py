@@ -2,10 +2,14 @@ import argparse
 
 import structlog
 
+from kubesage.worker.main import run_worker
+
 logger = structlog.get_logger()
 
 
 def watch_command(args: argparse.Namespace) -> None:
-    """Manage the execution of the watch command."""
+    """
+    Start Kubernetes watcher.
+    """
 
-    logger.info("watcher_starting")
+    run_worker()
