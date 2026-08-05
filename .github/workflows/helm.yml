@@ -46,6 +46,7 @@ jobs:
           helm repo update
           helm upgrade --install prometheus prometheus-community/kube-prometheus-stack -n monitoring --create-namespace
 
+          helm dependency build
           helm upgrade --install kubesage ./charts/kubesage \
             --namespace kubesage \
             --create-namespace \
