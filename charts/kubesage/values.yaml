@@ -86,11 +86,11 @@ observability:
   # This sets the URL for Prometheus.
   prometheus: http://monitoring-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090
   # This sets the URL for Grafana.
-  grafana: http://grafana.monitoring.svc.cluster.local:3000
+  grafana: http://monitoring-grafana.monitoring.svc.cluster.local:3000
   # This sets the URL for Loki.
-  loki: http://loki.monitoring.svc.cluster.local:3100
+  loki: http://monitoring-loki.monitoring.svc.cluster.local:3100
   # This sets the URL for Tempo.
-  tempo: http://tempo.monitoring.svc.cluster.local:4318/v1/traces
+  tempo: http://monitoring-tempo.monitoring.svc.cluster.local:4318/v1/traces
 
 # This is for the secrets for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
 imagePullSecrets: []
@@ -212,3 +212,24 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+# This section is for setting up the postgresql more information can be found here: https://artifacthub.io/packages/helm/bitnami/postgresql
+postgresql:
+  # This is for enabling the postgresql.
+  enabled: true
+
+  # This is for setting the namespace.
+  namespaceOverride: kubesage
+
+  # This is for setting up the auth credentials for postgresql.
+  auth:
+    username: kubesage
+    # TODO: It should be not hardcoded
+    password: kubesage
+    database: kubesage
+
+  # This is for setting up the persistence for postgresql.
+  primary:
+    persistence:
+      enabled: true
+      size: 5Gi

@@ -10,6 +10,18 @@ rules:
     - pods
     - pods/log
     - events
+    - nodes
+    - namespaces
+  verbs:
+    - get
+    - list
+    - watch
+- apiGroups:
+    - apps
+  resources:
+    - deployments
+    - replicasets
+    - statefulsets
   verbs:
     - get
     - list

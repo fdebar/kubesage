@@ -6,3 +6,7 @@ type: application
 version: 0.1.0
 appVersion: "0.11.0"
 icon: https://raw.githubusercontent.com/fdebar/kubesage/refs/heads/main/docs/kubesage-logo.png
+dependencies:
+  - name: postgresql
+    version: 18.8.6
+    repository: https://charts.bitnami.com/bitnami

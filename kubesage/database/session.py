@@ -3,5 +3,5 @@ from sqlalchemy.orm import sessionmaker
 
 from kubesage.utils.config import settings
 
-engine = create_engine(settings.database_url, echo=False)
+engine = create_engine(settings.database_url, echo=False, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

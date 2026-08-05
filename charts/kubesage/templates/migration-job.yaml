@@ -1,0 +1,44 @@
+{{- if .Values.postgresql.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "kubesage.fullname" . }}-migration
+  labels:
+    {{- include "kubesage.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        {{- include "kubesage.selectorLabels" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      initContainers:
+      - name: wait-postgresql
+        image: busybox
+        command:
+          - sh
+          - -c
+          - |
+            until nc -z {{ include "kubesage.fullname" . }}-postgresql 5432;
+            do
+              echo "waiting for postgres";
+              sleep 2;
+            done
+      containers:
+      - name: migration
+        image: "{{ .Values.api.image.repository }}:{{ .Values.api.image.tag }}"
+        imagePullPolicy: "{{ .Values.api.image.pullPolicy }}"
+        command:
+          - alembic
+          - upgrade
+          - head
+        envFrom:
+        - configMapRef:
+            name: {{ include "kubesage.fullname" . }}-config
+        - secretRef:
+            name: {{ include "kubesage.fullname" . }}-secret
+{{- end }}
