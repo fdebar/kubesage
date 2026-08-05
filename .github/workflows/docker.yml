@@ -82,7 +82,9 @@ jobs:
       - name: Update image tag
         if: success()
         run: |
-          yq -i '.image.tag = "${{ steps.vars.outputs.sha_short }}"' \
+          yq -i '.api.image.tag = "${{ steps.vars.outputs.sha_short }}"' \
+            gitops/environments/dev/kubesage.yaml
+          yq -i '.worker.image.tag = "${{ steps.vars.outputs.sha_short }}"' \
             gitops/environments/dev/kubesage.yaml
 
       - name: Commit updated values
