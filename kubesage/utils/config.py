@@ -13,7 +13,7 @@ class Settings:
     app_version: str = "0.11.0"
 
     # Database configuration
-    database_url: str = os.environ["DATABASE_URL"]
+    database_url: str = os.getenv("DATABASE_URL", "")
 
     # Environment configuration
     environment: str = os.getenv("ENVIRONMENT", "production")
