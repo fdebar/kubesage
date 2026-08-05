@@ -9,13 +9,11 @@ def test_container_metrics() -> None:
         name="api",
         cpu_usage=0.5,
         memory_usage=512000000,
-        cpu_limit=1.0,
-        memory_limit=1024000000,
     )
 
     assert metrics.name == "api"
     assert metrics.cpu_usage == 0.5
-    assert metrics.memory_limit == 1024000000
+    assert metrics.memory_usage == 512000000
 
 
 def test_pod_metrics() -> None:
