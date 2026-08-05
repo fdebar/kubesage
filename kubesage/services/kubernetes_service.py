@@ -1,8 +1,6 @@
-from typing import Any
-
 import structlog
 from kubernetes import client
-from kubernetes.client import Configuration
+from kubernetes.client import Configuration, V1Pod
 from kubernetes.client.exceptions import ApiException
 
 from kubesage.models.cluster_info import ClusterInfo
@@ -24,31 +22,38 @@ logger = structlog.get_logger()
 
 
 class KubernetesService(KubernetesProvider):
+    """Service for collecting data from Kubernetes."""
+
     def __init__(self) -> None:
         self.v1 = create_core_v1_api()
 
     def collect(self, namespace: str, pod: str) -> KubernetesSnapshot:
         logger.info("kubernetes_starting_collecting_data", namespace=namespace, pod=pod)
 
-        if self.v1 is None:
-            logger.warning("kubernetes_metrics_unavailable")
-            return self._empty_snapshot(namespace, pod)
-
         try:
             pod_info = self.v1.read_namespaced_pod(name=pod, namespace=namespace)
         except ApiException as exc:
             if exc.status == 404:
-                logger.warning(
+                logger.error(
                     "kubernetes_pod_not_found",
                     namespace=namespace,
                     pod=pod,
+                    status=exc.status,
+                    reason=exc.reason,
                 )
                 raise PodNotFoundError(
                     f"Pod '{pod}' not found in namespace '{namespace}'."
                 ) from None
+            logger.error(
+                "kubernetes_api_error",
+                status=exc.status,
+                reason=exc.reason,
+            )
             return self._empty_snapshot(namespace, pod)
-        except Exception as exc:  # noqa: BLE001
-            logger.error("kubernetes_failed_to_collect_data: %s", exc)
+        except Exception:
+            logger.warning(
+                "kubernetes_failed_to_collect_data", namespace=namespace, pod=pod
+            )
             return self._empty_snapshot(namespace, pod)
 
         logs = self._collect_logs(namespace, pod)
@@ -67,9 +72,6 @@ class KubernetesService(KubernetesProvider):
         )
 
     def _collect_logs(self, namespace: str, pod: str) -> LogSnapshot:
-        if self.v1 is None:
-            return LogSnapshot(source="kubernetes")
-
         try:
             logs = self.v1.read_namespaced_pod_log(
                 name=pod,
@@ -77,12 +79,22 @@ class KubernetesService(KubernetesProvider):
                 tail_lines=settings.log_tail_lines,
             )
         except ApiException as exc:
-            logger.warning("kubernetes_failed_to_collect_logs: %s", exc.reason)
+            if exc.status == 404:
+                logger.warning(
+                    "kubernetes_failed_to_collect_logs",
+                    namespace=namespace,
+                    pod=pod,
+                    status=exc.status,
+                    reason=exc.reason,
+                )
             raise PodNotFoundError(
                 f"Pod '{pod}' not found in namespace '{namespace}'."
             ) from None
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("kubernetes_failed_to_collect_logs: %s", exc)
+        except Exception:
+            logger.warning(
+                "kubernetes_failed_to_collect_logs", namespace=namespace, pod=pod
+            )
+            return LogSnapshot(source="kubernetes", lines=[])
 
         if isinstance(logs, bytes):
             logs = logs.decode("utf-8")
@@ -92,7 +104,7 @@ class KubernetesService(KubernetesProvider):
             lines=logs.split("\n") if logs else [],
         )
 
-    def _collect_containers(self, pod_info: Any) -> list[ContainerStatus]:
+    def _collect_containers(self, pod_info: V1Pod) -> list[ContainerStatus]:
         containers = []
 
         for container in pod_info.status.container_statuses or []:
@@ -126,8 +138,6 @@ class KubernetesService(KubernetesProvider):
         return containers
 
     def _collect_events(self, namespace: str, pod: str) -> list[Event]:
-        if self.v1 is None:
-            return []
         try:
             events = self.v1.list_namespaced_event(
                 namespace=namespace,
@@ -168,10 +178,7 @@ class KubernetesService(KubernetesProvider):
 
         return warnings
 
-    def _collect_resources(
-        self,
-        pod_info: Any,
-    ) -> PodResources:
+    def _collect_resources(self, pod_info: V1Pod) -> PodResources:
         containers = []
 
         for container in pod_info.spec.containers or []:
@@ -188,7 +195,6 @@ class KubernetesService(KubernetesProvider):
                     memory_request=parse_memory_quantity(req.get("memory")),
                 )
             )
-        logger.debug("kubernetes_collecting_resources_result", containers=containers)
 
         return PodResources(containers=containers)
 
@@ -208,58 +214,10 @@ class KubernetesService(KubernetesProvider):
             metrics=None,
         )
 
-    @staticmethod
-    def _parse_cpu(
-        value: str | None,
-    ) -> float | None:
-        if value is None:
-            return None
-
-        if value.endswith("m"):
-            return float(value[:-1]) / 1000
-
-        return float(value)
-
-    @staticmethod
-    def _parse_memory(
-        value: str | None,
-    ) -> int | None:
-        if value is None:
-            return None
-
-        multipliers = {
-            "Ki": 1024,
-            "Mi": 1024**2,
-            "Gi": 1024**3,
-            "Ti": 1024**4,
-        }
-
-        for suffix, multiplier in multipliers.items():
-            if value.endswith(suffix):
-                return int(float(value[: -len(suffix)]) * multiplier)
-
-        return int(value)
-
-    def count_pods(self) -> int:
-        if self.v1 is None:
-            return 0
-
-        pods = self.v1.list_pod_for_all_namespaces()
-
-        return len(pods.items)
-
     def get_cluster_info(self) -> ClusterInfo:
-        if self.v1 is None:
-            return ClusterInfo(
-                name="unknown",
-                kubernetes_version="unknown",
-                node_count=0,
-                namespace_count=0,
-                api_server="unknown",
-            )
-
         configuration = Configuration.get_default_copy()
         version = client.VersionApi().get_code()
+
         return ClusterInfo(
             name=configuration.host,
             kubernetes_version=version.git_version,
@@ -269,9 +227,11 @@ class KubernetesService(KubernetesProvider):
         )
 
     def count_nodes(self) -> int:
-        if self.v1 is None:
-            return 0
-
         nodes = self.v1.list_node()
 
         return len(nodes.items)
+
+    def count_pods(self) -> int:
+        pods = self.v1.list_pod_for_all_namespaces()
+
+        return len(pods.items)

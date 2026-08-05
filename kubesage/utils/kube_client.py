@@ -28,16 +28,18 @@ def _ensure_kube_config() -> bool:
     return _kube_config_loaded
 
 
-def create_core_v1_api() -> client.CoreV1Api | None:
+def create_core_v1_api() -> client.CoreV1Api:
     if not _ensure_kube_config():
-        return None
+        logger.exception("kubernetes_client_initialization_failed")
+        raise RuntimeError("Unable to initialize Kubernetes client")
 
     return client.CoreV1Api()
 
 
-def create_custom_objects_api() -> client.CustomObjectsApi | None:
+def create_custom_objects_api() -> client.CustomObjectsApi:
     if not _ensure_kube_config():
-        return None
+        logger.exception("kubernetes_client_initialization_failed")
+        raise RuntimeError("Unable to initialize Kubernetes client")
 
     return client.CustomObjectsApi()
 
