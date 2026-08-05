@@ -1,6 +1,9 @@
 import structlog
 
 from kubesage.models.analysis import Analysis
+from kubesage.observability.metrics import (
+    WATCHER_INCIDENTS_IGNORED_TOTAL,
+)
 from kubesage.services.analysis_service import AnalysisService
 from kubesage.watchers.event_source import EventSource
 from kubesage.watchers.incident_deduplicator import IncidentDeduplicator
@@ -31,11 +34,12 @@ class KubernetesWatcher:
 
             if not self.deduplicator.should_process(trigger):
                 logger.info(
-                    "incident_ignored_duplicate",
+                    "watcher_incident_ignored_duplicate",
                     namespace=trigger.namespace,
                     pod=trigger.pod,
                     reason=trigger.reason,
                 )
+                WATCHER_INCIDENTS_IGNORED_TOTAL.labels(reason=trigger.reason).inc()
                 continue
 
             self.handle(trigger)

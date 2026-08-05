@@ -5,6 +5,10 @@ from typing import Any
 import structlog
 from kubernetes import watch
 
+from kubesage.observability.metrics import (
+    WATCHER_ERRORS_TOTAL,
+    WATCHER_EVENTS_TOTAL,
+)
 from kubesage.utils.kube_client import create_core_v1_api
 from kubesage.watchers.models import PodWatchEvent
 
@@ -32,6 +36,7 @@ class KubernetesPodEventSource:
         while True:
             try:
                 for event in self._stream():
+                    WATCHER_EVENTS_TOTAL.labels(event_type=event["type"]).inc()
                     pod = event.get("object")
                     if pod is None:
                         continue
@@ -39,6 +44,7 @@ class KubernetesPodEventSource:
                     yield PodWatchEvent(type=event["type"], pod=pod)
             except Exception:
                 logger.warning("kubernetes_pod_watcher_restart_failed")
+                WATCHER_ERRORS_TOTAL.inc()
                 time.sleep(5)
                 logger.info("kubernetes_pod_watcher_retrying")
 

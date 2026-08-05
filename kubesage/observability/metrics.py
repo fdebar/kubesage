@@ -3,11 +3,7 @@ from prometheus_client import Counter, Histogram
 REQUEST_COUNT = Counter(
     "kubesage_http_requests_total",
     "Total number of HTTP requests",
-    [
-        "method",
-        "endpoint",
-        "status_code",
-    ],
+    ["method", "endpoint", "status_code"],
 )
 
 REQUEST_DURATION = Histogram(
@@ -23,39 +19,47 @@ ANALYSIS_TOTAL = Counter(
 )
 
 ANALYSIS_DURATION = Histogram(
-    "kubesage_analysis_duration_seconds",
-    "Time spent analyzing incidents",
+    "kubesage_analysis_duration_seconds", "Time spent analyzing incidents"
 )
 
-KUBERNETES_ERRORS = Counter(
-    "kubesage_kubernetes_errors_total",
-    "Kubernetes API errors",
-)
+KUBERNETES_ERRORS = Counter("kubesage_kubernetes_errors_total", "Kubernetes API errors")
 
 KUBERNETES_DURATION = Histogram(
-    "kubesage_kubernetes_duration_seconds",
-    "Kubernetes API duration",
+    "kubesage_kubernetes_duration_seconds", "Kubernetes API duration"
 )
 
 PROMETHEUS_DURATION = Histogram(
-    "kubesage_prometheus_duration_seconds",
-    "Prometheus query duration",
+    "kubesage_prometheus_duration_seconds", "Prometheus query duration"
 )
 
 OPENAI_REQUESTS = Counter(
     "kubesage_openai_requests_total",
     "Number of LLM requests",
-    [
-        "status",
-    ],
+    ["status"],
 )
 
-OPENAI_TOKENS = Histogram(
-    "kubesage_openai_tokens",
-    "Number of tokens sent to the LLM",
+OPENAI_TOKENS = Histogram("kubesage_openai_tokens", "Number of tokens sent to the LLM")
+
+OPENAI_DURATION = Histogram("kubesage_openai_duration_seconds", "LLM request duration")
+
+WATCHER_EVENTS_TOTAL = Counter(
+    "kubesage_watcher_events_total",
+    "Total number of Kubernetes watch events received",
+    ["event_type"],
 )
 
-OPENAI_DURATION = Histogram(
-    "kubesage_openai_duration_seconds",
-    "LLM request duration",
+WATCHER_INCIDENTS_DETECTED_TOTAL = Counter(
+    "kubesage_watcher_incidents_detected_total",
+    "Total number of incidents detected by watcher",
+    ["reason"],
+)
+
+WATCHER_INCIDENTS_IGNORED_TOTAL = Counter(
+    "kubesage_watcher_incidents_ignored_total",
+    "Total number of duplicate incidents ignored",
+    ["reason"],
+)
+
+WATCHER_ERRORS_TOTAL = Counter(
+    "kubesage_watcher_errors_total", "Total number of watcher errors"
 )

@@ -63,3 +63,27 @@ def test_watcher_starts_analysis_for_incident() -> None:
         namespace="production",
         pod="payment-api",
     )
+
+    def test_duplicate_incident_is_ignored() -> None:
+        analysis_service = Mock()
+        expected_analysis = Mock(spec=Analysis)
+        analysis_service.analyze.return_value = expected_analysis
+
+        watcher = KubernetesWatcher(
+            analysis_service=analysis_service,
+            event_filter=PodEventFilter(),
+            deduplicator=IncidentDeduplicator(),
+        )
+
+        trigger = IncidentTrigger(
+            reason="BackOff",
+            namespace="kubesage",
+            pod="payment-api",
+            message="Back-off restarting failed container",
+            occurred_at=datetime.now(UTC),
+        )
+
+        watcher.handle(trigger)
+        watcher.handle(trigger)
+
+        assert True

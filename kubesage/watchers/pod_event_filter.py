@@ -1,3 +1,6 @@
+from kubesage.observability.metrics import (
+    WATCHER_INCIDENTS_DETECTED_TOTAL,
+)
 from kubesage.watchers.models import (
     IncidentTrigger,
     PodWatchEvent,
@@ -38,6 +41,8 @@ class PodEventFilter:
             reason = state.waiting.reason
             if reason not in INTERESTING_REASONS:
                 continue
+
+            WATCHER_INCIDENTS_DETECTED_TOTAL.labels(reason=reason).inc()
 
             return IncidentTrigger(
                 source="kubernetes",
