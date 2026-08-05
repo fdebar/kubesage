@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 import requests
@@ -5,7 +6,11 @@ import structlog
 from requests import Response
 
 from kubesage.models.container import ContainerUsage
-from kubesage.models.prometheus import Metric, PrometheusResourceUsage
+from kubesage.models.prometheus import (
+    Metric,
+    PrometheusResourceUsage,
+    RawPrometheusMetrics,
+)
 from kubesage.services.prometheus.queries import (
     CONTAINER_CPU_QUERY,
     CONTAINER_MEMORY_QUERY,
@@ -73,148 +78,73 @@ class PrometheusService:
     def collect(self, namespace: str, pod: str) -> PrometheusResourceUsage:
         logger.info("prometheus_starting_collecting_data", namespace=namespace, pod=pod)
 
-        usage = PrometheusResourceUsage(containers=[])
+        raw = self.collect_raw_metrics(namespace, pod)
+        if raw is None:
+            return PrometheusResourceUsage()
 
-        usage.cpu = self.collect_cpu(namespace, pod)
-        usage.memory = self.collect_memory(namespace, pod)
-        usage.containers = self.collect_container_metrics(namespace, pod)
-        usage.cpu_throttling = self.collect_cpu_throttling(namespace, pod)
-        usage.restarts = self.collect_restarts(namespace, pod)
-        usage.network_rx = self.collect_network_rx(namespace, pod)
-        usage.network_tx = self.collect_network_tx(namespace, pod)
-        usage.filesystem = self.collect_filesystem(namespace, pod)
+        return PrometheusResourceUsage(
+            cpu=self._metric_from_result("cpu", "cores/s", raw.cpu),
+            memory=self._metric_from_result("memory", "bytes", raw.memory),
+            containers=self._container_metrics_from_result(
+                raw.container_cpu, raw.container_memory
+            ),
+            cpu_throttling=self._metric_from_result(
+                "cpu_throttling", "ratio", raw.cpu_throttling
+            ),
+            restarts=self._metric_from_result("restarts", "count", raw.restarts),
+            network_rx=self._metric_from_result(
+                "network_rx", "bytes/s", raw.network_rx
+            ),
+            network_tx=self._metric_from_result(
+                "network_tx", "bytes/s", raw.network_tx
+            ),
+            filesystem=self._metric_from_result("filesystem", "bytes", raw.filesystem),
+        )
 
-        if (
-            all(
-                metric is None
-                for metric in (
-                    usage.cpu,
-                    usage.memory,
-                    usage.cpu_throttling,
-                    usage.restarts,
-                    usage.network_rx,
-                    usage.network_tx,
-                    usage.filesystem,
-                )
-            )
-            and len(usage.containers) == 0
-        ):
-            logger.warning("prometheus_data_unavailable_continuing_without_metrics")
-
-        return usage
-
-    def collect_raw_metrics(self, namespace: str, pod: str) -> dict[str, list]:
+    def collect_raw_metrics(self, namespace: str, pod: str) -> RawPrometheusMetrics:
         queries = {
-            "cpu": build_query(
-                CPU_QUERY,
-                namespace=namespace,
-                pod=pod,
+            "cpu": build_query(CPU_QUERY, namespace=namespace, pod=pod),
+            "memory": build_query(MEMORY_QUERY, namespace=namespace, pod=pod),
+            "container_cpu": build_query(
+                CONTAINER_CPU_QUERY, namespace=namespace, pod=pod
             ),
-            "memory": build_query(
-                MEMORY_QUERY,
-                namespace=namespace,
-                pod=pod,
+            "container_memory": build_query(
+                CONTAINER_MEMORY_QUERY, namespace=namespace, pod=pod
             ),
-            "restart": build_query(
-                RESTART_QUERY,
-                namespace=namespace,
-                pod=pod,
+            "cpu_throttling": build_query(
+                CPU_THROTTLING_QUERY, namespace=namespace, pod=pod
+            ),
+            "restarts": build_query(RESTART_QUERY, namespace=namespace, pod=pod),
+            "network_rx": build_query(NETWORK_RX_QUERY, namespace=namespace, pod=pod),
+            "network_tx": build_query(NETWORK_TX_QUERY, namespace=namespace, pod=pod),
+            "filesystem": build_query(
+                FILESYSTEM_USAGE_QUERY, namespace=namespace, pod=pod
             ),
         }
 
-        return {name: self.query(query) for name, query in queries.items()}
+        results = {}
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            futures = {
+                name: executor.submit(self.query, query)
+                for name, query in queries.items()
+            }
+            for name, future in futures.items():
+                try:
+                    results[name] = future.result()
+                except Exception as exc:  # noqa: BLE001
+                    logger.error(
+                        "prometheus_metric_collection_failed",
+                        metric=name,
+                        error=str(exc),
+                    )
+                    results[name] = []
 
-    def collect_container_metrics(
-        self, namespace: str, pod: str
-    ) -> list[ContainerUsage]:
-        cpu_result = self.query(
-            build_query(CONTAINER_CPU_QUERY, namespace=namespace, pod=pod)
+        return RawPrometheusMetrics(**results)
+
+    def _request(self, path: str, **kwargs: Any) -> Response:
+        return self.session.get(
+            f"{self.base_url}{path}", timeout=settings.prometheus_timeout, **kwargs
         )
-        memory_result = self.query(
-            build_query(CONTAINER_MEMORY_QUERY, namespace=namespace, pod=pod)
-        )
-
-        return self._container_metrics_from_result(cpu_result, memory_result)
-
-    def collect_cpu(self, namespace: str, pod: str) -> Metric | None:
-        return self._collect_metric(
-            "cpu",
-            "cores/s",
-            build_query(
-                CPU_QUERY,
-                namespace=namespace,
-                pod=pod,
-            ),
-        )
-
-    def collect_memory(self, namespace: str, pod: str) -> Metric | None:
-        return self._collect_metric(
-            "memory",
-            "bytes",
-            build_query(
-                MEMORY_QUERY,
-                namespace=namespace,
-                pod=pod,
-            ),
-        )
-
-    def collect_restarts(self, namespace: str, pod: str) -> Metric | None:
-        return self._collect_metric(
-            "restarts",
-            "count",
-            build_query(
-                RESTART_QUERY,
-                namespace=namespace,
-                pod=pod,
-            ),
-        )
-
-    def collect_network_rx(self, namespace: str, pod: str) -> Metric | None:
-        return self._collect_metric(
-            "network_rx",
-            "bytes/s",
-            build_query(
-                NETWORK_RX_QUERY,
-                namespace=namespace,
-                pod=pod,
-            ),
-        )
-
-    def collect_network_tx(self, namespace: str, pod: str) -> Metric | None:
-        return self._collect_metric(
-            "network_tx",
-            "bytes/s",
-            build_query(
-                NETWORK_TX_QUERY,
-                namespace=namespace,
-                pod=pod,
-            ),
-        )
-
-    def collect_filesystem(self, namespace: str, pod: str) -> Metric | None:
-        return self._collect_metric(
-            "filesystem",
-            "bytes",
-            build_query(
-                FILESYSTEM_USAGE_QUERY,
-                namespace=namespace,
-                pod=pod,
-            ),
-        )
-
-    def collect_cpu_throttling(self, namespace: str, pod: str) -> Metric | None:
-        return self._collect_metric(
-            "cpu_throttling",
-            "ratio",
-            build_query(
-                CPU_THROTTLING_QUERY,
-                namespace=namespace,
-                pod=pod,
-            ),
-        )
-
-    def _request(self, url: str, **kwargs: Any) -> Response:
-        return self.session.get(url, timeout=settings.prometheus_timeout, **kwargs)
 
     def _container_metrics_from_result(
         self, cpu_result: list, memory_result: list
@@ -259,13 +189,4 @@ class PrometheusService:
             value=float(value),
             unit=unit,
             timestamp=float(timestamp),
-        )
-
-    def _collect_metric(self, name: str, unit: str, query: str) -> Metric | None:
-        result = self.query(query)
-
-        return self._metric_from_result(
-            name=name,
-            unit=unit,
-            result=result,
         )

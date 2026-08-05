@@ -1,10 +1,13 @@
-from dataclasses import dataclass, field
+from dataclasses import field
+
+from pydantic import BaseModel
 
 from kubesage.models.container import ContainerUsage
 
 
-@dataclass(slots=True)
-class Metric:
+class Metric(BaseModel):
+    """Metric from Prometheus."""
+
     name: str
     value: float
     unit: str
@@ -12,8 +15,9 @@ class Metric:
     formatted_value: str | None = None
 
 
-@dataclass(slots=True)
-class PrometheusResourceUsage:
+class PrometheusResourceUsage(BaseModel):
+    """Resource usage from Prometheus."""
+
     cpu: Metric | None = None
     memory: Metric | None = None
     cpu_throttling: Metric | None = None
@@ -29,3 +33,17 @@ class PrometheusResourceUsage:
     latency: Metric | None = None
 
     containers: list[ContainerUsage] = field(default_factory=list)
+
+
+class RawPrometheusMetrics(BaseModel):
+    """Raw metrics from Prometheus."""
+
+    cpu: list = field(default_factory=list)
+    memory: list = field(default_factory=list)
+    container_cpu: list = field(default_factory=list)
+    container_memory: list = field(default_factory=list)
+    cpu_throttling: list = field(default_factory=list)
+    restarts: list = field(default_factory=list)
+    network_rx: list = field(default_factory=list)
+    network_tx: list = field(default_factory=list)
+    filesystem: list = field(default_factory=list)

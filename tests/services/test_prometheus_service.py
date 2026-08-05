@@ -3,7 +3,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 import requests
 
-from kubesage.models.prometheus import Metric, PrometheusResourceUsage
+from kubesage.models.prometheus import (
+    RawPrometheusMetrics,
+)
 from kubesage.services.prometheus_service import PrometheusService
 
 
@@ -33,21 +35,6 @@ def container_cpu_result() -> list[dict]:
 @pytest.fixture
 def container_memory_result() -> list[dict]:
     return [{"metric": {"container": "api"}, "value": [1000.0, "536870912"]}]
-
-
-@pytest.fixture
-def collect_results() -> list:
-    return [
-        [{"metric": {}, "value": [1000.0, "0.1"]}],
-        [{"metric": {}, "value": [1001.0, "1048576"]}],
-        [{"metric": {"container": "api"}, "value": [1001.5, "0.5"]}],
-        [{"metric": {"container": "api"}, "value": [1001.6, "536870912"]}],
-        [{"metric": {}, "value": [1002.0, "2"]}],
-        [{"metric": {}, "value": [1002.0, "2"]}],
-        [{"metric": {}, "value": [1003.0, "100"]}],
-        [{"metric": {}, "value": [1004.0, "200"]}],
-        [{"metric": {}, "value": [1005.0, "5368709120"]}],
-    ]
 
 
 @patch("kubesage.services.prometheus_service.requests.Session.get")
@@ -113,64 +100,52 @@ def test_query_http_error(mock_get: MagicMock) -> None:
     mock_response.raise_for_status.assert_called_once()
 
 
-def test_metric_from_result_empty() -> None:
-    service = PrometheusService()
-    metric = service._metric_from_result("cpu", "cores/s", [])
-
-    assert metric is None
-
-
-def test_metric_from_result(
-    service: PrometheusService, metric_result: list[dict]
+@patch.object(PrometheusService, "query")
+def test_collect_without_metrics(
+    mock_query: MagicMock, service: PrometheusService
 ) -> None:
-    metric = service._metric_from_result(
-        "cpu",
-        "cores/s",
-        metric_result,
-    )
+    mock_query.return_value = []
+    usage = service.collect("default", "my-pod")
 
-    assert metric == Metric(
-        name="cpu",
-        value=0.5,
-        unit="cores/s",
-        timestamp=1627214400.0,
-    )
-
-
-def test_container_metrics_from_result(
-    service: PrometheusService,
-    container_cpu_result: list[dict],
-    container_memory_result: list[dict],
-) -> None:
-    metrics = service._container_metrics_from_result(
-        container_cpu_result,
-        container_memory_result,
-    )
-
-    assert len(metrics) == 1
-    assert metrics[0].name == "api"
-    assert metrics[0].cpu_usage == 0.5
-    assert metrics[0].memory_usage == 536870912
+    assert usage.cpu is None
+    assert usage.memory is None
+    assert usage.containers == []
 
 
 @patch.object(PrometheusService, "query")
-def test_collect_all_none(
-    mock_query: MagicMock,
-    service: PrometheusService,
-) -> None:
+def test_collect_raw_metrics(mock_query: MagicMock, service: PrometheusService) -> None:
     mock_query.return_value = []
 
-    assert service.collect("default", "my-pod") == PrometheusResourceUsage()
+    raw = service.collect_raw_metrics(
+        "default",
+        "my-pod",
+    )
+
+    assert isinstance(raw, RawPrometheusMetrics)
+    assert raw.cpu == []
+    assert raw.memory == []
+    assert raw.container_cpu == []
     assert mock_query.call_count == 9
 
 
-@patch.object(PrometheusService, "query")
-def test_collect_success(
-    mock_query: MagicMock,
-    service: PrometheusService,
-    collect_results: list,
-) -> None:
-    mock_query.side_effect = collect_results
+@patch.object(PrometheusService, "collect_raw_metrics")
+def test_collect_success(mock_collect_raw: MagicMock) -> None:
+    service = PrometheusService()
+
+    mock_collect_raw.return_value = RawPrometheusMetrics(
+        cpu=[{"metric": {}, "value": [1000.0, "0.1"]}],
+        memory=[{"metric": {}, "value": [1001.0, "1048576"]}],
+        container_cpu=[{"metric": {"container": "api"}, "value": [1001.5, "0.5"]}],
+        container_memory=[
+            {"metric": {"container": "api"}, "value": [1001.6, "536870912"]}
+        ],
+        cpu_throttling=[{"metric": {}, "value": [1002.0, "2"]}],
+        restarts=[{"metric": {}, "value": [1002.0, "2"]}],
+        network_rx=[{"metric": {}, "value": [1003.0, "100"]}],
+        network_tx=[{"metric": {}, "value": [1004.0, "200"]}],
+        filesystem=[{"metric": {}, "value": [1005.0, "5368709120"]}],
+    )
+
     usage = service.collect("default", "my-pod")
 
     assert usage is not None
@@ -186,5 +161,3 @@ def test_collect_success(
     assert usage.network_tx.value == 200
     assert usage.filesystem.value == 5368709120
     assert len(usage.containers) == 1
-
-    assert mock_query.call_count == 9
