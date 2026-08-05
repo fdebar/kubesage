@@ -18,6 +18,7 @@ from kubesage.providers.kubernetes_provider import KubernetesProvider
 from kubesage.utils.config import settings
 from kubesage.utils.exceptions import PodNotFoundError
 from kubesage.utils.kube_client import create_core_v1_api
+from kubesage.utils.resource_quantity import parse_cpu_quantity, parse_memory_quantity
 
 logger = structlog.get_logger()
 
@@ -181,10 +182,10 @@ class KubernetesService(KubernetesProvider):
             containers.append(
                 ContainerResources(
                     name=container.name,
-                    cpu_limit=self._parse_cpu(limits.get("cpu")),
-                    memory_limit=self._parse_memory(limits.get("memory")),
-                    cpu_request=self._parse_cpu(req.get("cpu")),
-                    memory_request=self._parse_memory(req.get("memory")),
+                    cpu_limit=parse_cpu_quantity(limits.get("cpu")),
+                    memory_limit=parse_memory_quantity(limits.get("memory")),
+                    cpu_request=parse_cpu_quantity(req.get("cpu")),
+                    memory_request=parse_memory_quantity(req.get("memory")),
                 )
             )
         logger.debug("kubernetes_collecting_resources_result", containers=containers)

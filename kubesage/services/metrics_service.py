@@ -7,6 +7,7 @@ from kubesage.models.metrics import (
 )
 from kubesage.providers.metrics_provider import MetricsProvider
 from kubesage.utils.kube_client import create_custom_objects_api
+from kubesage.utils.resource_quantity import parse_cpu_quantity, parse_memory_quantity
 
 logger = structlog.get_logger()
 
@@ -70,8 +71,8 @@ class MetricsService(MetricsProvider):
             result.containers.append(
                 ContainerMetrics(
                     name=container["name"],
-                    cpu_usage=usage.get("cpu", "0"),
-                    memory_usage=usage.get("memory", "0"),
+                    cpu_usage=parse_cpu_quantity(usage.get("cpu", "0")),
+                    memory_usage=parse_memory_quantity(usage.get("memory", "0")),
                 )
             )
 
