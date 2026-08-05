@@ -29,5 +29,7 @@ class Settings:
 
     database_url: str = os.getenv("DATABASE_URL", "sqlite:///./kubesage.db")
 
+    metrics_port: int = int(os.getenv("WORKER_EXPOSED_METRICS_PORT", "9090"))
+
 
 settings = Settings()

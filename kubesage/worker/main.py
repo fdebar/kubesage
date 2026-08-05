@@ -1,7 +1,9 @@
 import structlog
+from prometheus_client import start_http_server
 
 from kubesage.bootstrap import create_analysis_service
 from kubesage.database.session import SessionLocal
+from kubesage.utils.config import settings
 from kubesage.watchers.incident_deduplicator import IncidentDeduplicator
 from kubesage.watchers.kubernetes_event_source import (
     KubernetesPodEventSource,
@@ -13,6 +15,7 @@ logger = structlog.get_logger()
 
 
 def run_worker() -> None:
+    start_http_server(settings.metrics_port)
     db = SessionLocal()
     try:
         analysis_service = create_analysis_service(db)
