@@ -87,6 +87,7 @@ jobs:
 
       - name: Package and Push
         run: |
+          helm dependency build ./charts/kubesage
           helm package ./charts/kubesage -d dist/
           OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           helm push dist/kubesage-*.tgz oci://ghcr.io/$OWNER/charts
