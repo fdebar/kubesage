@@ -1,5 +1,8 @@
+from typing import Any
+
 import requests
 import structlog
+from requests import Response
 
 from kubesage.models.container import ContainerUsage
 from kubesage.models.prometheus import Metric, PrometheusResourceUsage
@@ -30,27 +33,20 @@ class PrometheusService:
 
     def __init__(self) -> None:
         self.base_url = settings.prometheus_url
-        self._healthy = True
+        self.session = requests.Session()
 
     def is_available(self) -> bool:
         try:
-            response = requests.get(
-                f"{self.base_url}/-/ready", timeout=settings.prometheus_timeout
-            )
-            self._healthy = response.status_code == 200
+            response = self._request("/-/ready")
+            return bool(response.status_code == 200)
         except requests.RequestException:
-            self._healthy = False
-
-        return self._healthy
+            return False
 
     def query(self, promql: str) -> list:
         try:
-            response = requests.get(
-                f"{self.base_url}/api/v1/query",
-                params={
-                    "query": promql,
-                },
-                timeout=settings.prometheus_timeout,
+            response = self._request(
+                "/api/v1/query",
+                params={"query": promql},
             )
             response.raise_for_status()
             payload = response.json()
@@ -74,20 +70,10 @@ class PrometheusService:
 
         return []
 
-    def collect(self, namespace: str, pod: str) -> PrometheusResourceUsage | None:
-        logger.info(
-            "prometheus_starting_collecting_data",
-            namespace=namespace,
-            pod=pod,
-        )
+    def collect(self, namespace: str, pod: str) -> PrometheusResourceUsage:
+        logger.info("prometheus_starting_collecting_data", namespace=namespace, pod=pod)
 
-        if not self.is_available():
-            logger.warning(
-                "prometheus_server_unreachable_or_offline", namespace=namespace, pod=pod
-            )
-            return None
-
-        usage = PrometheusResourceUsage()
+        usage = PrometheusResourceUsage(containers=[])
 
         usage.cpu = self.collect_cpu(namespace, pod)
         usage.memory = self.collect_memory(namespace, pod)
@@ -114,84 +100,41 @@ class PrometheusService:
             and len(usage.containers) == 0
         ):
             logger.warning("prometheus_data_unavailable_continuing_without_metrics")
-            return None
 
         return usage
 
-    def _container_metrics_from_result(
-        self, cpu_result: list, memory_result: list
-    ) -> list[ContainerUsage]:
-        containers: dict[str, ContainerUsage] = {}
+    def collect_raw_metrics(self, namespace: str, pod: str) -> dict[str, list]:
+        queries = {
+            "cpu": build_query(
+                CPU_QUERY,
+                namespace=namespace,
+                pod=pod,
+            ),
+            "memory": build_query(
+                MEMORY_QUERY,
+                namespace=namespace,
+                pod=pod,
+            ),
+            "restart": build_query(
+                RESTART_QUERY,
+                namespace=namespace,
+                pod=pod,
+            ),
+        }
 
-        if not cpu_result and not memory_result:
-            logger.warning("prometheus_metrics_unavailable")
-
-        for item in cpu_result:
-            name = item["metric"].get("container")
-            if not name:
-                continue
-            _, value = item["value"]
-            containers[name] = ContainerUsage(
-                name=name,
-                cpu_usage=float(value),
-            )
-
-        for item in memory_result:
-            name = item["metric"].get("container")
-            if not name:
-                continue
-            _, value = item["value"]
-            if name not in containers:
-                containers[name] = ContainerUsage(
-                    name=name,
-                )
-
-            containers[name].memory_usage = int(float(value))
-
-        return list(containers.values())
+        return {name: self.query(query) for name, query in queries.items()}
 
     def collect_container_metrics(
         self, namespace: str, pod: str
     ) -> list[ContainerUsage]:
         cpu_result = self.query(
-            build_query(
-                CONTAINER_CPU_QUERY,
-                namespace=namespace,
-                pod=pod,
-            )
+            build_query(CONTAINER_CPU_QUERY, namespace=namespace, pod=pod)
         )
-
         memory_result = self.query(
-            build_query(
-                CONTAINER_MEMORY_QUERY,
-                namespace=namespace,
-                pod=pod,
-            )
+            build_query(CONTAINER_MEMORY_QUERY, namespace=namespace, pod=pod)
         )
 
         return self._container_metrics_from_result(cpu_result, memory_result)
-
-    def _metric_from_result(self, name: str, unit: str, result: list) -> Metric | None:
-        if not result:
-            return None
-
-        timestamp, value = result[0]["value"]
-
-        return Metric(
-            name=name,
-            value=float(value),
-            unit=unit,
-            timestamp=float(timestamp),
-        )
-
-    def _collect_metric(self, name: str, unit: str, query: str) -> Metric | None:
-        result = self.query(query)
-
-        return self._metric_from_result(
-            name=name,
-            unit=unit,
-            result=result,
-        )
 
     def collect_cpu(self, namespace: str, pod: str) -> Metric | None:
         return self._collect_metric(
@@ -268,4 +211,61 @@ class PrometheusService:
                 namespace=namespace,
                 pod=pod,
             ),
+        )
+
+    def _request(self, url: str, **kwargs: Any) -> Response:
+        return self.session.get(url, timeout=settings.prometheus_timeout, **kwargs)
+
+    def _container_metrics_from_result(
+        self, cpu_result: list, memory_result: list
+    ) -> list[ContainerUsage]:
+        containers: dict[str, ContainerUsage] = {}
+
+        if not cpu_result and not memory_result:
+            logger.warning("prometheus_metrics_unavailable")
+
+        for item in cpu_result:
+            name = item["metric"].get("container")
+            if not name:
+                continue
+            _, value = item["value"]
+            containers[name] = ContainerUsage(
+                name=name,
+                cpu_usage=float(value),
+            )
+
+        for item in memory_result:
+            name = item["metric"].get("container")
+            if not name:
+                continue
+            _, value = item["value"]
+            if name not in containers:
+                containers[name] = ContainerUsage(
+                    name=name,
+                )
+
+            containers[name].memory_usage = int(float(value))
+
+        return list(containers.values())
+
+    def _metric_from_result(self, name: str, unit: str, result: list) -> Metric | None:
+        if not result:
+            return None
+
+        timestamp, value = result[0]["value"]
+
+        return Metric(
+            name=name,
+            value=float(value),
+            unit=unit,
+            timestamp=float(timestamp),
+        )
+
+    def _collect_metric(self, name: str, unit: str, query: str) -> Metric | None:
+        result = self.query(query)
+
+        return self._metric_from_result(
+            name=name,
+            unit=unit,
+            result=result,
         )

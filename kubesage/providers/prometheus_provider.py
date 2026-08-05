@@ -8,6 +8,6 @@ class PrometheusProvider(Protocol):
         self,
         namespace: str,
         pod: str,
-    ) -> PrometheusResourceUsage | None:
+    ) -> PrometheusResourceUsage:
         """Collect prometheus metrics for a pod."""
         ...

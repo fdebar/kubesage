@@ -32,18 +32,14 @@ class IncidentBuilder:
         self.logs = log_provider
         self.container_snapshot_builder = container_snapshot_builder
 
-    def collect(
-        self,
-        namespace: str,
-        pod: str,
-    ) -> Incident:
+    def collect(self, namespace: str, pod: str) -> Incident:
         kubernetes = self.kubernetes.collect(namespace, pod)
         prometheus = self.prometheus.collect(namespace, pod)
         metrics = self.metrics.collect(namespace, pod)
 
         snapshots = self.container_snapshot_builder.build(
             statuses=kubernetes.containers,
-            usages=prometheus.containers if prometheus is not None else None,
+            usages=prometheus.containers,
             resources=kubernetes.resources,
         )
 

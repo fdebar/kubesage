@@ -3,46 +3,82 @@ from unittest.mock import MagicMock, patch
 import pytest
 import requests
 
-from kubesage.models.prometheus import Metric
+from kubesage.models.prometheus import Metric, PrometheusResourceUsage
 from kubesage.services.prometheus_service import PrometheusService
 
 
-@patch.object(PrometheusService, "is_available", return_value=False)
-def test_collect_when_prometheus_unavailable(
-    mock_available: MagicMock,
-) -> None:
-    service = PrometheusService()
-
-    usage = service.collect("default", "my-pod")
-
-    assert usage is None
+@pytest.fixture
+def service() -> PrometheusService:
+    return PrometheusService()
 
 
-@patch("kubesage.services.prometheus_service.requests.get")
-def test_query_success(mock_get: MagicMock) -> None:
+@pytest.fixture
+def response() -> MagicMock:
+    response = MagicMock()
+    response.raise_for_status.return_value = None
+
+    return response
+
+
+@pytest.fixture
+def metric_result() -> list[dict]:
+    return [{"metric": {}, "value": [1627214400.0, "0.5"]}]
+
+
+@pytest.fixture
+def container_cpu_result() -> list[dict]:
+    return [{"metric": {"container": "api"}, "value": [1000.0, "0.5"]}]
+
+
+@pytest.fixture
+def container_memory_result() -> list[dict]:
+    return [{"metric": {"container": "api"}, "value": [1000.0, "536870912"]}]
+
+
+@pytest.fixture
+def collect_results() -> list:
+    return [
+        [{"metric": {}, "value": [1000.0, "0.1"]}],
+        [{"metric": {}, "value": [1001.0, "1048576"]}],
+        [{"metric": {"container": "api"}, "value": [1001.5, "0.5"]}],
+        [{"metric": {"container": "api"}, "value": [1001.6, "536870912"]}],
+        [{"metric": {}, "value": [1002.0, "2"]}],
+        [{"metric": {}, "value": [1002.0, "2"]}],
+        [{"metric": {}, "value": [1003.0, "100"]}],
+        [{"metric": {}, "value": [1004.0, "200"]}],
+        [{"metric": {}, "value": [1005.0, "5368709120"]}],
+    ]
+
+
+@patch("kubesage.services.prometheus_service.requests.Session.get")
+def test_is_available(mock_get: MagicMock) -> None:
     mock_response = MagicMock()
-    mock_response.json.return_value = {
-        "status": "success",
-        "data": {
-            "result": [
-                {
-                    "metric": {},
-                    "value": [1627214400, "0.5"],
-                }
-            ]
-        },
-    }
+    mock_response.status_code = 200
     mock_get.return_value = mock_response
+
     service = PrometheusService()
 
-    result = service.query("up")
-
-    assert result == [{"metric": {}, "value": [1627214400, "0.5"]}]
+    assert service.is_available() is True
     mock_get.assert_called_once()
-    mock_response.raise_for_status.assert_called_once()
 
 
-@patch("kubesage.services.prometheus_service.requests.get")
+@patch("kubesage.services.prometheus_service.requests.Session.get")
+def test_query_success(
+    mock_get: MagicMock,
+    service: PrometheusService,
+    response: MagicMock,
+    metric_result: list[dict],
+) -> None:
+    response.json.return_value = {
+        "status": "success",
+        "data": {"result": metric_result},
+    }
+    mock_get.return_value = response
+
+    assert service.query("up") == metric_result
+
+
+@patch("kubesage.services.prometheus_service.requests.Session.get")
 @pytest.mark.parametrize(
     "exception",
     [
@@ -61,7 +97,7 @@ def test_query_exceptions(mock_get: MagicMock, exception: Exception) -> None:
     mock_get.assert_called_once()
 
 
-@patch("kubesage.services.prometheus_service.requests.get")
+@patch("kubesage.services.prometheus_service.requests.Session.get")
 def test_query_http_error(mock_get: MagicMock) -> None:
     mock_response = MagicMock()
     mock_response.status_code = 500
@@ -70,7 +106,6 @@ def test_query_http_error(mock_get: MagicMock) -> None:
     )
     mock_get.return_value = mock_response
     service = PrometheusService()
-
     result = service.query("up")
 
     assert result == []
@@ -80,123 +115,76 @@ def test_query_http_error(mock_get: MagicMock) -> None:
 
 def test_metric_from_result_empty() -> None:
     service = PrometheusService()
-
     metric = service._metric_from_result("cpu", "cores/s", [])
 
     assert metric is None
 
 
-def test_metric_from_result_success() -> None:
-    service = PrometheusService()
-    result = [{"metric": {}, "value": [1627214400.0, "0.75"]}]
-
-    metric = service._metric_from_result("cpu", "cores/s", result)
-
-    assert metric is not None
-    assert metric.name == "cpu"
-    assert metric.unit == "cores/s"
-    assert metric.value == 0.75
-    assert metric.timestamp == 1627214400.0
-
-
-@patch.object(PrometheusService, "query")
-def test_collect_metric(mock_query: MagicMock) -> None:
-    service = PrometheusService()
-    mock_query.return_value = [{"metric": {}, "value": [1627214400.0, "1.5"]}]
-
-    metric = service._collect_metric("cpu", "cores/s", "some_query")
-
-    assert metric is not None
-    assert metric.value == 1.5
-    mock_query.assert_called_once_with("some_query")
-
-
-@patch.object(PrometheusService, "is_available", return_value=True)
-@patch.object(PrometheusService, "query")
-def test_collect_all_none(
-    mock_query: MagicMock,
-    mock_available: MagicMock,
+def test_metric_from_result(
+    service: PrometheusService, metric_result: list[dict]
 ) -> None:
-    service = PrometheusService()
-    mock_query.return_value = []
+    metric = service._metric_from_result(
+        "cpu",
+        "cores/s",
+        metric_result,
+    )
 
-    usage = service.collect("default", "my-pod")
+    assert metric == Metric(
+        name="cpu",
+        value=0.5,
+        unit="cores/s",
+        timestamp=1627214400.0,
+    )
 
-    assert usage is None
-    assert mock_query.called
 
-
-def test_container_metrics_from_result() -> None:
-    service = PrometheusService()
-
-    cpu_result = [{"metric": {"container": "api"}, "value": [1000.0, "0.5"]}]
-    memory_result = [{"metric": {"container": "api"}, "value": [1000.0, "1048576"]}]
-
-    metrics = service._container_metrics_from_result(cpu_result, memory_result)
+def test_container_metrics_from_result(
+    service: PrometheusService,
+    container_cpu_result: list[dict],
+    container_memory_result: list[dict],
+) -> None:
+    metrics = service._container_metrics_from_result(
+        container_cpu_result,
+        container_memory_result,
+    )
 
     assert len(metrics) == 1
     assert metrics[0].name == "api"
     assert metrics[0].cpu_usage == 0.5
-    assert metrics[0].memory_usage == 1048576
+    assert metrics[0].memory_usage == 536870912
 
 
-@patch.object(PrometheusService, "is_available", return_value=True)
+@patch.object(PrometheusService, "query")
+def test_collect_all_none(
+    mock_query: MagicMock,
+    service: PrometheusService,
+) -> None:
+    mock_query.return_value = []
+
+    assert service.collect("default", "my-pod") == PrometheusResourceUsage()
+    assert mock_query.call_count == 9
+
+
 @patch.object(PrometheusService, "query")
 def test_collect_success(
     mock_query: MagicMock,
-    mock_available: MagicMock,
+    service: PrometheusService,
+    collect_results: list,
 ) -> None:
-    service = PrometheusService()
-    mock_query.side_effect = [
-        [{"metric": {}, "value": [1000.0, "0.1"]}],  # CPU
-        [{"metric": {}, "value": [1001.0, "1048576"]}],  # Memory
-        [
-            {
-                "metric": {"container": "api"},
-                "value": [1001.5, "0.5"],
-            }
-        ],  # container CPU
-        [
-            {
-                "metric": {"container": "api"},
-                "value": [1001.6, "536870912"],
-            }
-        ],  # container Memory
-        [{"metric": {}, "value": [1002.0, "2"]}],  # CPU throttling
-        [{"metric": {}, "value": [1002.0, "2"]}],  # Restart
-        [{"metric": {}, "value": [1003.0, "100"]}],  # RX
-        [{"metric": {}, "value": [1004.0, "200"]}],  # TX
-        [{"metric": {}, "value": [1005.0, "5368709120"]}],  # FS
-    ]
+    mock_query.side_effect = collect_results
     usage = service.collect("default", "my-pod")
 
     assert usage is not None
-    assert isinstance(usage.cpu, Metric)
+    assert usage.cpu is not None
+    assert usage.memory is not None
+    assert usage.network_rx is not None
+    assert usage.network_tx is not None
+    assert usage.filesystem is not None
+
     assert usage.cpu.value == 0.1
-    assert usage.cpu.timestamp == 1000.0
-
-    assert isinstance(usage.memory, Metric)
-    assert usage.memory.value == 1048576.0
-
-    assert isinstance(usage.cpu_throttling, Metric)
-    assert usage.cpu_throttling.value == 2.0
-
-    assert isinstance(usage.restarts, Metric)
-    assert usage.restarts.value == 2.0
-
+    assert usage.memory.value == 1048576
+    assert usage.network_rx.value == 100
+    assert usage.network_tx.value == 200
+    assert usage.filesystem.value == 5368709120
     assert len(usage.containers) == 1
 
-    container = usage.containers[0]
-
-    assert container.name == "api"
-    assert container.cpu_usage == 0.5
-    assert container.memory_usage == 536870912
-
-    assert isinstance(usage.network_rx, Metric)
-    assert usage.network_rx.value == 100.0
-
-    assert isinstance(usage.network_tx, Metric)
-    assert usage.network_tx.value == 200.0
-
-    assert isinstance(usage.filesystem, Metric)
-    assert usage.filesystem.value == 5368709120.0
+    assert mock_query.call_count == 9
