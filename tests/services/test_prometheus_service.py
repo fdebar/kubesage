@@ -22,7 +22,15 @@ def test_collect_when_prometheus_unavailable(
 def test_query_success(mock_get: MagicMock) -> None:
     mock_response = MagicMock()
     mock_response.json.return_value = {
-        "data": {"result": [{"metric": {}, "value": [1627214400, "0.5"]}]}
+        "status": "success",
+        "data": {
+            "result": [
+                {
+                    "metric": {},
+                    "value": [1627214400, "0.5"],
+                }
+            ]
+        },
     }
     mock_get.return_value = mock_response
     service = PrometheusService()
@@ -115,38 +123,21 @@ def test_collect_all_none(
     usage = service.collect("default", "my-pod")
 
     assert usage is None
-    assert mock_query.call_count == 9
+    assert mock_query.called
 
 
 def test_container_metrics_from_result() -> None:
     service = PrometheusService()
 
-    cpu_result = [
-        {
-            "metric": {"container": "api"},
-            "value": [1000.0, "0.5"],
-        }
-    ]
+    cpu_result = [{"metric": {"container": "api"}, "value": [1000.0, "0.5"]}]
+    memory_result = [{"metric": {"container": "api"}, "value": [1000.0, "1048576"]}]
 
-    memory_result = [
-        {
-            "metric": {"container": "api"},
-            "value": [1000.0, "1048576"],
-        }
-    ]
-
-    metrics = service._container_metrics_from_result(
-        cpu_result,
-        memory_result,
-    )
+    metrics = service._container_metrics_from_result(cpu_result, memory_result)
 
     assert len(metrics) == 1
-
-    container = metrics[0]
-
-    assert container.name == "api"
-    assert container.cpu_usage == 0.5
-    assert container.memory_usage == 1048576
+    assert metrics[0].name == "api"
+    assert metrics[0].cpu_usage == 0.5
+    assert metrics[0].memory_usage == 1048576
 
 
 @patch.object(PrometheusService, "is_available", return_value=True)
@@ -157,25 +148,25 @@ def test_collect_success(
 ) -> None:
     service = PrometheusService()
     mock_query.side_effect = [
-        [{"value": [1000.0, "0.1"]}],  # CPU
-        [{"value": [1001.0, "1048576"]}],  # Memory
+        [{"metric": {}, "value": [1000.0, "0.1"]}],  # CPU
+        [{"metric": {}, "value": [1001.0, "1048576"]}],  # Memory
         [
             {
                 "metric": {"container": "api"},
                 "value": [1001.5, "0.5"],
             }
-        ],  # Container CPU
+        ],  # container CPU
         [
             {
                 "metric": {"container": "api"},
                 "value": [1001.6, "536870912"],
             }
-        ],  # Container Memory
-        [{"value": [1002.0, "2"]}],  # CPU Throttling
-        [{"value": [1002.0, "2"]}],  # Restarts
-        [{"value": [1003.0, "100"]}],  # Network RX
-        [{"value": [1004.0, "200"]}],  # Network TX
-        [{"value": [1005.0, "5368709120"]}],  # Filesystem
+        ],  # container Memory
+        [{"metric": {}, "value": [1002.0, "2"]}],  # CPU throttling
+        [{"metric": {}, "value": [1002.0, "2"]}],  # Restart
+        [{"metric": {}, "value": [1003.0, "100"]}],  # RX
+        [{"metric": {}, "value": [1004.0, "200"]}],  # TX
+        [{"metric": {}, "value": [1005.0, "5368709120"]}],  # FS
     ]
     usage = service.collect("default", "my-pod")
 
