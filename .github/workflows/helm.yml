@@ -49,13 +49,13 @@ jobs:
           helm upgrade --install kubesage ./charts/kubesage \
             --namespace kubesage \
             --create-namespace \
-            --set image.repository=kubesage \
-            --set image.tag=helm-test \
+            --set api.image.repository=kubesage \
+            --set api.image.tag=helm-test \
             --set openai.apiKey=ollama
 
       - name: Verify deployment
         run: |
-          kubectl rollout status deployment/kubesage \
+          kubectl rollout status deployment/kubesage-api \
             -n kubesage \
             --timeout=360s
 
@@ -63,8 +63,8 @@ jobs:
         if: failure()
         run: |
           kubectl get pods -n kubesage
-          kubectl describe deployment/kubesage -n kubesage
-          kubectl logs deployment/kubesage -n kubesage --previous
+          kubectl describe deployment/kubesage-api -n kubesage
+          kubectl logs deployment/kubesage-api -n kubesage --previous
 
   publish:
     needs: helm-test-and-deploy
