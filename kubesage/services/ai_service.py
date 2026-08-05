@@ -3,12 +3,12 @@ import time
 import structlog
 from openai import OpenAI
 
-from kubesage.api.metrics import (
+from kubesage.models.ai_report import AIReport
+from kubesage.observability.metrics import (
     OPENAI_DURATION,
     OPENAI_REQUESTS,
     OPENAI_TOKENS,
 )
-from kubesage.models.ai_report import AIReport
 from kubesage.utils.config import settings
 
 logger = structlog.get_logger()

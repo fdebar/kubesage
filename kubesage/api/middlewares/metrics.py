@@ -4,7 +4,7 @@ from collections.abc import Callable
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from kubesage.api.metrics import (
+from kubesage.observability.metrics import (
     REQUEST_COUNT,
     REQUEST_DURATION,
 )
