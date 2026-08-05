@@ -2,7 +2,7 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: {{ include "kubesage.fullname" . }}
+  name: {{ include "kubesage.fullname" . }}-api
   labels:
     {{- include "kubesage.labels" . | nindent 4 }}
 spec:

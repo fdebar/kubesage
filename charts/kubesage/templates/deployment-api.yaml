@@ -2,14 +2,15 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "kubesage.fullname" . }}
+  name: {{ include "kubesage.fullname" . }}-api
   labels:
     {{- include "kubesage.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.replicaCount }}
+  replicas: {{ .Values.api.replicaCount }}
   selector:
     matchLabels:
       {{- include "kubesage.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: api
   template:
     metadata:
       annotations:
@@ -17,14 +18,22 @@ spec:
         checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
       labels:
         {{- include "kubesage.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: api
     spec:
       serviceAccountName: {{ include "kubesage.serviceAccountName" . }}
       containers:
-      - name: {{ include "kubesage.fullname" . }}
-        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-        imagePullPolicy: "{{ .Values.image.pullPolicy }}"
+      - name: {{ include "kubesage.fullname" . }}-api
+        image: "{{ .Values.api.image.repository }}:{{ .Values.api.image.tag }}"
+        imagePullPolicy: "{{ .Values.api.image.pullPolicy }}"
+        command:
+          - uvicorn
+          - kubesage.api.app:app
+          - --host
+          - 0.0.0.0
+          - --port
+          - "8000"
         resources:
-        {{- toYaml .Values.resources | nindent 12 }}
+        {{- toYaml .Values.api.resources | nindent 12 }}
         envFrom:
         - configMapRef:
             name: {{ include "kubesage.fullname" . }}-config
@@ -32,7 +41,7 @@ spec:
             name: {{ include "kubesage.fullname" . }}-secret
         ports:
           - name: http
-            containerPort: {{ .Values.service.port }}
+            containerPort: {{ .Values.api.service.port }}
         readinessProbe:
           httpGet:
             path: /ready

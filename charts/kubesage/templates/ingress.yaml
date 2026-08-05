@@ -37,7 +37,7 @@ spec:
               service:
                 name: {{ include "kubesage.fullname" $ }}
                 port:
-                  number: {{ $.Values.service.port }}
+                  number: {{ $.Values.api.service.port }}
           {{- end }}
     {{- end }}
 {{- end }}

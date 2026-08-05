@@ -1,13 +1,13 @@
-{{- if .Values.serviceMonitor.create }}
+{{- if .Values.api.metrics.enabled }}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: kubesage
+  name: {{ include "kubesage.fullname" . }}-api
   namespace: monitoring
   labels:
     {{- include "kubesage.labels" . | nindent 4 }}
-    {{- if .Values.serviceMonitor.additionalLabels }}
-      {{- toYaml .Values.serviceMonitor.additionalLabels | nindent 4 }}
+    {{- if .Values.api.metrics.additionalLabels }}
+      {{- toYaml .Values.api.metrics.additionalLabels | nindent 4 }}
     {{- end }}
 spec:
   namespaceSelector:
@@ -15,8 +15,8 @@ spec:
       - kubesage
   selector:
     matchLabels:
-      app.kubernetes.io/name: {{ include "kubesage.name" . }}
-      app.kubernetes.io/instance: {{ .Release.Name }}
+      {{- include "kubesage.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: api
   endpoints:
     - port: http
       path: /metrics

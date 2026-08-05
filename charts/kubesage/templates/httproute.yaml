@@ -1,6 +1,6 @@
 {{- if .Values.httpRoute.enabled -}}
 {{- $fullName := include "kubesage.fullname" . -}}
-{{- $svcPort := .Values.service.port -}}
+{{- $svcPort := .Values.api.service.port -}}
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:

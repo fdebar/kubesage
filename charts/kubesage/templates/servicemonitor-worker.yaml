@@ -1,0 +1,24 @@
+{{- if .Values.worker.metrics.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "kubesage.fullname" . }}-worker
+  namespace: monitoring
+  labels:
+    {{- include "kubesage.labels" . | nindent 4 }}
+    {{- if .Values.worker.metrics.additionalLabels }}
+      {{- toYaml .Values.worker.metrics.additionalLabels | nindent 4 }}
+    {{- end }}
+spec:
+  namespaceSelector:
+    matchNames:
+      - kubesage
+  selector:
+    matchLabels:
+      {{- include "kubesage.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: worker
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 15s
+{{- end }}

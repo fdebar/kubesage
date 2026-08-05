@@ -1,0 +1,39 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "kubesage.fullname" . }}-worker
+  labels:
+    {{- include "kubesage.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.worker.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "kubesage.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: worker
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+      labels:
+        {{- include "kubesage.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: worker
+    spec:
+      serviceAccountName: {{ include "kubesage.serviceAccountName" . }}
+      containers:
+      - name: {{ include "kubesage.fullname" . }}-worker
+        image: "{{ .Values.worker.image.repository }}:{{ .Values.worker.image.tag }}"
+        imagePullPolicy: "{{ .Values.worker.image.pullPolicy }}"
+        command:
+          - kubesage-worker
+        resources:
+        {{- toYaml .Values.worker.resources | nindent 12 }}
+        envFrom:
+        - configMapRef:
+            name: {{ include "kubesage.fullname" . }}-config
+        - secretRef:
+            name: {{ include "kubesage.fullname" . }}-secret
+        ports:
+          - name: metrics
+            containerPort: {{ .Values.worker.metrics.port }}

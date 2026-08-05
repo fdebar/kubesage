@@ -1,0 +1,20 @@
+
+{{- if .Values.worker.metrics.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name:  {{ include "kubesage.fullname" . }}-worker
+  labels:
+    {{- include "kubesage.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  selector:
+    {{- include "kubesage.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+  ports:
+    - name: metrics
+      port: {{ .Values.worker.metrics.port }}
+      targetPort: metrics
+      protocol: TCP
+  type: ClusterIP
+{{- end }}
