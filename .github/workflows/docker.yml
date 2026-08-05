@@ -1,6 +1,6 @@
 name: KubeSage Docker
 permissions:
-  contents: read
+  contents: write
   packages: write
 on:
   # TODO: Update the rules once the project is sufficiently mature
