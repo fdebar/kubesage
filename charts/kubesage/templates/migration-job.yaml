@@ -8,13 +8,13 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "1"
 spec:
+  ttlSecondsAfterFinished: 300
   backoffLimit: 3
   template:
     metadata:
       labels:
         {{- include "kubesage.selectorLabels" . | nindent 8 }}
     spec:
-      ttlSecondsAfterFinished: 300
       restartPolicy: Never
       initContainers:
       - name: wait-postgresql
