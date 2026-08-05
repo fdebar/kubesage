@@ -10,11 +10,11 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends gcc && \
     rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml README.md requirements.txt ./
-COPY kubesage ./kubesage
+COPY . .
 
 RUN pip install --upgrade pip && \
-    pip install --no-cache-dir --prefix=/install -r requirements.txt  .
+    pip install --no-cache-dir --prefix=/install -r requirements.txt && \
+    pip install --no-cache-dir --prefix=/install .
 
 # ---------- Runtime ----------
 FROM python:3.14-slim
