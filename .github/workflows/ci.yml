@@ -25,14 +25,35 @@ jobs:
             python:
               - '**/*.py'
               - 'pyproject.toml'
+              - 'requirements.txt'
               - 'Makefile'
               - 'tests/**'
+              - 'migrations/**'
+              - 'alembic.ini'
 
   quality:
     name: Code Quality Checks
     needs: changes
     if: needs.changes.outputs.python == 'true'
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: kubesage
+          POSTGRES_PASSWORD: kubesage
+          POSTGRES_DB: kubesage_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql+psycopg://kubesage:kubesage@localhost:5432/kubesage_test
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -47,30 +68,29 @@ jobs:
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
-          restore-keys:
-            |
-              ${{ runner.os }}-pip-
+          restore-keys: ${{ runner.os }}-pip-
 
       - name: Install dependencies
-        run: |
-          make install
-          
+        run: make install
+
+      - name: Run Database migrations
+        run: make db-upgrade
+
       - name: Run Code Quality
         run: |
           make format 
           make lint 
           make typecheck
 
-      - name: Run Tests
-        run: |
-          make test
+      - name: Run Unit Tests
+        run: make test
 
-      - name: Scan repository with Bandit and pip_audit
+      - name: Scan for Security Issues in Python code
         run: |
           make bandit
           make pip_audit
 
-      - name: Scan repository with Trivy
+      - name: Scan for Security Issues in filesystem mode
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
