@@ -20,6 +20,13 @@ logger = structlog.get_logger()
 
 
 class PrometheusService:
+    """
+    Service to collect metrics from Prometheus.
+
+    This class provides methods to collect metrics from Prometheus and
+    return them in a structured format.
+    """
+
     def __init__(self) -> None:
         self.base_url = settings.prometheus_url
         self._healthy = True
@@ -62,11 +69,7 @@ class PrometheusService:
 
         return []
 
-    def collect(
-        self,
-        namespace: str,
-        pod: str,
-    ) -> PrometheusResourceUsage | None:
+    def collect(self, namespace: str, pod: str) -> PrometheusResourceUsage | None:
         logger.info(
             "prometheus_starting_collecting_data",
             namespace=namespace,
@@ -111,13 +114,11 @@ class PrometheusService:
         return usage
 
     def _container_metrics_from_result(
-        self,
-        cpu_result: list,
-        memory_result: list,
+        self, cpu_result: list, memory_result: list
     ) -> list[ContainerUsage]:
         containers: dict[str, ContainerUsage] = {}
 
-        if cpu_result is None and memory_result is None:
+        if not cpu_result and not memory_result:
             logger.warning("prometheus_metrics_unavailable")
 
         for item in cpu_result:
@@ -145,9 +146,7 @@ class PrometheusService:
         return list(containers.values())
 
     def collect_container_metrics(
-        self,
-        namespace: str,
-        pod: str,
+        self, namespace: str, pod: str
     ) -> list[ContainerUsage]:
         cpu_result = self.query(
             CONTAINER_CPU_QUERY
@@ -165,18 +164,10 @@ class PrometheusService:
             )
         )
 
-        return self._container_metrics_from_result(
-            cpu_result,
-            memory_result,
-        )
+        return self._container_metrics_from_result(cpu_result, memory_result)
 
-    def _metric_from_result(
-        self,
-        name: str,
-        unit: str,
-        result: list,
-    ) -> Metric | None:
-        if not result:
+    def _metric_from_result(self, name: str, unit: str, result: list) -> Metric | None:
+        if len(result) == 0:
             return None
 
         timestamp, value = result[0]["value"]
@@ -188,12 +179,7 @@ class PrometheusService:
             timestamp=float(timestamp),
         )
 
-    def _collect_metric(
-        self,
-        name: str,
-        unit: str,
-        query: str,
-    ) -> Metric | None:
+    def _collect_metric(self, name: str, unit: str, query: str) -> Metric | None:
         result = self.query(query)
 
         return self._metric_from_result(
@@ -202,77 +188,49 @@ class PrometheusService:
             result=result,
         )
 
-    def collect_cpu(
-        self,
-        namespace: str,
-        pod: str,
-    ) -> Metric | None:
+    def collect_cpu(self, namespace: str, pod: str) -> Metric | None:
         return self._collect_metric(
             "cpu",
             "cores/s",
             CPU_QUERY % (namespace, pod),
         )
 
-    def collect_memory(
-        self,
-        namespace: str,
-        pod: str,
-    ) -> Metric | None:
+    def collect_memory(self, namespace: str, pod: str) -> Metric | None:
         return self._collect_metric(
             "memory",
             "bytes",
             MEMORY_QUERY % (namespace, pod),
         )
 
-    def collect_restarts(
-        self,
-        namespace: str,
-        pod: str,
-    ) -> Metric | None:
+    def collect_restarts(self, namespace: str, pod: str) -> Metric | None:
         return self._collect_metric(
             "restarts",
             "count",
             RESTART_QUERY % (namespace, pod),
         )
 
-    def collect_network_rx(
-        self,
-        namespace: str,
-        pod: str,
-    ) -> Metric | None:
+    def collect_network_rx(self, namespace: str, pod: str) -> Metric | None:
         return self._collect_metric(
             "network_rx",
             "bytes/s",
             NETWORK_RX_QUERY % (namespace, pod),
         )
 
-    def collect_network_tx(
-        self,
-        namespace: str,
-        pod: str,
-    ) -> Metric | None:
+    def collect_network_tx(self, namespace: str, pod: str) -> Metric | None:
         return self._collect_metric(
             "network_tx",
             "bytes/s",
             NETWORK_TX_QUERY % (namespace, pod),
         )
 
-    def collect_filesystem(
-        self,
-        namespace: str,
-        pod: str,
-    ) -> Metric | None:
+    def collect_filesystem(self, namespace: str, pod: str) -> Metric | None:
         return self._collect_metric(
             "filesystem",
             "bytes",
             FILESYSTEM_USAGE_QUERY % (namespace, pod),
         )
 
-    def collect_cpu_throttling(
-        self,
-        namespace: str,
-        pod: str,
-    ) -> Metric | None:
+    def collect_cpu_throttling(self, namespace: str, pod: str) -> Metric | None:
         return self._collect_metric(
             "cpu_throttling",
             "ratio",
