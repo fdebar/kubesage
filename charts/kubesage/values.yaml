@@ -218,6 +218,9 @@ postgresql:
   # This is for enabling the postgresql.
   enabled: true
 
+  commonAnnotations:
+    argocd.argoproj.io/sync-wave: "0"
+
   # This is for setting the namespace.
   namespaceOverride: kubesage
 

@@ -6,8 +6,7 @@ metadata:
   labels:
     {{- include "kubesage.labels" . | nindent 4 }}
   annotations:
-    argocd.argoproj.io/hook: PreSync
-    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   backoffLimit: 3
   template:
@@ -15,6 +14,7 @@ spec:
       labels:
         {{- include "kubesage.selectorLabels" . | nindent 8 }}
     spec:
+      ttlSecondsAfterFinished: 300
       restartPolicy: Never
       initContainers:
       - name: wait-postgresql
