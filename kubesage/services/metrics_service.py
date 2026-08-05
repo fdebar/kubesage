@@ -13,23 +13,17 @@ logger = structlog.get_logger()
 
 
 class MetricsService(MetricsProvider):
+    """Metrics Service to collect metrics from metrics.k8s.io."""
+
     def __init__(self) -> None:
         self.api = create_custom_objects_api()
 
-    def collect(
-        self,
-        namespace: str,
-        pod: str,
-    ) -> PodMetrics | None:
-        logger.info(
-            "kubernetes_starting_metrics_collecting_data", namespace=namespace, pod=pod
-        )
+    def collect(self, namespace: str, pod: str) -> PodMetrics | None:
+        logger.info("kubernetes_metrics_start_collect", namespace=namespace, pod=pod)
 
         if self.api is None:
             logger.warning(
-                "kubernetes_metrics_unavailable",
-                namespace=namespace,
-                pod=pod,
+                "kubernetes_metrics_unavailable", namespace=namespace, pod=pod
             )
             return None
 
@@ -41,28 +35,22 @@ class MetricsService(MetricsProvider):
                 plural="pods",
                 name=pod,
             )
-
         except ApiException as exc:
-            if exc.status == 404:
-                logger.warning(
-                    "kubernetes_metrics_not_available_pod_not_found_or_too_recent",
-                    namespace=namespace,
-                    pod=pod,
-                )
-            elif exc.status == 503:
-                logger.error(
-                    "kubernetes_metrics_server_not_yet_ready_to_respond",
-                    namespace=namespace,
-                    pod=pod,
-                )
-            else:
-                logger.error(
-                    "kubernetes_metrics_api_error", status=exc.status, reason=exc.reason
-                )
-
+            logger.warning(
+                "kubernetes_metrics_unavailable",
+                namespace=namespace,
+                pod=pod,
+                status=exc.status,
+                reason=exc.reason,
+            )
             return None
-        except Exception as exc:  # noqa: BLE001
-            logger.error("kubernetes_metrics_failed_to_collect_data: %s", exc)
+        except Exception as exc:
+            logger.warning(
+                "kubernetes_metrics_collection_failed",
+                namespace=namespace,
+                pod=pod,
+                exc=exc,
+            )
             return None
 
         result = PodMetrics()
