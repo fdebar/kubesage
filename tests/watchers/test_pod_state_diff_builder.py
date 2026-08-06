@@ -57,3 +57,25 @@ def test_detects_restart_increment() -> None:
     diff = builder.build(previous_pod, current_pod)
 
     assert diff.restart_delta == 2
+
+
+def test_detects_oom_killed() -> None:
+    builder = PodStateDiffBuilder()
+
+    previous_pod = create_mock_pod()
+    current_pod = create_mock_pod()
+    current_pod.status.container_statuses[0].last_state.terminated.reason = "OOMKilled"
+    diff = builder.build(previous_pod, current_pod)
+
+    assert diff.oom_killed is True
+
+
+def test_not_oom_killed() -> None:
+    builder = PodStateDiffBuilder()
+
+    previous_pod = create_mock_pod()
+    current_pod = create_mock_pod()
+    previous_pod.status.container_statuses[0].last_state.terminated.reason = "OOMKilled"
+    diff = builder.build(previous_pod, current_pod)
+
+    assert diff.oom_killed is False

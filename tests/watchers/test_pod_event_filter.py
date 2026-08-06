@@ -44,11 +44,7 @@ def build_pod(reason: str | None = None) -> V1Pod:
 
 
 def build_event(pod: V1Pod, event_type: str = "MODIFIED") -> PodWatchEvent:
-    return PodWatchEvent(
-        type=event_type,
-        pod=pod,
-        received_at=datetime.now(UTC),
-    )
+    return PodWatchEvent(type=event_type, pod=pod, received_at=datetime.now(UTC))
 
 
 def test_build_trigger_returns_trigger_for_crash_loop() -> None:

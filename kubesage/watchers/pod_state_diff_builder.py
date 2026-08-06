@@ -16,6 +16,7 @@ class PodStateDiffBuilder:
 
         previous_restart = self._restart_count(previous)
         current_restart = self._restart_count(current)
+        oom_killed = self._is_oom_killed(current)
 
         return PodStateDiff(
             previous_phase=previous_phase,
@@ -24,6 +25,7 @@ class PodStateDiffBuilder:
             previous_restart_count=previous_restart,
             current_restart_count=current_restart,
             restart_delta=current_restart - previous_restart,
+            oom_killed=oom_killed,
         )
 
     @staticmethod
@@ -32,3 +34,17 @@ class PodStateDiffBuilder:
             return 0
 
         return sum(status.restart_count for status in pod.status.container_statuses)
+
+    @staticmethod
+    def _is_oom_killed(pod: V1Pod | None) -> bool:
+        if pod is None or pod.status is None or pod.status.container_statuses is None:
+            return False
+
+        for container in pod.status.container_statuses:
+            terminated = (
+                container.last_state.terminated if container.last_state else None
+            )
+            if terminated and terminated.reason == "OOMKilled":
+                return True
+
+        return False

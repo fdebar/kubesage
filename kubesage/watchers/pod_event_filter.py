@@ -22,15 +22,33 @@ class PodEventFilter:
     """
 
     def evaluate(
-        self, diff: PodStateDiff, namespace: str, pod: str
+        self,
+        pod_state_diff: PodStateDiff,
+        namespace: str,
+        pod: str,
     ) -> IncidentTrigger | None:
-        if diff.restart_delta >= 3:
-            return IncidentTrigger(
-                namespace=namespace,
-                pod=pod,
-                reason="FrequentRestarts",
-                message=(f"Pod restarted {diff.restart_delta} times"),
-                occurred_at=datetime.now(UTC),
+        if pod_state_diff.oom_killed:
+            return self._trigger(
+                namespace,
+                pod,
+                "OOMKilled",
+                "Container killed because of memory limit",
+            )
+
+        if pod_state_diff.current_phase == "Failed":
+            return self._trigger(
+                namespace,
+                pod,
+                "PodFailed",
+                "Pod entered Failed phase",
+            )
+
+        if pod_state_diff.restart_delta >= 3:
+            return self._trigger(
+                namespace,
+                pod,
+                "FrequentRestarts",
+                f"Pod restarted {pod_state_diff.restart_delta} times",
             )
 
         return None
@@ -63,3 +81,19 @@ class PodEventFilter:
             )
 
         return None
+
+    def _trigger(
+        self,
+        namespace: str,
+        pod: str,
+        reason: str,
+        message: str,
+    ) -> IncidentTrigger:
+        return IncidentTrigger(
+            source="watcher",
+            reason=reason,
+            namespace=namespace,
+            pod=pod,
+            message=message,
+            occurred_at=datetime.now(UTC),
+        )
