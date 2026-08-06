@@ -1,9 +1,8 @@
+import structlog
 from kubernetes import client, config, watch
 from kubernetes.config.config_exception import ConfigException
 
-from kubesage.observability.factory import get_logger
-
-logger = get_logger(__name__)
+logger = structlog.get_logger(__name__)
 _kube_config_loaded: bool | None = None
 
 

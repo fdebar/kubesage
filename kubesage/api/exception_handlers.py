@@ -1,8 +1,8 @@
+import structlog
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from kubesage.observability.factory import get_logger
 from kubesage.utils.exceptions import (
     AIAnalysisError,
     KubernetesConnectionError,
@@ -10,10 +10,10 @@ from kubesage.utils.exceptions import (
     PrometheusQueryError,
 )
 
+logger = structlog.get_logger(__name__)
+
 
 def register_exception_handlers(app: FastAPI) -> None:
-    logger = get_logger(__name__)
-
     @app.exception_handler(PodNotFoundError)
     async def pod_not_found(request: Request, exc: PodNotFoundError) -> JSONResponse:
         logger.warning(str(exc))
