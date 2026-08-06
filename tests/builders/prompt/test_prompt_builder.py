@@ -26,3 +26,4 @@ def test_prompt_builder_is_deterministic() -> None:
     prompt_2 = builder.build(context)
 
     assert prompt_1 == prompt_2
+    assert "# Diagnostic Summary" not in prompt_1

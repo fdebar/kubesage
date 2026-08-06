@@ -6,47 +6,101 @@ class PromptBuilder:
     def build(self, ai: AIContext) -> str:
         lines: list[str] = []
 
+        self._append_incident(lines, ai)
+        self._append_diagnostics(lines, ai)
+        self._append_observations(lines, ai)
+        self._append_events(lines, ai)
+        self._append_logs(lines, ai)
+        self._append_recommendations(lines, ai)
+        self._append_instructions(lines)
+        self._append_summary(lines, ai)
+
+        return "\n".join(lines)
+
+    def _append_incident(self, lines: list[str], ai: AIContext) -> None:
         lines.append("# Kubernetes Incident")
         lines.append(f"Namespace: {ai.ctx.namespace}")
         lines.append(f"Pod: {ai.ctx.pod}")
         lines.append(f"Phase: {ai.ctx.phase}")
         lines.append("")
 
-        if ai.has_findings:
-            lines.append("# Diagnostic Summary")
-            lines.append(f"Count: {ai.finding_count}")
-            if ai.highest_severity:
-                lines.append(f"Highest Severity: {ai.highest_severity.value.upper()}")
+    def _append_diagnostics(self, lines: list[str], ai: AIContext) -> None:
+        if not ai.diagnoses:
+            return
 
-            if ai.diagnoses:
-                lines.append("# Diagnoses")
-                for finding in ai.diagnoses:
-                    self._append_finding(lines, finding)
+        lines.append("# Diagnoses")
+        for finding in ai.diagnoses:
+            self._append_finding(lines, finding)
 
-            if ai.observations:
-                lines.append("# Observations")
-                for finding in ai.observations:
-                    self._append_finding(lines, finding)
+    def _append_observations(self, lines: list[str], ai: AIContext) -> None:
+        if not ai.observations:
+            return
 
-        if ai.ctx.events:
-            lines.append("# Kubernetes Events")
-            for event in ai.ctx.events:
-                lines.append(f"- [{event.type}] {event.reason}: {event.message}")
+        lines.append("# Observations")
+        for finding in ai.observations:
+            self._append_finding(lines, finding)
+
+    def _append_events(self, lines: list[str], ai: AIContext) -> None:
+        if not ai.ctx.events:
+            return
+
+        lines.append("# Kubernetes Events")
+        for event in ai.ctx.events:
+            lines.append(f"- [{event.type}] {event.reason}: {event.message}")
+        lines.append("")
+
+    def _append_logs(self, lines: list[str], ai: AIContext) -> None:
+        if not ai.ctx.logs:
+            return
+
+        lines.append("# Logs")
+        lines.append(ai.ctx.logs)
+        lines.append("")
+
+    def _append_recommendations(self, lines: list[str], ai: AIContext) -> None:
+        if not ai.recommendations:
+            return
+
+        lines.append("# Recommendations")
+
+        for recommendation in ai.recommendations:
+            lines.append(f"- {recommendation}")
+
+        lines.append("")
+
+    def _append_finding(self, lines: list[str], finding: Finding) -> None:
+        lines.append(f"### {finding.title}")
+        lines.append(f"Severity: {finding.severity.value}")
+        lines.append(f"Confidence: {finding.confidence:.2f}")
+        lines.append(f"Description: {finding.description}")
+
+        if finding.caused_by:
+            lines.append("Caused by:")
+            for cause in finding.caused_by:
+                lines.append(f"    - {cause}")
+
+        if finding.structured_evidences:
+            lines.append("Evidence:")
+            for evidence in finding.structured_evidences:
+                value = evidence.value
+                if evidence.unit:
+                    value = f"{value}{evidence.unit}"
+                lines.append(f"    - {evidence.name}: {value}")
             lines.append("")
 
-        if ai.ctx.logs:
-            lines.append("# Logs")
-            lines.append(ai.ctx.logs)
-            lines.append("")
+    def _append_summary(self, lines: list[str], ai: AIContext) -> None:
+        if not ai.has_findings:
+            return
 
-        if ai.recommendations:
-            lines.append("# Recommendations")
+        lines.append("# Diagnostic Summary")
+        lines.append(f"Count: {ai.finding_count}")
 
-            for recommendation in ai.recommendations:
-                lines.append(f"- {recommendation}")
+        if ai.highest_severity:
+            lines.append(f"Highest Severity: {ai.highest_severity.value.upper()}")
 
-            lines.append("")
+        lines.append("")
 
+    def _append_instructions(self, lines: list[str]) -> None:
         lines.append(
             """
 You are a Senior Kubernetes Site Reliability Engineer.
@@ -64,27 +118,3 @@ Rules:
 7. Answer using JSON only.
 """
         )
-
-        return "\n".join(lines)
-
-    def _append_finding(self, lines: list[str], finding: Finding) -> None:
-        lines.append(f"### {finding.title}")
-        lines.append(f"Severity: {finding.severity.value}")
-        lines.append(f"Confidence: {finding.confidence:.2f}")
-        lines.append(f"Description: {finding.description}")
-
-        if finding.caused_by:
-            lines.append("Caused by:")
-            for cause in finding.caused_by:
-                lines.append(f"    - {cause}")
-
-        if finding.structured_evidences:
-            lines.append("Evidence:")
-            for evidence in finding.structured_evidences:
-                value = evidence.value
-
-                if evidence.unit:
-                    value = f"{value}{evidence.unit}"
-                lines.append(f"    - {evidence.name}: {value}")
-
-            lines.append("")
