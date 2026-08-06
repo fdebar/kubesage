@@ -2,16 +2,16 @@ import argparse
 import uuid
 from argparse import _SubParsersAction
 
+from kubesage.bootstrap import check_application_requirements
 from kubesage.cli.commands.analyze import analyze_command
 from kubesage.cli.commands.correlations import correlations_command
 from kubesage.cli.commands.rules import rules_command
 from kubesage.cli.commands.watch import watch_command
-from kubesage.observability import setup_logging
 from kubesage.observability.context import set_request_id
 
 
 def main() -> None:
-    setup_logging()
+    check_application_requirements()
     request_id = str(uuid.uuid4())
     set_request_id(request_id)
 

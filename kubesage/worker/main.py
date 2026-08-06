@@ -1,6 +1,6 @@
 import structlog
 
-from kubesage.bootstrap import create_analysis_service
+from kubesage.bootstrap import check_application_requirements, create_analysis_service
 from kubesage.database.session import SessionLocal
 from kubesage.observability.worker_metrics import start_metrics_server
 from kubesage.utils.config import settings
@@ -17,6 +17,7 @@ logger = structlog.get_logger()
 
 
 def run_worker() -> None:
+    check_application_requirements()
     start_metrics_server(settings.metrics_port)
     db = SessionLocal()
 

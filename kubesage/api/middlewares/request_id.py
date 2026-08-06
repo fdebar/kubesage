@@ -4,13 +4,11 @@ from collections.abc import Callable
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from kubesage.observability import setup_logging
 from kubesage.observability.context import set_request_id
 
 
 class RequestIDMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        setup_logging()
         request_id = str(uuid.uuid4())
         set_request_id(request_id)
 

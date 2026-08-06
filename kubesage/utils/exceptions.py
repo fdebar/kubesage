@@ -2,6 +2,10 @@ class KubeSageError(Exception):
     """Base exception for KubeSage."""
 
 
+class DatabaseAvailabilityError(KubeSageError):
+    """Database is not available."""
+
+
 class KubernetesConnectionError(KubeSageError):
     """Cannot communicate with Kubernetes."""
 

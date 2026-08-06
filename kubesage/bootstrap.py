@@ -6,6 +6,10 @@ from kubesage.builders.context.container_snapshot_builder import (
     ContainerSnapshotBuilder,
 )
 from kubesage.builders.prompt.prompt_builder import PromptBuilder
+from kubesage.database.health import (
+    check_database_availability,
+)
+from kubesage.observability import setup_logging
 from kubesage.repositories.analysis_repository import AnalysisRepository
 from kubesage.services.ai_service import AIService
 from kubesage.services.analysis_service import AnalysisService
@@ -35,3 +39,8 @@ def create_analysis_service(db: Session) -> AnalysisService:
         incident_service=create_incident_service(),
         repository=AnalysisRepository(db),
     )
+
+
+def check_application_requirements() -> None:
+    check_database_availability()
+    setup_logging()
