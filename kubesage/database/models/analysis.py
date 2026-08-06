@@ -19,6 +19,7 @@ class AnalysisModel(Base):
     id: Mapped[str] = mapped_column(primary_key=True, default=lambda: str(uuid4()))
     namespace: Mapped[str] = mapped_column(String(255), nullable=False)
     pod: Mapped[str] = mapped_column(String(255), nullable=False)
+    trigger: Mapped[str] = mapped_column(String(25), nullable=False)
     phase: Mapped[str] = mapped_column(String(50), nullable=False)
     highest_severity: Mapped[str | None] = mapped_column(String(50), nullable=True)
     summary: Mapped[str | None] = mapped_column(nullable=True)

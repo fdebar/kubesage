@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from kubesage.models.analysis import Analysis
+from kubesage.models.analysis import Analysis, AnalysisTrigger
 from kubesage.models.analysis_summary import AnalysisSummary
 from kubesage.repositories.analysis_repository import AnalysisRepository
 from kubesage.services.incident_service import IncidentService
@@ -15,12 +15,8 @@ class AnalysisService:
         self.incident_service = incident_service
         self.repository = repository
 
-    def analyze(self, namespace: str, pod: str) -> Analysis:
-        analysis = self.incident_service.analyze(
-            namespace=namespace,
-            pod=pod,
-        )
-
+    def analyze(self, namespace: str, pod: str, trigger: AnalysisTrigger) -> Analysis:
+        analysis = self.incident_service.analyze(namespace, pod, trigger)
         self.repository.save(analysis)
 
         return analysis

@@ -1,6 +1,6 @@
 import structlog
 
-from kubesage.models.analysis import Analysis
+from kubesage.models.analysis import Analysis, AnalysisTrigger
 from kubesage.observability.metrics import (
     WATCHER_INCIDENTS_IGNORED_TOTAL,
 )
@@ -61,8 +61,9 @@ class KubernetesWatcher:
         )
 
         return self.analysis_service.analyze(
-            namespace=trigger.namespace,
-            pod=trigger.pod,
+            trigger.namespace,
+            trigger.pod,
+            AnalysisTrigger.WATCHER,
         )
 
     def _evaluate_event(self, event: PodWatchEvent) -> IncidentTrigger | None:

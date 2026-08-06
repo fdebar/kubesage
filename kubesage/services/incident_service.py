@@ -11,7 +11,7 @@ from kubesage.builders.context.container_snapshot_builder import (
 from kubesage.builders.context.incident_builder import IncidentBuilder
 from kubesage.builders.prompt.prompt_builder import PromptBuilder
 from kubesage.models.ai_report import AIReport
-from kubesage.models.analysis import Analysis
+from kubesage.models.analysis import Analysis, AnalysisTrigger
 from kubesage.services.ai_service import AIService
 from kubesage.services.kubernetes_service import KubernetesService
 from kubesage.services.loki_service import LokiService
@@ -45,8 +45,8 @@ class IncidentService:
         self.prompt_builder = prompt_builder
         self.container_snapshot_builder = container_snapshot_builder
 
-    def analyze(self, namespace: str, pod: str) -> Analysis:
-        logger.info("analysis_started", namespace=namespace, pod=pod)
+    def analyze(self, namespace: str, pod: str, trigger: AnalysisTrigger) -> Analysis:
+        logger.info("analysis_started", namespace=namespace, pod=pod, trigger=trigger)
 
         start = time.perf_counter()
 
@@ -73,6 +73,7 @@ class IncidentService:
                     incident=incident,
                     findings=[],
                     duration_ms=int((time.perf_counter() - start) * 1000),
+                    trigger=trigger,
                 )
 
         with tracer.start_as_current_span("rules.engine.analyze") as span:
@@ -97,13 +98,14 @@ class IncidentService:
             span.set_attribute("llm.pod", pod)
             report = self.ai.analyze(prompt)
 
-        logger.info("analysis_completed", namespace=namespace, pod=pod)
+        logger.info("analysis_completed", namespace=namespace, pod=pod, trigger=trigger)
 
         analysis = Analysis(
             incident=incident,
             findings=findings,
             report=report,
             duration_ms=int((time.perf_counter() - start) * 1000),
+            trigger=trigger,
         )
 
         return analysis

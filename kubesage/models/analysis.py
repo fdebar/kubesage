@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from enum import StrEnum
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -8,10 +9,17 @@ from kubesage.models.finding import Finding, Severity
 from kubesage.models.incident import Incident
 
 
+class AnalysisTrigger(StrEnum):
+    API = "api"
+    CLI = "cli"
+    WATCHER = "watcher"
+
+
 class Analysis(BaseModel):
     """Represents an analysis of an incident."""
 
     id: UUID = Field(default_factory=uuid4)
+    trigger: AnalysisTrigger
     incident: Incident
     findings: list[Finding]
     report: AIReport | None = None

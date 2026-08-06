@@ -6,6 +6,7 @@ import structlog
 from kubesage.bootstrap import create_analysis_service
 from kubesage.database.session import SessionLocal
 from kubesage.models.ai_report import AIReport
+from kubesage.models.analysis import AnalysisTrigger
 
 logger = structlog.get_logger(__name__)
 
@@ -16,7 +17,11 @@ def analyze_command(args: argparse.Namespace) -> None:
     try:
         with SessionLocal() as db:
             analysis_service = create_analysis_service(db)
-            analysis = analysis_service.analyze(namespace=args.namespace, pod=args.pod)
+            analysis = analysis_service.analyze(
+                args.namespace,
+                args.pod,
+                AnalysisTrigger.CLI,
+            )
     except Exception as exc:
         logger.exception(exc)
         raise

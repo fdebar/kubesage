@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 from kubesage.models.ai_report import AIReport
+from kubesage.models.analysis import AnalysisTrigger
 from kubesage.models.container import ContainerSnapshot
 from kubesage.models.finding import Finding, ResourceRef, Severity
 from kubesage.models.incident import Incident
@@ -72,7 +73,7 @@ def test_analyze_flow(incident_builder_cls: MagicMock) -> None:
         container_snapshot_builder=MagicMock(),
     )
 
-    analysis = service.analyze("default", "my-pod")
+    analysis = service.analyze("default", "my-pod", AnalysisTrigger.API)
 
     assert analysis.report == report
     assert analysis.incident == incident

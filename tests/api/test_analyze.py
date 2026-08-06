@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from kubesage.api.app import app
 from kubesage.api.dependencies import get_analysis_service
 from kubesage.models.ai_report import AIReport
-from kubesage.models.analysis import Analysis
+from kubesage.models.analysis import Analysis, AnalysisTrigger
 from kubesage.models.incident import Incident
 
 client = TestClient(app)
@@ -27,7 +27,7 @@ class FakeIncidentService:
         context: str | None = None,
     ) -> Analysis:
         return Analysis(
-            incident=Incident(namespace="default", pod="ai-demo-app", phase="Pending"),
+            incident=Incident(namespace=namespace, pod=pod, phase="Pending"),
             findings=[],
             report=AIReport(
                 summary="Pod is failing",
@@ -37,6 +37,7 @@ class FakeIncidentService:
                 additional_investigations=["kubectl logs pod"],
             ),
             duration_ms=1000,
+            trigger=AnalysisTrigger.API,
         )
 
 

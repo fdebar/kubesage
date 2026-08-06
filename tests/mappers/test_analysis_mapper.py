@@ -4,7 +4,7 @@ import pytest
 
 from kubesage.mappers.analysis_mapper import AnalysisMapper
 from kubesage.models.ai_report import AIReport
-from kubesage.models.analysis import Analysis
+from kubesage.models.analysis import Analysis, AnalysisTrigger
 from kubesage.models.finding import Finding, ResourceRef, Severity
 from kubesage.models.incident import Incident
 
@@ -29,6 +29,7 @@ def analysis() -> Analysis:
                 ),
             )
         ],
+        trigger=AnalysisTrigger.API,
     )
 
 
@@ -63,6 +64,7 @@ def test_to_model_without_report() -> None:
         ),
         duration_ms=500,
         findings=[],
+        trigger=AnalysisTrigger.API,
     )
     model = AnalysisMapper.to_model(analysis)
 
@@ -92,6 +94,7 @@ def test_to_model_calculates_findings_count() -> None:
             ),
         ],
         duration_ms=500,
+        trigger=AnalysisTrigger.API,
     )
     model = AnalysisMapper.to_model(analysis)
 
@@ -114,6 +117,7 @@ def test_to_model_maps_highest_severity() -> None:
             )
         ],
         duration_ms=500,
+        trigger=AnalysisTrigger.API,
     )
     model = AnalysisMapper.to_model(analysis)
 
@@ -154,8 +158,8 @@ def test_to_model_keeps_incident_phase() -> None:
         ),
         findings=[],
         duration_ms=1000,
+        trigger=AnalysisTrigger.API,
     )
-
     model = AnalysisMapper.to_model(analysis)
 
     assert model.phase == "Running"

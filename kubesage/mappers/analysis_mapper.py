@@ -12,7 +12,7 @@ from kubesage.database.models.analysis import AnalysisModel
 from kubesage.database.models.incident_snapshot import IncidentSnapshotModel
 from kubesage.mappers.ai_report_mapper import AIReportMapper
 from kubesage.mappers.finding_mapper import FindingMapper
-from kubesage.models.analysis import Analysis
+from kubesage.models.analysis import Analysis, AnalysisTrigger
 from kubesage.models.incident import Incident
 
 
@@ -33,6 +33,7 @@ class AnalysisMapper:
             phase=analysis.incident.phase,
             findings_count=len(analysis.findings),
             created_at=analysis.created_at,
+            trigger=analysis.trigger.value,
         )
 
         model.findings = [
@@ -65,6 +66,7 @@ class AnalysisMapper:
             report=(AIReportMapper.to_domain(model.report) if model.report else None),
             duration_ms=model.duration_ms,
             created_at=model.created_at,
+            trigger=AnalysisTrigger(model.trigger),
         )
 
     @staticmethod
@@ -120,4 +122,5 @@ class AnalysisMapper:
             ),
             created_at=analysis.created_at,
             duration_ms=analysis.duration_ms,
+            trigger=analysis.trigger,
         )

@@ -2,7 +2,7 @@ from collections.abc import Iterator
 from datetime import UTC, datetime
 from unittest.mock import Mock
 
-from kubesage.models.analysis import Analysis
+from kubesage.models.analysis import Analysis, AnalysisTrigger
 from kubesage.watchers.incident_deduplicator import IncidentDeduplicator
 from kubesage.watchers.kubernetes_watcher import KubernetesWatcher
 from kubesage.watchers.models.incident_trigger import (
@@ -35,7 +35,6 @@ def test_watcher_triggers_analysis() -> None:
         state_cache=PodStateCache(),
         diff_builder=PodStateDiffBuilder(),
     )
-
     trigger = IncidentTrigger(
         reason="BackOff",
         namespace="kubesage",
@@ -43,14 +42,13 @@ def test_watcher_triggers_analysis() -> None:
         message="Back-off restarting failed container",
         occurred_at=datetime.now(UTC),
     )
-
     result = watcher.handle(trigger)
 
     assert result == expected_analysis
-
     analysis_service.analyze.assert_called_once_with(
-        namespace="kubesage",
-        pod="payment-api",
+        "kubesage",
+        "payment-api",
+        AnalysisTrigger.WATCHER,
     )
 
 
@@ -69,8 +67,9 @@ def test_watcher_starts_analysis_for_incident() -> None:
     watcher.start(event_source)
 
     analysis_service.analyze.assert_called_once_with(
-        namespace="production",
-        pod="payment-api",
+        "production",
+        "payment-api",
+        AnalysisTrigger.WATCHER,
     )
 
 

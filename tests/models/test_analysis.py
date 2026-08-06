@@ -1,5 +1,5 @@
 from kubesage.models.ai_report import AIReport
-from kubesage.models.analysis import Analysis
+from kubesage.models.analysis import Analysis, AnalysisTrigger
 from kubesage.models.incident import Incident
 
 
@@ -24,6 +24,7 @@ def test_analysis_contains_report() -> None:
         findings=[],
         report=report,
         duration_ms=100,
+        trigger=AnalysisTrigger.API,
     )
 
     assert analysis.report == report
