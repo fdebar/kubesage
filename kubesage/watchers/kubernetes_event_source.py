@@ -10,7 +10,7 @@ from kubesage.observability.metrics import (
     WATCHER_EVENTS_TOTAL,
 )
 from kubesage.utils.kube_client import create_core_v1_api
-from kubesage.watchers.models import PodWatchEvent
+from kubesage.watchers.models.incident_trigger import PodWatchEvent
 
 logger = structlog.get_logger()
 

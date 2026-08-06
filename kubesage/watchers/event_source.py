@@ -1,7 +1,7 @@
 from collections.abc import Iterator
 from typing import Protocol
 
-from kubesage.watchers.models import PodWatchEvent
+from kubesage.watchers.models.incident_trigger import PodWatchEvent
 
 
 class EventSource(Protocol):

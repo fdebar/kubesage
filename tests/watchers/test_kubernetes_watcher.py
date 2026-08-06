@@ -5,8 +5,13 @@ from unittest.mock import Mock
 from kubesage.models.analysis import Analysis
 from kubesage.watchers.incident_deduplicator import IncidentDeduplicator
 from kubesage.watchers.kubernetes_watcher import KubernetesWatcher
-from kubesage.watchers.models import IncidentTrigger, PodWatchEvent
+from kubesage.watchers.models.incident_trigger import (
+    IncidentTrigger,
+    PodWatchEvent,
+)
 from kubesage.watchers.pod_event_filter import PodEventFilter
+from kubesage.watchers.pod_state_cache import PodStateCache
+from kubesage.watchers.pod_state_diff_builder import PodStateDiffBuilder
 from tests.watchers.test_pod_event_filter import build_event, build_pod
 
 
@@ -27,6 +32,8 @@ def test_watcher_triggers_analysis() -> None:
         analysis_service=analysis_service,
         event_filter=PodEventFilter(),
         deduplicator=IncidentDeduplicator(),
+        state_cache=PodStateCache(),
+        diff_builder=PodStateDiffBuilder(),
     )
 
     trigger = IncidentTrigger(
@@ -55,6 +62,8 @@ def test_watcher_starts_analysis_for_incident() -> None:
         analysis_service=analysis_service,
         event_filter=PodEventFilter(),
         deduplicator=IncidentDeduplicator(),
+        state_cache=PodStateCache(),
+        diff_builder=PodStateDiffBuilder(),
     )
     event_source = FakeEventSource(build_event(build_pod("CrashLoopBackOff")))
     watcher.start(event_source)
@@ -64,26 +73,22 @@ def test_watcher_starts_analysis_for_incident() -> None:
         pod="payment-api",
     )
 
-    def test_duplicate_incident_is_ignored() -> None:
-        analysis_service = Mock()
-        expected_analysis = Mock(spec=Analysis)
-        analysis_service.analyze.return_value = expected_analysis
 
-        watcher = KubernetesWatcher(
-            analysis_service=analysis_service,
-            event_filter=PodEventFilter(),
-            deduplicator=IncidentDeduplicator(),
-        )
+def test_duplicate_incident_is_ignored() -> None:
+    analysis_service = Mock()
+    analysis_service.analyze.return_value = Mock(spec=Analysis)
 
-        trigger = IncidentTrigger(
-            reason="BackOff",
-            namespace="kubesage",
-            pod="payment-api",
-            message="Back-off restarting failed container",
-            occurred_at=datetime.now(UTC),
-        )
+    watcher = KubernetesWatcher(
+        analysis_service=analysis_service,
+        event_filter=PodEventFilter(),
+        deduplicator=IncidentDeduplicator(),
+        state_cache=PodStateCache(),
+        diff_builder=PodStateDiffBuilder(),
+    )
 
-        watcher.handle(trigger)
-        watcher.handle(trigger)
+    event_source = FakeEventSource(build_event(build_pod("CrashLoopBackOff")))
 
-        assert True
+    watcher.start(event_source)
+    watcher.start(event_source)
+
+    assert True

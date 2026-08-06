@@ -1,10 +1,10 @@
-from kubesage.observability.metrics import (
-    WATCHER_INCIDENTS_DETECTED_TOTAL,
-)
-from kubesage.watchers.models import (
+from datetime import UTC, datetime
+
+from kubesage.watchers.models.incident_trigger import (
     IncidentTrigger,
     PodWatchEvent,
 )
+from kubesage.watchers.models.pod_state_diff import PodStateDiff
 
 INTERESTING_REASONS = {
     "CrashLoopBackOff",
@@ -21,10 +21,24 @@ class PodEventFilter:
     should trigger an analysis.
     """
 
-    def build_trigger(
+    def evaluate(
         self,
-        event: PodWatchEvent,
+        diff: PodStateDiff,
+        namespace: str,
+        pod: str,
     ) -> IncidentTrigger | None:
+        if diff.restart_delta >= 3:
+            return IncidentTrigger(
+                namespace=namespace,
+                pod=pod,
+                reason="FrequentRestarts",
+                message=(f"Pod restarted {diff.restart_delta} times"),
+                occurred_at=datetime.now(UTC),
+            )
+
+        return None
+
+    def build_trigger(self, event: PodWatchEvent) -> IncidentTrigger | None:
         if event.type != "MODIFIED":
             return None
 
@@ -41,8 +55,6 @@ class PodEventFilter:
             reason = state.waiting.reason
             if reason not in INTERESTING_REASONS:
                 continue
-
-            WATCHER_INCIDENTS_DETECTED_TOTAL.labels(reason=reason).inc()
 
             return IncidentTrigger(
                 source="kubernetes",

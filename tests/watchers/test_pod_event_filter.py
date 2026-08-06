@@ -9,7 +9,7 @@ from kubernetes.client import (
     V1PodStatus,
 )
 
-from kubesage.watchers.models import PodWatchEvent
+from kubesage.watchers.models.incident_trigger import PodWatchEvent
 from kubesage.watchers.pod_event_filter import PodEventFilter
 
 

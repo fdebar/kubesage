@@ -1,6 +1,6 @@
 from datetime import UTC, datetime, timedelta
 
-from kubesage.watchers.models import IncidentTrigger
+from kubesage.watchers.models.incident_trigger import IncidentTrigger
 
 
 class IncidentDeduplicator:

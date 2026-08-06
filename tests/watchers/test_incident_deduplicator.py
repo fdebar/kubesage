@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 from kubesage.watchers.incident_deduplicator import (
     IncidentDeduplicator,
 )
-from kubesage.watchers.models import IncidentTrigger
+from kubesage.watchers.models.incident_trigger import IncidentTrigger
 
 
 def build_trigger() -> IncidentTrigger:

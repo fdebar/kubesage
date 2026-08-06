@@ -7,8 +7,12 @@ from kubesage.observability.metrics import (
 from kubesage.services.analysis_service import AnalysisService
 from kubesage.watchers.event_source import EventSource
 from kubesage.watchers.incident_deduplicator import IncidentDeduplicator
-from kubesage.watchers.models import IncidentTrigger
+from kubesage.watchers.models.incident_trigger import IncidentTrigger, PodWatchEvent
 from kubesage.watchers.pod_event_filter import PodEventFilter
+from kubesage.watchers.pod_state_cache import PodStateCache
+from kubesage.watchers.pod_state_diff_builder import (
+    PodStateDiffBuilder,
+)
 
 logger = structlog.get_logger()
 
@@ -19,16 +23,20 @@ class KubernetesWatcher:
         analysis_service: AnalysisService,
         event_filter: PodEventFilter,
         deduplicator: IncidentDeduplicator,
+        state_cache: PodStateCache,
+        diff_builder: PodStateDiffBuilder,
     ):
         self.analysis_service = analysis_service
         self.event_filter = event_filter
         self.deduplicator = deduplicator
+        self.state_cache = state_cache
+        self.diff_builder = diff_builder
 
     def start(self, event_source: EventSource) -> None:
         logger.info("watcher_started")
 
         for event in event_source.watch():
-            trigger = self.event_filter.build_trigger(event)
+            trigger = self._evaluate_event(event)
             if trigger is None:
                 continue
 
@@ -56,3 +64,23 @@ class KubernetesWatcher:
             namespace=trigger.namespace,
             pod=trigger.pod,
         )
+
+    def _evaluate_event(self, event: PodWatchEvent) -> IncidentTrigger | None:
+        pod = event.pod
+        if pod.metadata is None:
+            return None
+
+        namespace = pod.metadata.namespace
+        name = pod.metadata.name
+        if namespace is None or name is None:
+            return None
+
+        previous = self.state_cache.get(namespace, name)
+        diff = self.diff_builder.build(previous, pod)
+        self.state_cache.update(pod)
+
+        behavioral_trigger = self.event_filter.evaluate(diff, namespace, name)
+        if behavioral_trigger:
+            return behavioral_trigger
+
+        return self.event_filter.build_trigger(event)

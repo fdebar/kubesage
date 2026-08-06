@@ -10,6 +10,8 @@ from kubesage.watchers.kubernetes_event_source import (
 )
 from kubesage.watchers.kubernetes_watcher import KubernetesWatcher
 from kubesage.watchers.pod_event_filter import PodEventFilter
+from kubesage.watchers.pod_state_cache import PodStateCache
+from kubesage.watchers.pod_state_diff_builder import PodStateDiffBuilder
 
 logger = structlog.get_logger()
 
@@ -23,6 +25,8 @@ def run_worker() -> None:
             analysis_service=analysis_service,
             event_filter=PodEventFilter(),
             deduplicator=IncidentDeduplicator(),
+            state_cache=PodStateCache(),
+            diff_builder=PodStateDiffBuilder(),
         )
         event_source = KubernetesPodEventSource()
         logger.info("kubesage_worker_started")
