@@ -46,7 +46,14 @@ class PromptBuilder:
 
         lines.append("# Kubernetes Events")
         for event in ai.ctx.events:
-            lines.append(f"- [{event.type}] {event.reason}: {event.message}")
+            lines.append("")
+            lines.append(f"- Type: {event.type}")
+            lines.append(f"  Reason: {event.reason}")
+            lines.append(f"  Message: {event.message}")
+
+            if event.last_timestamp:
+                lines.append(f"  Timestamp: {event.last_timestamp.isoformat()}")
+
         lines.append("")
 
     def _append_logs(self, lines: list[str], ai: AIContext) -> None:
@@ -81,12 +88,21 @@ class PromptBuilder:
 
         if finding.structured_evidences:
             lines.append("Evidence:")
+
             for evidence in finding.structured_evidences:
-                value = evidence.value
+                value = evidence.value or ""
                 if evidence.unit:
                     value = f"{value}{evidence.unit}"
-                lines.append(f"    - {evidence.name}: {value}")
-            lines.append("")
+
+                lines.append("")
+                lines.append(f"- Type: {evidence.type or 'unknown'}")
+                lines.append(f"  Name: {evidence.name}")
+                lines.append(f"  Value: {value}")
+
+                if evidence.source:
+                    lines.append(f"  Source: {evidence.source}")
+
+                lines.append("")
 
     def _append_summary(self, lines: list[str], ai: AIContext) -> None:
         if not ai.has_findings:
@@ -105,16 +121,35 @@ class PromptBuilder:
             """
 You are a Senior Kubernetes Site Reliability Engineer.
 
-Your role is to generate an incident report from the provided analysis.
+Your role is to generate a structured incident report from the provided analysis.
+
+Your objectives:
+
+1. Validate the detected diagnoses.
+2. Identify the most likely root cause.
+3. Explain the impact of the incident.
+4. Recommend remediation actions.
+5. Suggest additional investigations if information is missing.
 
 Rules:
 
 1. Use Diagnoses as the primary source of truth.
 2. Use Observations only as supporting signals.
 3. Never invent missing information.
-4. Do not override confirmed diagnoses.
-5. Explain the incident using only provided evidence.
-6. Prioritize recommendations based on severity and confidence.
-7. Answer using JSON only.
+4. Separate confirmed facts from hypotheses.
+5. Base conclusions only on provided evidence.
+6. Prioritize recommendations using severity and confidence.
+
+Return JSON matching this schema:
+
+{
+  "summary": "...",
+  "root_cause": "...",
+  "confidence": 0.0,
+  "impact": "...",
+  "evidence": [],
+  "recommendations": [],
+  "additional_investigations": []
+}
 """
         )

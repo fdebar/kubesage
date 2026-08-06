@@ -56,6 +56,7 @@ def make_diagnosis() -> Finding:
                 name="cpu_usage",
                 value="95",
                 unit="%",
+                source="prometheus",
                 type=EvidenceType.METRIC,
             )
         ],
@@ -126,7 +127,8 @@ def test_build_prompt_with_diagnosis() -> None:
     assert "cpu_throttling" in prompt
 
     assert "Evidence:" in prompt
-    assert "cpu_usage: 95%" in prompt
+    assert "Name: cpu_usage" in prompt
+    assert "Value: 95%" in prompt
 
     assert "# Recommendations" in prompt
     assert "- Increase CPU limit" in prompt
