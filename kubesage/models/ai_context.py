@@ -55,7 +55,7 @@ class AIContext:
         return [
             f
             for f in self.ctx.findings
-            if f.kind == FindingKind.DIAGNOSIS and f.severity == Severity.CRITICAL
+            if f.kind == FindingKind.DIAGNOSIS and not f.caused_by
         ]
 
     @property

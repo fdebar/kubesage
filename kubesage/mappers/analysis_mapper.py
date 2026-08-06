@@ -122,5 +122,4 @@ class AnalysisMapper:
             ),
             created_at=analysis.created_at,
             duration_ms=analysis.duration_ms,
-            trigger=analysis.trigger,
         )
