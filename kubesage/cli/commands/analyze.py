@@ -1,15 +1,11 @@
 import argparse
 import json
-import sys
 
 import structlog
 
-from kubesage.bootstrap import create_incident_service
+from kubesage.bootstrap import create_analysis_service
 from kubesage.database.session import SessionLocal
 from kubesage.models.ai_report import AIReport
-from kubesage.repositories.analysis_repository import AnalysisRepository
-from kubesage.services.analysis_service import AnalysisService
-from kubesage.utils.exceptions import KubeSageError
 
 logger = structlog.get_logger(__name__)
 
@@ -17,18 +13,13 @@ logger = structlog.get_logger(__name__)
 def analyze_command(args: argparse.Namespace) -> None:
     """Manage the execution of the analyze command."""
 
-    with SessionLocal() as db:
-        incident_service = create_incident_service()
-
     try:
-        analysis_service = AnalysisService(
-            incident_service=incident_service,
-            repository=AnalysisRepository(db),
-        )
-        analysis = analysis_service.analyze(namespace=args.namespace, pod=args.pod)
-    except KubeSageError as exc:
+        with SessionLocal() as db:
+            analysis_service = create_analysis_service(db)
+            analysis = analysis_service.analyze(namespace=args.namespace, pod=args.pod)
+    except Exception as exc:
         logger.exception(exc)
-        sys.exit(1)
+        raise
 
     if analysis.report is None:
         analysis.report = AIReport(
