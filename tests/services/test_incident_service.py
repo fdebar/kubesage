@@ -1,29 +1,47 @@
-from unittest.mock import MagicMock, patch
+from types import SimpleNamespace
+from unittest.mock import Mock
 
+from kubesage.analyzers.engine import DiagnosticEngine
+from kubesage.builders.context.ai_context_builder import AIContextBuilder
+from kubesage.builders.context.container_snapshot_builder import (
+    ContainerSnapshotBuilder,
+)
+from kubesage.builders.prompt.prompt_builder import PromptBuilder
 from kubesage.models.ai_report import AIReport
 from kubesage.models.analysis import AnalysisTrigger
 from kubesage.models.container import ContainerSnapshot
-from kubesage.models.finding import Finding, ResourceRef, Severity
+from kubesage.models.finding import Finding
 from kubesage.models.incident import Incident
 from kubesage.models.log import LogSnapshot
+from kubesage.models.prometheus import PrometheusResourceUsage
+from kubesage.services.ai_service import AIService
 from kubesage.services.incident_service import IncidentService
+from kubesage.services.kubernetes_service import KubernetesService
+from kubesage.services.loki_service import LokiService
+from kubesage.services.metrics_service import MetricsService
+from kubesage.services.prometheus_service import PrometheusService
 
 
-@patch("kubesage.services.incident_service.IncidentBuilder")
-def test_analyze_flow(incident_builder_cls: MagicMock) -> None:
-    incident = Incident(
-        namespace="default",
-        pod="my-pod",
+def build_container() -> ContainerSnapshot:
+    return ContainerSnapshot(
+        name="payment-api",
+        image="payment-api:latest",
+        ready=True,
+        restart_count=0,
+    )
+
+
+def build_incident(
+    *,
+    containers: list[ContainerSnapshot] | None = None,
+    events: list | None = None,
+) -> Incident:
+    return Incident(
+        namespace="production",
+        pod="payment-api",
         phase="Running",
-        containers=[
-            ContainerSnapshot(
-                name="nginx",
-                image="nginx:1.25.0",
-                ready=True,
-                restart_count=1,
-            )
-        ],
-        events=[],
+        containers=containers if containers is not None else [build_container()],
+        events=events if events is not None else [],
         kubernetes_logs=LogSnapshot(
             source="kubernetes",
             lines=[],
@@ -33,54 +51,151 @@ def test_analyze_flow(incident_builder_cls: MagicMock) -> None:
         metrics=None,
     )
 
-    incident_builder = MagicMock()
-    incident_builder.collect.return_value = incident
-    incident_builder_cls.return_value = incident_builder
 
-    findings = [
-        Finding(
-            rule="high_memory_usage",
-            severity=Severity.WARNING,
-            title="High memory usage",
-            description="High memory usage",
-            resource=ResourceRef(kind="Pod", name="test", namespace="test"),
-        ),
-    ]
-    engine = MagicMock()
-    engine.analyze.return_value = findings
-
-    context = MagicMock()
-    context_builder = MagicMock()
-    context_builder.build.return_value = context
-
-    prompt = MagicMock()
-    prompt_builder = MagicMock()
-    prompt_builder.build.return_value = prompt
-
-    report = AIReport(summary="Empty", root_cause="Empty")
-    ai = MagicMock()
-    ai.analyze.return_value = report
-
-    service = IncidentService(
-        kubernetes=MagicMock(),
-        prometheus=MagicMock(),
-        metrics=MagicMock(),
-        loki=MagicMock(),
-        ai=ai,
-        engine=engine,
-        ai_context_builder=context_builder,
-        prompt_builder=prompt_builder,
-        container_snapshot_builder=MagicMock(),
+def build_service(
+    *,
+    findings: list[Finding] | None = None,
+    incident: Incident | None = None,
+) -> tuple[IncidentService, dict[str, Mock]]:
+    kubernetes = Mock(spec=KubernetesService)
+    prometheus = Mock(spec=PrometheusService)
+    metrics = Mock(spec=MetricsService)
+    loki = Mock(spec=LokiService)
+    ai = Mock(spec=AIService)
+    engine = Mock(spec=DiagnosticEngine)
+    ai_context_builder = Mock(spec=AIContextBuilder)
+    prompt_builder = Mock(spec=PromptBuilder)
+    container_snapshot_builder = Mock(
+        spec=ContainerSnapshotBuilder,
     )
 
-    analysis = service.analyze("default", "my-pod", AnalysisTrigger.API)
+    engine.analyze.return_value = findings or []
+    if incident is None:
+        incident = build_incident()
 
-    assert analysis.report == report
-    assert analysis.incident == incident
-    assert analysis.findings == findings
+    kubernetes.collect.return_value = SimpleNamespace(
+        namespace=incident.namespace,
+        pod=incident.pod,
+        phase=incident.phase,
+        containers=[],
+        events=incident.events,
+        logs=incident.kubernetes_logs,
+        resources=[],
+    )
 
-    incident_builder.collect.assert_called_once_with("default", "my-pod")
-    engine.analyze.assert_called_once_with(incident)
-    context_builder.build.assert_called_once_with(incident, findings)
-    prompt_builder.build.assert_called_once_with(context)
-    ai.analyze.assert_called_once_with(prompt)
+    prometheus.collect.return_value = PrometheusResourceUsage(
+        containers=[],
+    )
+
+    metrics.collect.return_value = None
+    loki.collect.return_value = None
+
+    container_snapshot_builder.build.return_value = incident.containers
+
+    service = IncidentService(
+        kubernetes=kubernetes,
+        prometheus=prometheus,
+        metrics=metrics,
+        loki=loki,
+        ai=ai,
+        engine=engine,
+        ai_context_builder=ai_context_builder,
+        prompt_builder=prompt_builder,
+        container_snapshot_builder=container_snapshot_builder,
+    )
+
+    return service, {
+        "ai": ai,
+        "engine": engine,
+        "ai_context_builder": ai_context_builder,
+        "prompt_builder": prompt_builder,
+    }
+
+
+def test_analysis_with_findings_calls_ai() -> None:
+    finding = Mock(spec=Finding)
+
+    service, mocks = build_service(
+        findings=[finding],
+    )
+
+    mocks["ai_context_builder"].build.return_value = Mock()
+    mocks["prompt_builder"].build.return_value = "prompt"
+
+    report = AIReport(
+        summary="summary",
+        root_cause="root cause",
+        evidence=[],
+    )
+
+    mocks["ai"].analyze.return_value = report
+
+    result = service.analyze(
+        namespace="production",
+        pod="payment-api",
+        trigger=AnalysisTrigger.API,
+    )
+
+    assert result.findings == [finding]
+    assert result.report == report
+    assert result.trigger == AnalysisTrigger.API
+
+    mocks["ai"].analyze.assert_called_once_with("prompt")
+
+
+def test_analysis_without_findings_skips_ai() -> None:
+    service, mocks = build_service(
+        findings=[],
+    )
+
+    result = service.analyze(
+        namespace="production",
+        pod="payment-api",
+        trigger=AnalysisTrigger.WATCHER,
+    )
+
+    assert result.findings == []
+    assert result.report is None
+
+    mocks["ai"].analyze.assert_not_called()
+    mocks["ai_context_builder"].build.assert_not_called()
+    mocks["prompt_builder"].build.assert_not_called()
+
+
+def test_analysis_when_kubernetes_data_is_unavailable_returns_error_report() -> None:
+    incident = build_incident(
+        containers=[],
+        events=[],
+    )
+
+    service, mocks = build_service(
+        incident=incident,
+    )
+
+    result = service.analyze(
+        namespace="production",
+        pod="payment-api",
+        trigger=AnalysisTrigger.WATCHER,
+    )
+
+    assert result.report is not None
+    assert (
+        result.report.summary
+        == "AI analysis could not be completed due to unavailable Kubernetes data."
+    )
+
+    mocks["ai"].analyze.assert_not_called()
+
+
+def test_analysis_passes_trigger() -> None:
+    service, _ = build_service(
+        findings=[],
+    )
+
+    result = service.analyze(
+        namespace="production",
+        pod="payment-api",
+        trigger=AnalysisTrigger.CLI,
+    )
+
+    assert result.trigger == AnalysisTrigger.CLI

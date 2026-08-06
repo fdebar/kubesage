@@ -46,13 +46,13 @@ class IncidentService:
         self.container_snapshot_builder = container_snapshot_builder
 
     def analyze(self, namespace: str, pod: str, trigger: AnalysisTrigger) -> Analysis:
-        logger.info("analysis_started", namespace=namespace, pod=pod, trigger=trigger)
+        logger.info("analysis.started", namespace=namespace, pod=pod, trigger=trigger)
 
         start = time.perf_counter()
 
-        with tracer.start_as_current_span("incident.build") as span:
-            span.set_attribute("incident.namespace", namespace)
-            span.set_attribute("incident.pod", pod)
+        with tracer.start_as_current_span("analysis.incident.build") as span:
+            span.set_attribute("analysis.namespace", namespace)
+            span.set_attribute("analysis.pod", pod)
             self.builder = IncidentBuilder(
                 kubernetes_provider=self.kubernetes,
                 prometheus_provider=self.prometheus,
@@ -63,7 +63,7 @@ class IncidentService:
 
             incident = self.builder.collect(namespace, pod)
             if incident.containers == [] and incident.events == []:
-                logger.error("kubernetes_no_data")
+                logger.error("analysis.incident.build.no_kubernetes_data")
                 return Analysis(
                     report=AIReport(
                         summary="AI analysis could not be completed due to unavailable Kubernetes data.",  # noqa
@@ -76,29 +76,40 @@ class IncidentService:
                     trigger=trigger,
                 )
 
-        with tracer.start_as_current_span("rules.engine.analyze") as span:
-            span.set_attribute("rules.namespace", namespace)
-            span.set_attribute("rules.pod", pod)
+        with tracer.start_as_current_span("analysis.rules.engine.analyze") as span:
+            span.set_attribute("analysis.rules.namespace", namespace)
+            span.set_attribute("analysis.rules.pod", pod)
             findings = self.engine.analyze(incident)
 
-            span.set_attribute("rules.count", len(findings))
+            span.set_attribute("analysis.rules.count", len(findings))
 
-        with tracer.start_as_current_span("ai_context.build") as span:
-            span.set_attribute("ai_context.namespace", namespace)
-            span.set_attribute("ai_context.pod", pod)
+        if not findings:
+            logger.info("analysis.skipped", namespace=namespace, pod=pod)
+
+            return Analysis(
+                incident=incident,
+                findings=findings,
+                report=None,
+                duration_ms=int((time.perf_counter() - start) * 1000),
+                trigger=trigger,
+            )
+
+        with tracer.start_as_current_span("analysis.ai_context.build") as span:
+            span.set_attribute("analysis.ai_context.namespace", namespace)
+            span.set_attribute("analysis.ai_context.pod", pod)
             ctxbuilder = self.ai_context_builder.build(incident, findings)
 
-        with tracer.start_as_current_span("ai_prompt.build") as span:
-            span.set_attribute("ai_prompt.namespace", namespace)
-            span.set_attribute("ai_prompt.pod", pod)
+        with tracer.start_as_current_span("analysis.ai_prompt.build") as span:
+            span.set_attribute("analysis.ai_prompt.namespace", namespace)
+            span.set_attribute("analysis.ai_prompt.pod", pod)
             prompt = self.prompt_builder.build(ctxbuilder)
 
-        with tracer.start_as_current_span("llm.analyze") as span:
-            span.set_attribute("llm.namespace", namespace)
-            span.set_attribute("llm.pod", pod)
+        with tracer.start_as_current_span("analysis.llm.analyze") as span:
+            span.set_attribute("analysis.llm.namespace", namespace)
+            span.set_attribute("analysis.llm.pod", pod)
             report = self.ai.analyze(prompt)
 
-        logger.info("analysis_completed", namespace=namespace, pod=pod, trigger=trigger)
+        logger.info("analysis.completed", namespace=namespace, pod=pod, trigger=trigger)
 
         analysis = Analysis(
             incident=incident,
