@@ -43,17 +43,13 @@ class AIService:
             logger.error("llm.analyze.response.failed", reason=repr(exc))
             OPENAI_REQUESTS.labels(status="error").inc()
 
-            return AIReport(
-                summary="AI analysis could not be completed.", root_cause=""
-            )
+            return AIReport(summary="AI analysis could not be completed.")
         logger.debug("llm.analyze.response.raw", response=response)
 
         report: AIReport | None = response.choices[0].message.parsed
         if report is None:
             logger.error("llm.analyze.response.empty")
 
-            return AIReport(
-                summary="AI analysis could not be completed.", root_cause=""
-            )
+            return AIReport(summary="AI analysis could not be completed.")
 
         return report

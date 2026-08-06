@@ -4,16 +4,33 @@ from kubesage.api.schemas.finding import FindingResponse
 
 
 class AnalyzeResponse(BaseModel):
-    summary: str = Field(
-        description="Short AI-generated summary",
-        examples=["The pod is in CrashLoopBackOff because Redis is unreachable."],
+    summary: str = Field(description="Short summary of the incident.")
+    root_cause: str | None = Field(
+        default=None,
+        description="Most likely root cause of the incident.",
     )
-    severity: str = Field(
-        examples=["critical"],
+    confidence: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Confidence score between 0 and 1.",
     )
-    root_cause: str
-    recommendations: list = Field(default_factory=list)
-    kubectl_commands: list = Field(default_factory=list)
+    impact: str | None = Field(
+        default=None,
+        description="User or system impact caused by the incident.",
+    )
+    evidence: list[str] = Field(
+        default_factory=list,
+        description="Evidence supporting the analysis.",
+    )
+    recommendations: list[str] = Field(
+        default_factory=list,
+        description="Recommended remediation actions.",
+    )
+    additional_investigations: list[str] = Field(
+        default_factory=list,
+        description="Additional checks suggested by the AI.",
+    )
 
 
 class AnalyzeDetailedResponse(AnalyzeResponse):

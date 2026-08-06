@@ -17,11 +17,7 @@ def analyze(
 ) -> AnalyzeResponse:
     """Analyze an incident."""
 
-    analysis = analysis_service.analyze(
-        body.namespace,
-        body.pod,
-        AnalysisTrigger.API,
-    )
+    analysis = analysis_service.analyze(body.namespace, body.pod, AnalysisTrigger.API)
     if analysis.report is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

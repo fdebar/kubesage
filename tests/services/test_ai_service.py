@@ -64,7 +64,7 @@ def test_analyze_failure(mock_openai_class: MagicMock) -> None:
 
     assert ai_report == AIReport(
         summary="AI analysis could not be completed.",
-        root_cause="",
+        root_cause=None,
         evidence=[],
         recommendations=[],
         additional_investigations=[],

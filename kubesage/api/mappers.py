@@ -4,8 +4,10 @@ from kubesage.api.schemas.response import AnalyzeResponse
 def to_response(report: dict) -> AnalyzeResponse:
     return AnalyzeResponse(
         summary=report.get("summary", ""),
-        severity=report.get("severity", "Unknown"),
         root_cause=report.get("root_cause", ""),
+        confidence=report.get("confidence", ""),
+        impact=report.get("impact", ""),
+        evidence=report.get("evidence", []),
         recommendations=report.get("recommendations", []),
-        kubectl_commands=report.get("kubectl_commands", []),
+        additional_investigations=report.get("additional_investigations", []),
     )
