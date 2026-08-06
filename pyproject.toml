@@ -20,6 +20,7 @@ dependencies = [
     "opentelemetry-sdk",
     "opentelemetry-instrumentation-fastapi",
     "opentelemetry-exporter-otlp",
+    "psycopg[binary]",
     "sqlalchemy",
     "structlog",
     "requests"
