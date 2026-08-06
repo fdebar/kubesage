@@ -33,8 +33,3 @@ charts/*/charts/
 
 # Helm cache
 *.tgz
-
-# SQLite
-*.db
-*.sqlite
-*.sqlite3
