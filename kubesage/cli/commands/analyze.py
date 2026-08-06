@@ -2,13 +2,16 @@ import argparse
 import json
 import sys
 
+import structlog
+
 from kubesage.bootstrap import create_incident_service
 from kubesage.database.session import SessionLocal
 from kubesage.models.ai_report import AIReport
-from kubesage.observability import get_logger
 from kubesage.repositories.analysis_repository import AnalysisRepository
 from kubesage.services.analysis_service import AnalysisService
 from kubesage.utils.exceptions import KubeSageError
+
+logger = structlog.get_logger(__name__)
 
 
 def analyze_command(args: argparse.Namespace) -> None:
@@ -24,8 +27,7 @@ def analyze_command(args: argparse.Namespace) -> None:
         )
         analysis = analysis_service.analyze(namespace=args.namespace, pod=args.pod)
     except KubeSageError as exc:
-        logger = get_logger(__name__)
-        logger.error(exc)
+        logger.exception(exc)
         sys.exit(1)
 
     if analysis.report is None:
