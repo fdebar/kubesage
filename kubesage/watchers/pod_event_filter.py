@@ -22,10 +22,7 @@ class PodEventFilter:
     """
 
     def evaluate(
-        self,
-        diff: PodStateDiff,
-        namespace: str,
-        pod: str,
+        self, diff: PodStateDiff, namespace: str, pod: str
     ) -> IncidentTrigger | None:
         if diff.restart_delta >= 3:
             return IncidentTrigger(

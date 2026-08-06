@@ -23,15 +23,9 @@ class KubernetesPodEventSource:
 
     def __init__(self) -> None:
         self.api = create_core_v1_api()
-        if self.api is None:
-            raise RuntimeError("Unable to initialize Kubernetes client.")
-
         self.watcher = watch.Watch()
 
     def watch(self) -> Iterator[PodWatchEvent]:
-        if self.api is None:
-            raise RuntimeError("Unable to initialize Kubernetes client.")
-
         logger.info("kubernetes_pod_watcher_started")
         while True:
             try:
@@ -49,10 +43,6 @@ class KubernetesPodEventSource:
                 logger.info("kubernetes_pod_watcher_retrying")
 
     def _stream(self) -> Any:
-        if self.api is None:
-            raise RuntimeError("Unable to initialize Kubernetes client.")
-
         return self.watcher.stream(
-            self.api.list_pod_for_all_namespaces,
-            timeout_seconds=300,
+            self.api.list_pod_for_all_namespaces, timeout_seconds=300
         )
