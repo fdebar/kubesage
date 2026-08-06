@@ -5,8 +5,6 @@ metadata:
   name: {{ include "kubesage.fullname" . }}-worker
   labels:
     {{- include "kubesage.labels" . | nindent 4 }}
-  annotations:
-    argocd.argoproj.io/sync-wave: "2"
 spec:
   replicas: {{ .Values.worker.replicaCount }}
   selector:
