@@ -17,20 +17,19 @@ logger = structlog.get_logger()
 
 
 def run_worker() -> None:
-    start_http_server(settings.metrics_port)
+    _start_prometheus_server()
     db = SessionLocal()
+
     try:
-        analysis_service = create_analysis_service(db)
         watcher = KubernetesWatcher(
-            analysis_service=analysis_service,
+            analysis_service=create_analysis_service(db),
             event_filter=PodEventFilter(),
             deduplicator=IncidentDeduplicator(),
             state_cache=PodStateCache(),
             diff_builder=PodStateDiffBuilder(),
         )
-        event_source = KubernetesPodEventSource()
         logger.info("kubesage_worker_started")
-        watcher.start(event_source)
+        watcher.start(KubernetesPodEventSource())
     except Exception:
         logger.exception("kubesage_worker_failed")
         raise
@@ -41,6 +40,23 @@ def run_worker() -> None:
 
 def main() -> None:
     run_worker()
+
+
+def _start_prometheus_server() -> None:
+    """
+    Starts the Prometheus metrics server on port ${settings.metrics_port}.
+    Metrics must be exposed for monitoring and alerting purposes.
+
+    Raises:
+        Exception: If the Prometheus metrics server fails to start.
+    """
+
+    try:
+        start_http_server(settings.metrics_port)
+        logger.info("prometheus_server_started", port=settings.metrics_port)
+    except Exception:
+        logger.exception("prometheus_server_start_failed")
+        raise
 
 
 if __name__ == "__main__":
