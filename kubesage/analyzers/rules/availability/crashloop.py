@@ -22,6 +22,52 @@ class CrashLoopRule(BaseRule):
             if container.waiting_reason != "CrashLoopBackOff":
                 continue
 
+            evidences = [
+                Evidence(
+                    type=EvidenceType.CONTAINER_STATE,
+                    name="waiting_reason",
+                    value="CrashLoopBackOff",
+                    source="kubernetes",
+                    description=(
+                        "The container is currently in CrashLoopBackOff, "
+                        "indicating that Kubernetes is repeatedly restarting "
+                        "the container after failed starts."
+                    ),
+                    metadata={
+                        "container": container.name,
+                    },
+                ),
+                Evidence(
+                    type=EvidenceType.CONTAINER_STATE,
+                    name="restart_count",
+                    value=str(container.restart_count),
+                    source="kubernetes",
+                    description=(
+                        f"The container has restarted {container.restart_count} times."
+                    ),
+                    metadata={
+                        "container": container.name,
+                    },
+                ),
+            ]
+
+            if container.last_exit_code is not None:
+                evidences.append(
+                    Evidence(
+                        type=EvidenceType.CONTAINER_STATE,
+                        name="last_exit_code",
+                        value=str(container.last_exit_code),
+                        source="kubernetes",
+                        description=(
+                            f"The container's last termination exited "
+                            f"with code {container.last_exit_code}."
+                        ),
+                        metadata={
+                            "container": container.name,
+                        },
+                    )
+                )
+
             findings.append(
                 Finding(
                     rule=self.name,
@@ -34,26 +80,7 @@ class CrashLoopRule(BaseRule):
                         "Check the logs of the container to see what is causing the crash.",  # noqa
                         "Check the resources allocated to  the container to see if they are sufficient.",  # noqa
                     ],
-                    structured_evidences=[
-                        Evidence(
-                            type=EvidenceType.CONTAINER_STATE,
-                            name="waiting_reason",
-                            value="CrashLoopBackOff",
-                            source="kubernetes",
-                            metadata={
-                                "container": container.name,
-                            },
-                        ),
-                        Evidence(
-                            type=EvidenceType.CONTAINER_STATE,
-                            name="restart_count",
-                            value=str(container.restart_count),
-                            source="kubernetes",
-                            metadata={
-                                "container": container.name,
-                            },
-                        ),
-                    ],
+                    structured_evidences=evidences,
                     priority=20,
                 )
             )
