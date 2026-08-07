@@ -16,4 +16,23 @@ class FindingsCorrelator:
         for correlation in self.correlations:
             findings = correlation.apply(findings)
 
-        return findings
+        return self._remove_duplicates(findings)
+
+    def _remove_duplicates(self, findings: list[Finding]) -> list[Finding]:
+        """
+        Removes duplicate findings from a list of findings in case
+        multiple correlations produce the same finding.
+        """
+
+        seen: set[str] = set()
+        result: list[Finding] = []
+
+        for finding in findings:
+            key = finding.rule
+            if key in seen:
+                continue
+
+            seen.add(key)
+            result.append(finding)
+
+        return result
