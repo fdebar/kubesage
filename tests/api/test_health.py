@@ -1,13 +1,13 @@
 from unittest.mock import MagicMock, patch
 
-from kubesage.api.routers.system import health
+from kubesage.api.routes.system import health
 
 
 def test_health_returns_healthy_when_ai_is_available() -> None:
     provider = MagicMock()
     provider.is_server_reachable.return_value = True
 
-    with patch("kubesage.api.routers.system.create_ai_provider", return_value=provider):
+    with patch("kubesage.api.routes.system.create_ai_provider", return_value=provider):
         response = health()
 
     assert response == {
@@ -27,7 +27,7 @@ def test_health_returns_ai_down_when_provider_is_unreachable() -> None:
     provider = MagicMock()
     provider.is_server_reachable.return_value = False
 
-    with patch("kubesage.api.routers.system.create_ai_provider", return_value=provider):
+    with patch("kubesage.api.routes.system.create_ai_provider", return_value=provider):
         response = health()
 
     assert response["status"] == "healthy"
@@ -45,7 +45,7 @@ def test_health_creates_ai_provider() -> None:
     provider.is_server_reachable.return_value = True
 
     with patch(
-        "kubesage.api.routers.system.create_ai_provider", return_value=provider
+        "kubesage.api.routes.system.create_ai_provider", return_value=provider
     ) as create_provider:
         health()
 

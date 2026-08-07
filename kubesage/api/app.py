@@ -6,11 +6,11 @@ from kubesage.api.lifespan import lifespan
 from kubesage.api.middlewares.logging import LoggingMiddleware
 from kubesage.api.middlewares.metrics import MetricsMiddleware
 from kubesage.api.middlewares.request_id import RequestIDMiddleware
-from kubesage.api.routers.analysis import router as analysis_router
-from kubesage.api.routers.analyze import router as analyze_router
-from kubesage.api.routers.dashboard import router as dashboard_router
-from kubesage.api.routers.metrics import router as metrics_router
-from kubesage.api.routers.system import router as system_router
+from kubesage.api.routes.analysis import router as analysis_router
+from kubesage.api.routes.analyze import router as analyze_router
+from kubesage.api.routes.dashboard import router as dashboard_router
+from kubesage.api.routes.metrics import router as metrics_router
+from kubesage.api.routes.system import router as system_router
 from kubesage.observability.telemetry import setup_telemetry
 from kubesage.utils.config import settings
 
