@@ -9,8 +9,8 @@ router = APIRouter(tags=["System"])
 @router.get("/")
 def root() -> dict[str, str]:
     return {
-        "service": "KubeSage",
-        "version": "0.8.0",
+        "service": settings.app_name,
+        "version": settings.app_version,
         "status": "running",
     }
 
@@ -26,7 +26,7 @@ def health() -> dict[str, str | dict[str, str]]:
             "kubernetes": "up",
             "prometheus": "up",
         },
-        "version": "0.8.0",
+        "version": settings.app_version,
     }
 
 
@@ -37,4 +37,4 @@ def readiness() -> dict[str, bool]:
 
 @router.get("/version")
 def version() -> dict[str, str]:
-    return {"version": "0.8.0"}
+    return {"version": settings.app_version}

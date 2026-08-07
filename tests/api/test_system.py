@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 from kubesage.api.routes.system import health
+from kubesage.utils.config import settings
 
 
 def test_health_returns_healthy_when_ai_is_available() -> None:
@@ -17,7 +18,7 @@ def test_health_returns_healthy_when_ai_is_available() -> None:
             "kubernetes": "up",
             "prometheus": "up",
         },
-        "version": "0.8.0",
+        "version": settings.app_version,
     }
 
     provider.is_server_reachable.assert_called_once()
