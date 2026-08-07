@@ -9,14 +9,10 @@ from kubesage.models.finding import (
 
 class CrashLoopRootCauseCorrelation(BaseCorrelation):
     rule_id = "crash_loop_root_cause"
-    name = "CrashLoop root cause"
     description = "The pod is restarting because it is exhausting available memory"
     title = "CrashLoop caused by memory exhaustion"
 
-    def apply(
-        self,
-        findings: list[Finding],
-    ) -> list[Finding]:
+    def apply(self, findings: list[Finding]) -> list[Finding]:
         if not self._has(findings, "crash_loop"):
             return findings
 
@@ -29,7 +25,7 @@ class CrashLoopRootCauseCorrelation(BaseCorrelation):
 
         findings.append(
             Finding(
-                rule=self.name,
+                rule=self.rule_id,
                 kind=FindingKind.DIAGNOSIS,
                 severity=Severity.CRITICAL,
                 title=self.title,

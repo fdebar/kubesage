@@ -25,7 +25,7 @@ def test_finding_has_memory_contention() -> None:
     findings = MemoryExhaustionCorrelation().apply(findings)
 
     assert len(findings) == 3
-    assert findings[2].rule == "Memory exhaustion"
+    assert findings[2].rule == "memory_exhaustion"
 
 
 def test_finding_has_no_memory_contention() -> None:

@@ -25,7 +25,7 @@ def test_memory_pressure_detected() -> None:
     findings = MemoryPressureRule().evaluate(incident)
 
     assert len(findings) == 1
-    assert findings[0].rule == "Memory Pressure Eviction"
+    assert findings[0].rule == "memory_pressure_eviction"
     assert findings[0].severity == Severity.HIGH
     assert findings[0].kind == FindingKind.OBSERVATION
     assert len(findings[0].structured_evidences) == 1

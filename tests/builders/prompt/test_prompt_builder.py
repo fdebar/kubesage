@@ -41,7 +41,7 @@ def make_incident_with_event() -> Incident:
 
 def make_diagnosis_with_evidence() -> Finding:
     return Finding(
-        rule="memory-pressure",
+        rule="memory_pressure",
         kind=FindingKind.DIAGNOSIS,
         severity=Severity.HIGH,
         title="Container memory limit exceeded",
@@ -146,7 +146,7 @@ def test_prompt_builder_is_deterministic() -> None:
 
 def test_prompt_omits_missing_evidence_description() -> None:
     finding = Finding(
-        rule="memory-pressure",
+        rule="memory_pressure",
         kind=FindingKind.DIAGNOSIS,
         severity=Severity.HIGH,
         title="Container memory limit exceeded",

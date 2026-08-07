@@ -10,7 +10,6 @@ from kubesage.models.incident import Incident
 
 class CrashLoopRule(BaseRule):
     rule_id = "crashloop"
-    name = "CrashLoopBackOff"
     description = "Detect CrashLoopBackOff"
     title = "Container is crashing"
     category = RuleCategory.CONTAINER
@@ -70,7 +69,7 @@ class CrashLoopRule(BaseRule):
 
             findings.append(
                 Finding(
-                    rule=self.name,
+                    rule=self.rule_id,
                     severity=Severity.CRITICAL,
                     kind=FindingKind.OBSERVATION,
                     title=self.title,

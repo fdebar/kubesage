@@ -6,12 +6,12 @@ from kubesage.models.finding import Finding
 class BaseCorrelation(ABC):
     """Base class for finding correlations."""
 
+    rule_id: str
     description: str
-    rule_id: str | None
 
     @property
     def name(self) -> str:
-        return self.rule_id or self.__class__.__name__
+        return self.rule_id
 
     @abstractmethod
     def apply(self, findings: list[Finding]) -> list[Finding]:

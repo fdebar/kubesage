@@ -44,7 +44,7 @@ def make_resource() -> ResourceRef:
 
 def make_diagnosis() -> Finding:
     return Finding(
-        rule="HighCPUUsageRule",
+        rule="high_cpu_usage",
         kind=FindingKind.DIAGNOSIS,
         severity=Severity.CRITICAL,
         confidence=0.95,
@@ -67,7 +67,7 @@ def make_diagnosis() -> Finding:
 
 def make_observation() -> Finding:
     return Finding(
-        rule="RestartRule",
+        rule="restart_count",
         kind=FindingKind.OBSERVATION,
         severity=Severity.WARNING,
         confidence=0.80,

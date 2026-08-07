@@ -35,7 +35,7 @@ def test_cpu_throttling_detected() -> None:
 
     finding = findings[0]
 
-    assert finding.rule == "CPU Throttling"
+    assert finding.rule == "cpu_throttling"
     assert finding.severity == Severity.WARNING
     assert finding.kind == FindingKind.OBSERVATION
     assert finding.title == "Detect significant CPU throttling"

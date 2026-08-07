@@ -6,7 +6,6 @@ from kubesage.models.incident import Incident
 
 class HighCPUUsageRule(BaseRule):
     rule_id = "high_cpu_usage"
-    name = "High CPU Usage"
     title = "Detect containers close to their CPU limit."
     description = "Detect containers close to their CPU limit."
     category = RuleCategory.METRIC
@@ -84,7 +83,7 @@ class HighCPUUsageRule(BaseRule):
 
             findings.append(
                 Finding(
-                    rule=self.name,
+                    rule=self.rule_id,
                     severity=Severity.WARNING,
                     kind=FindingKind.OBSERVATION,
                     title=self.title,

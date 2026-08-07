@@ -7,7 +7,6 @@ from kubesage.models.incident import Incident
 class OOMKilledRule(BaseRule):
     rule_id = "oom_killed"
     category = RuleCategory.CONTAINER
-    name = "OOMKilled"
     title = "Container terminated because of an Out Of Memory condition"
     description = (
         "The previous container execution was terminated by the kernel "
@@ -49,7 +48,7 @@ class OOMKilledRule(BaseRule):
 
             findings.append(
                 Finding(
-                    rule=self.name,
+                    rule=self.rule_id,
                     severity=Severity.HIGH,
                     kind=FindingKind.OBSERVATION,
                     title=self.title,

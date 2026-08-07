@@ -11,15 +11,11 @@ from kubesage.models.incident import Incident
 
 class ReadinessRule(BaseRule):
     rule_id = "readiness"
-    name = "Readiness"
     title = "Container is not Ready"
     description = "The container is not ready to receive traffic."
     category = RuleCategory.CONTAINER
 
-    def evaluate(
-        self,
-        incident: Incident,
-    ) -> list[Finding]:
+    def evaluate(self, incident: Incident) -> list[Finding]:
         findings: list[Finding] = []
 
         for container in incident.containers:
@@ -28,7 +24,7 @@ class ReadinessRule(BaseRule):
 
             findings.append(
                 Finding(
-                    rule=self.name,
+                    rule=self.rule_id,
                     severity=Severity.WARNING,
                     kind=FindingKind.OBSERVATION,
                     title=self.title,

@@ -5,17 +5,13 @@ from kubesage.models.finding import Finding, FindingKind, Severity
 
 class CPUContentionCorrelation(BaseCorrelation):
     rule_id = "cpu_contention"
-    name = "CPU contention"
     title = "CPU contention detected"
     description = (
         "The container is experiencing CPU contention because CPU "
         "usage is high and throttling is detected."
     )
 
-    def apply(
-        self,
-        findings: list[Finding],
-    ) -> list[Finding]:
+    def apply(self, findings: list[Finding]) -> list[Finding]:
         if not self._has(findings, "high_cpu_usage"):
             return findings
 
@@ -28,7 +24,7 @@ class CPUContentionCorrelation(BaseCorrelation):
 
         findings.append(
             Finding(
-                rule=self.name,
+                rule=self.rule_id,
                 kind=FindingKind.DIAGNOSIS,
                 severity=Severity.HIGH,
                 title=self.title,

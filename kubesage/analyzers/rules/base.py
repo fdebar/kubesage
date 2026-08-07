@@ -18,11 +18,11 @@ class BaseRule(ABC):
 
     description: str
     enabled: bool = True
-    rule_id: str | None = None
+    rule_id: str
 
     @property
     def name(self) -> str:
-        return self.rule_id or self.__class__.__name__
+        return self.rule_id
 
     @abstractmethod
     def evaluate(

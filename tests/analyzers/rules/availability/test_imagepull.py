@@ -33,7 +33,7 @@ def test_imagepull_rule_with_waiting_reason_imagepullbackoff(
     findings = imagepull_rule.evaluate(incident)
 
     assert len(findings) == 1
-    assert findings[0].rule == "ImagePull"
+    assert findings[0].rule == "image_pull"
     assert findings[0].severity == "CRITICAL"
     assert findings[0].title == "Container image cannot be pulled"
     assert findings[0].description == "The container image cannot be downloaded."
@@ -81,7 +81,7 @@ def test_imagepull_rule_with_waiting_reason_errorimagepull(
     findings = imagepull_rule.evaluate(incident)
 
     assert len(findings) == 1
-    assert findings[0].rule == "ImagePull"
+    assert findings[0].rule == "image_pull"
     assert findings[0].severity == "CRITICAL"
     assert findings[0].title == "Container image cannot be pulled"
     assert findings[0].description == "The container image cannot be downloaded."

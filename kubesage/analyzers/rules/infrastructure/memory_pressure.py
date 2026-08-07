@@ -6,7 +6,6 @@ from kubesage.models.incident import Incident
 
 class MemoryPressureRule(BaseRule):
     rule_id = "memory_pressure_eviction"
-    name = "Memory Pressure Eviction"
     title = "Detect Kubernetes memory pressure eviction"
     description = "Detect Kubernetes memory pressure eviction events."
 
@@ -21,7 +20,7 @@ class MemoryPressureRule(BaseRule):
 
             findings.append(
                 Finding(
-                    rule=self.name,
+                    rule=self.rule_id,
                     severity=Severity.HIGH,
                     kind=FindingKind.OBSERVATION,
                     title=self.title,

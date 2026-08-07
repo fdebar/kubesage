@@ -6,7 +6,6 @@ from kubesage.models.incident import Incident
 
 class CPUThrottlingRule(BaseRule):
     rule_id = "cpu_throttling"
-    name = "CPU Throttling"
     title = "Detect significant CPU throttling"
     description = "Detect containers experiencing significant CPU throttling"
     category = RuleCategory.METRIC
@@ -32,7 +31,7 @@ class CPUThrottlingRule(BaseRule):
 
             findings.append(
                 Finding(
-                    rule=self.name,
+                    rule=self.rule_id,
                     severity=Severity.WARNING,
                     kind=FindingKind.OBSERVATION,
                     title=self.title,

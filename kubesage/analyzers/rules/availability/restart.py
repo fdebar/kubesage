@@ -9,8 +9,7 @@ from kubesage.models.incident import Incident
 
 
 class RestartRule(BaseRule):
-    rule_id = "restart"
-    name = "RestartCount"
+    rule_id = "restart_count"
     title = "Container restarted multiple times"
     description = "The container has restarted more than the expected threshold."
     category = RuleCategory
@@ -26,7 +25,7 @@ class RestartRule(BaseRule):
 
             findings.append(
                 Finding(
-                    rule=self.name,
+                    rule=self.rule_id,
                     severity=Severity.WARNING,
                     kind=FindingKind.OBSERVATION,
                     title=self.title,

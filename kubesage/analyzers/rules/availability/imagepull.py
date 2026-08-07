@@ -10,7 +10,6 @@ from kubesage.models.incident import Incident
 
 class ImagePullRule(BaseRule):
     rule_id = "image_pull"
-    name = "ImagePull"
     title = "Container image cannot be pulled"
     description = "The container image cannot be downloaded."
     category = RuleCategory.CONTAINER
@@ -20,10 +19,7 @@ class ImagePullRule(BaseRule):
         "ErrImagePull",
     }
 
-    def evaluate(
-        self,
-        incident: Incident,
-    ) -> list[Finding]:
+    def evaluate(self, incident: Incident) -> list[Finding]:
 
         findings: list[Finding] = []
 
@@ -33,7 +29,7 @@ class ImagePullRule(BaseRule):
 
             findings.append(
                 Finding(
-                    rule=self.name,
+                    rule=self.rule_id,
                     severity=Severity.CRITICAL,
                     kind=FindingKind.OBSERVATION,
                     title=self.title,

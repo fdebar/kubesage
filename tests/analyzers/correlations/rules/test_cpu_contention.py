@@ -25,7 +25,7 @@ def test_finding_has_cpu_contention() -> None:
     findings = CPUContentionCorrelation().apply(findings)
 
     assert len(findings) == 3
-    assert findings[2].rule == "CPU contention"
+    assert findings[2].rule == "cpu_contention"
 
 
 def test_finding_has_no_cpu_contention() -> None:
