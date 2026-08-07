@@ -43,6 +43,8 @@ class CrashLoopRootCauseCorrelation(BaseCorrelation):
                         source="kubernetes",
                         metadata={
                             "triggered_by": "crash_loop",
+                            "inputs": ["crash_loop", "memory_exhaustion"],
+                            "relationship": "cause",
                         },
                     ),
                     Evidence(
@@ -52,6 +54,8 @@ class CrashLoopRootCauseCorrelation(BaseCorrelation):
                         source="prometheus",
                         metadata={
                             "triggered_by": "memory_exhaustion",
+                            "inputs": ["crash_loop", "memory_exhaustion"],
+                            "relationship": "cause",
                         },
                     ),
                     Evidence(
@@ -59,6 +63,10 @@ class CrashLoopRootCauseCorrelation(BaseCorrelation):
                         name="root_cause",
                         value="memory_exhaustion -> crash_loop",
                         source="kubesage",
+                        metadata={
+                            "inputs": ["crash_loop", "memory_exhaustion"],
+                            "relationship": "cause",
+                        },
                     ),
                 ],
                 caused_by=[

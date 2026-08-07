@@ -1,4 +1,4 @@
-from kubesage.models.finding import Finding, ResourceRef, Severity
+from kubesage.models.finding import Finding, FindingKind, ResourceRef, Severity
 from kubesage.services.findings_correlator import FindingsCorrelator
 
 
@@ -85,3 +85,29 @@ def test_correlator_no_cpu_throttling() -> None:
     findings = correlator.correlate(findings)
 
     assert len(findings) == 2
+
+
+def test_correlator_creates_memory_diagnosis() -> None:
+    findings = [
+        Finding(
+            rule="high_memory_usage",
+            severity=Severity.WARNING,
+            title="High memory",
+            description="Memory high",
+        ),
+        Finding(
+            rule="oom_killed",
+            severity=Severity.HIGH,
+            title="OOM",
+            description="Killed by OOM",
+        ),
+    ]
+
+    result = FindingsCorrelator().correlate(findings)
+    diagnosis = next(f for f in result if f.rule == "memory_exhaustion")
+
+    assert diagnosis.kind == FindingKind.DIAGNOSIS
+    assert diagnosis.caused_by == [
+        "high_memory_usage",
+        "oom_killed",
+    ]

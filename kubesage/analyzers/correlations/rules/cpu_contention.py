@@ -41,18 +41,30 @@ class CPUContentionCorrelation(BaseCorrelation):
                         name="cpu_usage",
                         value="High CPU usage detected",
                         source="prometheus",
+                        metadata={
+                            "inputs": ["high_cpu_usage", "cpu_throttling"],
+                            "relationship": "cause",
+                        },
                     ),
                     Evidence(
                         type=EvidenceType.METRIC,
                         name="cpu_throttling",
                         value="CPU throttling detected",
                         source="prometheus",
+                        metadata={
+                            "inputs": ["high_cpu_usage", "cpu_throttling"],
+                            "relationship": "cause",
+                        },
                     ),
                     Evidence(
                         type=EvidenceType.CORRELATION,
                         name="trigger",
                         value="high_cpu_usage + cpu_throttling",
                         source="kubesage",
+                        metadata={
+                            "inputs": ["high_cpu_usage", "cpu_throttling"],
+                            "relationship": "cause",
+                        },
                     ),
                 ],
                 caused_by=[

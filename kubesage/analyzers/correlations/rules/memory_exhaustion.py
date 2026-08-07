@@ -38,6 +38,8 @@ class MemoryExhaustionCorrelation(BaseCorrelation):
                         value="OOMKilled",
                         source="kubernetes",
                         metadata={
+                            "inputs": ["high_memory_usage", "oom_killed"],
+                            "relationship": "cause",
                             "triggered_by": "oom_killed",
                         },
                     ),
@@ -47,6 +49,8 @@ class MemoryExhaustionCorrelation(BaseCorrelation):
                         value="Memory usage exceeded limit",
                         source="prometheus",
                         metadata={
+                            "inputs": ["high_memory_usage", "oom_killed"],
+                            "relationship": "cause",
                             "triggered_by": "high_memory_usage",
                         },
                     ),
@@ -55,6 +59,10 @@ class MemoryExhaustionCorrelation(BaseCorrelation):
                         name="root_cause",
                         value="high_memory_usage + oom_killed",
                         source="kubesage",
+                        metadata={
+                            "inputs": ["high_memory_usage", "oom_killed"],
+                            "relationship": "cause",
+                        },
                     ),
                 ],
                 caused_by=[
