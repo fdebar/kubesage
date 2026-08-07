@@ -54,6 +54,7 @@ def make_diagnosis_with_evidence() -> Finding:
                 unit="Mi",
                 source="prometheus",
                 type=EvidenceType.METRIC,
+                description="Container memory usage reached its configured limit.",
             )
         ],
         recommendations=["Increase container memory limit"],
@@ -75,6 +76,7 @@ def test_prompt_contains_structured_evidence() -> None:
     assert "Name: memory_usage" in prompt
     assert "Value: 512Mi" in prompt
     assert "Source: prometheus" in prompt
+    assert "Description: Container memory usage reached its configured limit." in prompt
 
 
 def test_prompt_contains_event_timestamp() -> None:
@@ -140,3 +142,29 @@ def test_prompt_builder_is_deterministic() -> None:
 
     assert prompt_1 == prompt_2
     assert "# Diagnostic Summary" not in prompt_1
+
+
+def test_prompt_omits_missing_evidence_description() -> None:
+    finding = Finding(
+        rule="memory-pressure",
+        kind=FindingKind.DIAGNOSIS,
+        severity=Severity.HIGH,
+        title="Container memory limit exceeded",
+        description="Container reached its configured memory limit.",
+        confidence=0.95,
+        structured_evidences=[
+            Evidence(
+                name="memory_usage",
+                value="512",
+                unit="Mi",
+                source="prometheus",
+                type=EvidenceType.METRIC,
+            )
+        ],
+    )
+
+    context = AIContext(make_incident(), [finding])
+    prompt = PromptBuilder().build(context)
+
+    evidence_section = prompt.split("Evidence:", maxsplit=1)[1]
+    assert "Description:" not in evidence_section

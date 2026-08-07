@@ -102,6 +102,9 @@ class PromptBuilder:
                 if evidence.source:
                     lines.append(f"  Source: {evidence.source}")
 
+                if evidence.description:
+                    lines.append(f"  Description: {evidence.description}")
+
                 lines.append("")
 
     def _append_summary(self, lines: list[str], ai: AIContext) -> None:
