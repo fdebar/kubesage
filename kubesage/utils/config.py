@@ -22,10 +22,11 @@ class Settings:
     log_level: str = os.getenv("LOG_LEVEL", "WARNING")
     log_tail_lines: int = int(os.getenv("LOG_TAIL_LINES", "200"))
 
-    # OpenAI configuration
-    openai_model: str = os.getenv("OPENAI_MODEL", "")
-    openai_api_key: str = os.getenv("OPENAI_API_KEY", "ollama")
-    openai_url: str = os.getenv("OPENAI_URL", "")
+    # AI configuration
+    ai_provider: str = os.getenv("AI_PROVIDER", "")
+    ai_model: str = os.getenv("AI_MODEL", "")
+    ai_api_key: str = os.getenv("AI_API_KEY", "")
+    ai_url: str = os.getenv("AI_URL", "")
 
     # Prometheus configuration
     prometheus_url: str = os.getenv("PROMETHEUS_URL", "")

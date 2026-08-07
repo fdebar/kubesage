@@ -104,9 +104,9 @@ class IncidentService:
             span.set_attribute("analysis.ai_prompt.pod", pod)
             prompt = self.prompt_builder.build(ctxbuilder)
 
-        with tracer.start_as_current_span("analysis.llm.analyze") as span:
-            span.set_attribute("analysis.llm.namespace", namespace)
-            span.set_attribute("analysis.llm.pod", pod)
+        with tracer.start_as_current_span("analysis.ai.analyze") as span:
+            span.set_attribute("analysis.ai.namespace", namespace)
+            span.set_attribute("analysis.ai.pod", pod)
             report = self.ai.analyze(prompt)
 
         logger.info("analysis.completed", namespace=namespace, pod=pod, trigger=trigger)

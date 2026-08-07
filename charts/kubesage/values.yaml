@@ -75,8 +75,8 @@ application:
   logLevel: INFO
   environment: production
 
-# This is the OpenAI configuration
-openai:
+# This is the AI configuration
+ai:
   apiKey: ""
   endpoint: ""
   model: ""

@@ -53,7 +53,7 @@ jobs:
             --create-namespace \
             --set api.image.repository=kubesage \
             --set api.image.tag=helm-test \
-            --set openai.apiKey=ollama
+            --set ai.apiKey=ollama
 
       - name: Verify deployment
         run: |

@@ -32,15 +32,13 @@ PROMETHEUS_DURATION = Histogram(
     "kubesage_prometheus_duration_seconds", "Prometheus query duration"
 )
 
-OPENAI_REQUESTS = Counter(
-    "kubesage_openai_requests_total",
-    "Number of LLM requests",
-    ["status"],
+LLM_REQUESTS = Counter(
+    "kubesage_llm_requests_total", "Number of LLM requests", ["status"]
 )
 
-OPENAI_TOKENS = Histogram("kubesage_openai_tokens", "Number of tokens sent to the LLM")
+LLM_TOKENS = Histogram("kubesage_llm_tokens", "Number of tokens sent to the LLM")
 
-OPENAI_DURATION = Histogram("kubesage_openai_duration_seconds", "LLM request duration")
+LLM_DURATION = Histogram("kubesage_llm_duration_seconds", "LLM request duration")
 
 WATCHER_EVENTS_TOTAL = Counter(
     "kubesage_watcher_events_total",

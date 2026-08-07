@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 
+from kubesage.ai.factory import create_ai_provider
 from kubesage.analyzers.engine import DiagnosticEngine
 from kubesage.builders.context.ai_context_builder import AIContextBuilder
 from kubesage.builders.context.container_snapshot_builder import (
@@ -18,6 +19,7 @@ from kubesage.services.kubernetes_service import KubernetesService
 from kubesage.services.loki_service import LokiService
 from kubesage.services.metrics_service import MetricsService
 from kubesage.services.prometheus_service import PrometheusService
+from kubesage.utils.config import settings
 
 
 def create_incident_service() -> IncidentService:
@@ -26,7 +28,7 @@ def create_incident_service() -> IncidentService:
         prometheus=PrometheusService(),
         loki=LokiService(),
         metrics=MetricsService(),
-        ai=AIService(),
+        ai=AIService(create_ai_provider(settings=settings)),
         engine=DiagnosticEngine(),
         ai_context_builder=AIContextBuilder(),
         prompt_builder=PromptBuilder(),

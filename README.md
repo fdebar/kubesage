@@ -250,7 +250,7 @@ KubeSage supports multiple AI backends.
 Provide an API key:
 
 ```bash
-OPENAI_API_KEY=<your_api_key>
+AI_API_KEY=<your_api_key>
 ```
 
 ### Ollama (local development)
@@ -324,8 +324,9 @@ uvicorn kubesage.api.app:app --reload
 Create a `.env` file:
 
 ```env
-OPENAI_API_KEY=your_api_key
-OPENAI_MODEL=gpt-5.5
+AI_URL=http://localhost:11434/v1
+AI_API_KEY=your_api_key
+AI_MODEL=qwen2.5-coder:14b
 
 PROMETHEUS_URL=http://localhost:9090
 PROMETHEUS_TIMEOUT=5

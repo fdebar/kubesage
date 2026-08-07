@@ -8,8 +8,8 @@ data:
   DATABASE_URL: postgresql+psycopg://{{ .Values.postgresql.auth.username }}:{{ .Values.postgresql.auth.password }}@{{ include "kubesage.fullname" . }}-postgresql:5432/{{ .Values.postgresql.auth.database }}
   ENVIRONMENT: {{ .Values.application.environment | quote }}
   LOG_LEVEL: {{ .Values.application.logLevel | quote }}
-  OPENAI_MODEL: {{ .Values.openai.model | quote }}
-  OPENAI_URL: {{ .Values.openai.endpoint | quote }}
+  AI_MODEL: {{ .Values.nai.model | quote }}
+  AI_URL: {{ .Values.ai.endpoint | quote }}
   PROMETHEUS_URL: {{ .Values.observability.prometheus | quote }}
   LOKI_URL: {{ .Values.observability.loki | quote }}
   OTLP_ENDPOINT: {{ .Values.observability.tempo | quote }}
