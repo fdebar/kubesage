@@ -70,9 +70,7 @@ class AnalysisMapper:
         )
 
     @staticmethod
-    def to_detail_response(
-        analysis: Analysis,
-    ) -> AnalysisResponse:
+    def to_detail_response(analysis: Analysis) -> AnalysisResponse:
         """Convert an Analysis to an AnalysisResponse."""
 
         findings = sorted(

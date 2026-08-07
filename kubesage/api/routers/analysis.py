@@ -1,27 +1,46 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from uuid import UUID
 
-from kubesage.api.dependencies import get_analysis_service
-from kubesage.api.mappers import to_response
-from kubesage.api.schemas.request import AnalyzeRequest
-from kubesage.api.schemas.response import AnalyzeResponse
-from kubesage.models.analysis import AnalysisTrigger
-from kubesage.services.analysis_service import AnalysisService
+from fastapi import APIRouter, Depends, HTTPException, Query
 
-router = APIRouter(prefix="/analyze", tags=["Analysis"])
+from kubesage.api.dependencies import get_analysis_repository
+from kubesage.api.schemas.analysis import (
+    AnalysisResponse,
+)
+from kubesage.api.schemas.analysis_summary import AnalysisSummaryResponse
+from kubesage.api.schemas.paginated_response import PaginatedResponse
+from kubesage.mappers.analysis_mapper import AnalysisMapper
+from kubesage.mappers.analysis_summary_mapper import AnalysisSummaryMapper
+from kubesage.repositories.analysis_repository import AnalysisRepository
+
+router = APIRouter(prefix="/analysis", tags=["Analysis"])
 
 
-@router.post("", response_model=AnalyzeResponse)
-def analyze(
-    body: AnalyzeRequest,
-    analysis_service: AnalysisService = Depends(get_analysis_service),
-) -> AnalyzeResponse:
-    """Analyze an incident."""
+@router.get("/{analysis_id}", response_model=AnalysisResponse)
+def get(
+    analysis_id: UUID,
+    repository: AnalysisRepository = Depends(get_analysis_repository),
+) -> AnalysisResponse:
+    analysis = repository.get(analysis_id)
 
-    analysis = analysis_service.analyze(body.namespace, body.pod, AnalysisTrigger.API)
-    if analysis.report is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="AI analysis could not produce a report",
-        )
+    if analysis is None:
+        raise HTTPException(status_code=404, detail="Analysis not found")
 
-    return to_response(analysis.report.model_dump())
+    return AnalysisMapper.to_detail_response(analysis)
+
+
+@router.get("", response_model=PaginatedResponse[AnalysisSummaryResponse])
+def list(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    repository: AnalysisRepository = Depends(get_analysis_repository),
+) -> PaginatedResponse[AnalysisSummaryResponse]:
+    offset = (page - 1) * page_size
+
+    analyses = repository.list_summaries(page_size, offset)
+
+    return PaginatedResponse(
+        items=AnalysisSummaryMapper.to_response(analyses),
+        total=repository.count(),
+        page=page,
+        page_size=page_size,
+    )

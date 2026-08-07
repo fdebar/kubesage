@@ -1,8 +1,8 @@
-from kubesage.api.schemas.response import AnalyzeResponse
+from kubesage.api.schemas.analysis import AIReportResponse
 
 
-def to_response(report: dict) -> AnalyzeResponse:
-    return AnalyzeResponse(
+def to_response(report: dict) -> AIReportResponse:
+    return AIReportResponse(
         summary=report.get("summary", ""),
         root_cause=report.get("root_cause", ""),
         confidence=report.get("confidence", ""),

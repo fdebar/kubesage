@@ -10,7 +10,10 @@ class AIReportMapper:
         return AIReport(
             summary=model.summary,
             root_cause=model.root_cause,
-            evidence=[],
+            confidence=model.confidence,
+            impact=model.impact,
+            recommendations=[],
+            additional_investigations=model.additional_investigations,
         )
 
     @staticmethod
@@ -21,4 +24,7 @@ class AIReportMapper:
             analysis_id=analysis_id,
             summary=report.summary,
             root_cause=report.root_cause,
+            confidence=report.confidence,
+            impact=report.impact,
+            additional_investigations=report.additional_investigations,
         )

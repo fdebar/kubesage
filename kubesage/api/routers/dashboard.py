@@ -11,5 +11,11 @@ router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 def overview(
     service: DashboardService = Depends(get_dashboard_service),
 ) -> DashboardOverviewResponse:
+    """
+    Get dashboard overview.
+
+    Returns:
+        DashboardOverviewResponse: Dashboard overview.
+    """
 
     return service.overview()

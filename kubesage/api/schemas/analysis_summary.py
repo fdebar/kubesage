@@ -6,14 +6,6 @@ from pydantic import BaseModel
 from kubesage.models.finding import Severity
 
 
-class IncidentResponse(BaseModel):
-    """API representation of an incident."""
-
-    namespace: str
-    pod: str
-    phase: str
-
-
 class AnalysisSummaryResponse(BaseModel):
     """API representation of an analysis summary."""
 
