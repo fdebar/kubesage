@@ -13,10 +13,7 @@ class HighMemoryUsageRule(BaseRule):
 
     threshold = 0.80
 
-    def evaluate(
-        self,
-        incident: Incident,
-    ) -> list[Finding]:
+    def evaluate(self, incident: Incident) -> list[Finding]:
         findings: list[Finding] = []
 
         for container in incident.containers:
@@ -36,6 +33,56 @@ class HighMemoryUsageRule(BaseRule):
             if ratio < self.threshold:
                 continue
 
+            evidences = [
+                Evidence(
+                    type=EvidenceType.METRIC,
+                    name="memory_usage",
+                    value=str(usage.memory_usage),
+                    source="prometheus",
+                    description=(
+                        f"The container is currently using "
+                        f"{usage.memory_usage} bytes of memory."
+                    ),
+                    unit="bytes",
+                    metadata={"container": container.name},
+                ),
+                Evidence(
+                    type=EvidenceType.METRIC,
+                    name="memory_limit",
+                    value=str(resources.memory_limit),
+                    source="kubernetes",
+                    description=(
+                        f"The container has a memory limit of "
+                        f"{resources.memory_limit} bytes."
+                    ),
+                    unit="bytes",
+                    metadata={"container": container.name},
+                ),
+                Evidence(
+                    type=EvidenceType.METRIC,
+                    name="memory_usage_ratio",
+                    value=str(ratio),
+                    source="kubesage",
+                    description=(
+                        f"The container is using {ratio:.0%} "
+                        "of its configured memory limit."
+                    ),
+                    unit="ratio",
+                    metadata={"container": container.name},
+                ),
+                Evidence(
+                    type=EvidenceType.THRESHOLD,
+                    name="memory_usage_threshold",
+                    value=str(self.threshold),
+                    source="kubesage",
+                    description=(
+                        f"The finding is triggered when memory usage reaches "
+                        f"{self.threshold:.0%} of the configured memory limit."
+                    ),
+                    unit="ratio",
+                ),
+            ]
+
             findings.append(
                 Finding(
                     rule=self.name,
@@ -48,43 +95,7 @@ class HighMemoryUsageRule(BaseRule):
                         "of its memory limit."
                     ),
                     resource=self._pod_resource(incident),
-                    structured_evidences=[
-                        Evidence(
-                            type=EvidenceType.METRIC,
-                            name="memory_usage",
-                            value=str(usage.memory_usage),
-                            source="prometheus",
-                            metadata={
-                                "container": container.name,
-                                "unit": "bytes",
-                            },
-                        ),
-                        Evidence(
-                            type=EvidenceType.METRIC,
-                            name="memory_limit",
-                            value=str(resources.memory_limit),
-                            source="kubernetes",
-                            metadata={
-                                "container": container.name,
-                                "unit": "bytes",
-                            },
-                        ),
-                        Evidence(
-                            type=EvidenceType.METRIC,
-                            name="memory_usage_ratio",
-                            value=str(ratio),
-                            source="kubesage",
-                            metadata={
-                                "container": container.name,
-                            },
-                        ),
-                        Evidence(
-                            type=EvidenceType.THRESHOLD,
-                            name="memory_usage_threshold",
-                            value=str(self.threshold),
-                            source="kubesage",
-                        ),
-                    ],
+                    structured_evidences=evidences,
                     recommendations=[
                         ("Investigate possible memory leaks."),
                         ("Increase memory limit if usage is expected."),

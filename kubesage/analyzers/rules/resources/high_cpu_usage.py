@@ -13,10 +13,7 @@ class HighCPUUsageRule(BaseRule):
 
     threshold = 0.80
 
-    def evaluate(
-        self,
-        incident: Incident,
-    ) -> list[Finding]:
+    def evaluate(self, incident: Incident) -> list[Finding]:
         findings: list[Finding] = []
 
         for container in incident.containers:
@@ -37,6 +34,54 @@ class HighCPUUsageRule(BaseRule):
             if ratio < self.threshold:
                 continue
 
+            evidences = [
+                Evidence(
+                    type=EvidenceType.METRIC,
+                    name="cpu_usage",
+                    value=str(usage.cpu_usage),
+                    source="prometheus",
+                    description=(
+                        f"The container is currently using {usage.cpu_usage} CPU cores."
+                    ),
+                    unit="cores",
+                    metadata={"container": container.name},
+                ),
+                Evidence(
+                    type=EvidenceType.METRIC,
+                    name="cpu_limit",
+                    value=str(resources.cpu_limit),
+                    source="kubernetes",
+                    description=(
+                        f"The container has a CPU limit of {resources.cpu_limit} cores."
+                    ),
+                    unit="cores",
+                    metadata={"container": container.name},
+                ),
+                Evidence(
+                    type=EvidenceType.METRIC,
+                    name="cpu_usage_ratio",
+                    value=str(ratio),
+                    source="kubesage",
+                    description=(
+                        f"The container is using {ratio:.0%} "
+                        "of its configured CPU limit."
+                    ),
+                    unit="ratio",
+                    metadata={"container": container.name},
+                ),
+                Evidence(
+                    type=EvidenceType.THRESHOLD,
+                    name="cpu_usage_threshold",
+                    value=str(self.threshold),
+                    source="kubesage",
+                    description=(
+                        f"The finding is triggered when CPU usage reaches "
+                        f"{self.threshold:.0%} of the configured CPU limit."
+                    ),
+                    unit="ratio",
+                ),
+            ]
+
             findings.append(
                 Finding(
                     rule=self.name,
@@ -49,43 +94,7 @@ class HighCPUUsageRule(BaseRule):
                         "of its CPU limit."
                     ),
                     resource=self._pod_resource(incident),
-                    structured_evidences=[
-                        Evidence(
-                            type=EvidenceType.METRIC,
-                            name="cpu_usage",
-                            value=str(usage.cpu_usage),
-                            source="prometheus",
-                            metadata={
-                                "container": container.name,
-                                "unit": "cores",
-                            },
-                        ),
-                        Evidence(
-                            type=EvidenceType.METRIC,
-                            name="cpu_limit",
-                            value=str(resources.cpu_limit),
-                            source="kubernetes",
-                            metadata={
-                                "container": container.name,
-                                "unit": "cores",
-                            },
-                        ),
-                        Evidence(
-                            type=EvidenceType.METRIC,
-                            name="cpu_usage_ratio",
-                            value=str(ratio),
-                            source="kubesage",
-                            metadata={
-                                "container": container.name,
-                            },
-                        ),
-                        Evidence(
-                            type=EvidenceType.THRESHOLD,
-                            name="cpu_usage_threshold",
-                            value=str(self.threshold),
-                            source="kubesage",
-                        ),
-                    ],
+                    structured_evidences=evidences,
                     recommendations=[
                         "Investigate CPU-intensive workloads.",
                         "Review CPU requests and limits.",

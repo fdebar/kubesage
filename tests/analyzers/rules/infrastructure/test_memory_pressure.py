@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from kubesage.analyzers.rules.infrastructure.memory_pressure import MemoryPressureRule
+from kubesage.models.evidence import EvidenceType
 from kubesage.models.finding import FindingKind, Severity
 from kubesage.models.incident import Incident
 from kubesage.models.kubernetes_snapshot import Event
@@ -35,3 +36,6 @@ def test_memory_pressure_detected() -> None:
     )
     assert findings[0].structured_evidences[0].source == "kubernetes"
     assert findings[0].structured_evidences[0].metadata == {"reason": "Evicted"}
+    assert findings[0].structured_evidences[0].type == EvidenceType.EVENT
+    assert findings[0].structured_evidences[0].description is not None
+    assert "memory pressure" in findings[0].structured_evidences[0].description

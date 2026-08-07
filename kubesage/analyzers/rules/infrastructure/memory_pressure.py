@@ -10,10 +10,7 @@ class MemoryPressureRule(BaseRule):
     title = "Detect Kubernetes memory pressure eviction"
     description = "Detect Kubernetes memory pressure eviction events."
 
-    def evaluate(
-        self,
-        incident: Incident,
-    ) -> list[Finding]:
+    def evaluate(self, incident: Incident) -> list[Finding]:
         findings = []
 
         for event in incident.events:
@@ -36,6 +33,10 @@ class MemoryPressureRule(BaseRule):
                             name="eviction_reason",
                             value=event.message,
                             source="kubernetes",
+                            description=(
+                                "Kubernetes evicted the pod because the node "
+                                "was experiencing memory pressure."
+                            ),
                             metadata={
                                 "reason": event.reason,
                             },
