@@ -43,7 +43,6 @@ jobs:
       - name: Deploy Helm chart
         run: |
           helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-          helm repo add postgresql https://charts.bitnami.com/bitnami
           helm repo update
           helm upgrade --install prometheus prometheus-community/kube-prometheus-stack -n monitoring --create-namespace
 
@@ -64,8 +63,11 @@ jobs:
       - name: Dump Logs if Failed
         if: failure()
         run: |
+          kubectl get svc -n kubesage
           kubectl get pods -n kubesage
+          kubectl get jobs -n kubesage
           kubectl describe deployment/kubesage-api -n kubesage
+          kubectl describe job kubesage-migration -n kubesage
           kubectl logs deployment/kubesage-api -n kubesage --previous
 
   publish:

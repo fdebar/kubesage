@@ -223,6 +223,9 @@ postgresql:
   # This is for setting the namespace.
   namespaceOverride: kubesage
 
+  # This is for setting the fullname
+  fullnameOverride: kubesage-postgresql
+
   # This is for setting up the auth credentials for postgresql.
   auth:
     username: kubesage
