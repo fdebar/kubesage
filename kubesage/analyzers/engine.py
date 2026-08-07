@@ -10,10 +10,7 @@ logger = structlog.get_logger()
 
 
 class DiagnosticEngine:
-    def __init__(
-        self,
-        correlator: FindingsCorrelator | None = None,
-    ) -> None:
+    def __init__(self, correlator: FindingsCorrelator | None = None) -> None:
         self.rules = discover_rules()
         self.correlations = discover_correlations()
         self.correlator = correlator or FindingsCorrelator()
@@ -23,13 +20,6 @@ class DiagnosticEngine:
 
     def analyze(self, incident: Incident) -> list[Finding]:
         findings = []
-
-        logger.debug(
-            "incident_dump",
-            namespace=incident.namespace,
-            pod=incident.pod,
-            incident_json=incident.model_dump_json(indent=2),
-        )
 
         for rule in self.rules:
             findings.extend(rule.evaluate(incident))
