@@ -1,7 +1,7 @@
 from enum import StrEnum
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class EvidenceType(StrEnum):
@@ -20,8 +20,9 @@ class Evidence(BaseModel):
     """
 
     name: str
-    value: str | None = None
+    description: str | None = None
     source: str | None = None
     type: EvidenceType | None = None
     unit: str | None = None
-    metadata: dict[str, Any] = {}
+    value: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
