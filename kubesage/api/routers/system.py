@@ -1,5 +1,8 @@
 from fastapi import APIRouter
 
+from kubesage.ai.factory import create_ai_provider
+from kubesage.utils.config import settings
+
 router = APIRouter(tags=["System"])
 
 
@@ -14,12 +17,14 @@ def root() -> dict[str, str]:
 
 @router.get("/health")
 def health() -> dict[str, str | dict[str, str]]:
+    provider = create_ai_provider(settings=settings)
+
     return {
         "status": "healthy",
         "components": {
+            "ai": "up" if provider.is_server_reachable() else "down",
             "kubernetes": "up",
             "prometheus": "up",
-            "openai": "up",
         },
         "version": "0.8.0",
     }
