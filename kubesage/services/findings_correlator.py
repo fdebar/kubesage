@@ -8,10 +8,10 @@ class FindingsCorrelator:
     def __init__(self) -> None:
         self.correlations = discover_correlations()
 
-    def correlate(
-        self,
-        findings: list[Finding],
-    ) -> list[Finding]:
+    def correlate(self, findings: list[Finding]) -> list[Finding]:
+        """
+        Applies all correlations to a list of findings.
+        """
 
         for correlation in self.correlations:
             findings = correlation.apply(findings)
