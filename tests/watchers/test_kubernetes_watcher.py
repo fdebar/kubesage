@@ -42,9 +42,8 @@ def test_watcher_triggers_analysis() -> None:
         message="Back-off restarting failed container",
         occurred_at=datetime.now(UTC),
     )
-    result = watcher.handle(trigger)
+    watcher.handle(trigger)
 
-    assert result == expected_analysis
     analysis_service.analyze.assert_called_once_with(
         "kubesage",
         "payment-api",

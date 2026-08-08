@@ -1,10 +1,11 @@
 import structlog
 
-from kubesage.models.analysis import Analysis, AnalysisTrigger
+from kubesage.models.analysis import AnalysisTrigger
 from kubesage.observability.metrics import (
     WATCHER_INCIDENTS_IGNORED_TOTAL,
 )
 from kubesage.services.analysis_service import AnalysisService
+from kubesage.utils.exceptions import PodNotFoundError
 from kubesage.watchers.event_source import EventSource
 from kubesage.watchers.incident_deduplicator import IncidentDeduplicator
 from kubesage.watchers.models.incident_trigger import IncidentTrigger, PodWatchEvent
@@ -52,7 +53,7 @@ class KubernetesWatcher:
 
             self.handle(trigger)
 
-    def handle(self, trigger: IncidentTrigger) -> Analysis:
+    def handle(self, trigger: IncidentTrigger) -> None:
         logger.info(
             "watcher_incident_trigger_received",
             namespace=trigger.namespace,
@@ -60,11 +61,24 @@ class KubernetesWatcher:
             reason=trigger.reason,
         )
 
-        return self.analysis_service.analyze(
-            trigger.namespace,
-            trigger.pod,
-            AnalysisTrigger.WATCHER,
-        )
+        try:
+            self.analysis_service.analyze(
+                trigger.namespace,
+                trigger.pod,
+                AnalysisTrigger.WATCHER,
+            )
+        except PodNotFoundError:
+            logger.info(
+                "Pod '%s' no longer exists in namespace '%s'. Skipping analysis.",
+                trigger.pod,
+                trigger.namespace,
+            )
+        except Exception:
+            logger.exception(
+                "Failed to analyze pod '%s' in namespace '%s'.",
+                trigger.pod,
+                trigger.namespace,
+            )
 
     def _evaluate_event(self, event: PodWatchEvent) -> IncidentTrigger | None:
         pod = event.pod
