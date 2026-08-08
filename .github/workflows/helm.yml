@@ -42,9 +42,7 @@ jobs:
 
       - name: Deploy Helm chart
         run: |
-          kubectl create ns monitoring
           helm repo add bitnami https://charts.bitnami.com/bitnami
-          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
           helm repo update
           helm dependency build charts/kubesage
           helm upgrade --install kubesage ./charts/kubesage \
