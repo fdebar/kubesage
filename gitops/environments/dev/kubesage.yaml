@@ -76,10 +76,18 @@ ai:
 # This is the observability configuration
 observability:
   # This sets the URL for Prometheus.
-  prometheus: http://monitoring-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090
+  prometheus:
+    enabled: true
+    url: http://monitoring-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090
   # This sets the URL for Grafana.
-  grafana: http://monitoring-grafana.monitoring.svc.cluster.local:3000
+  grafana:
+    enabled: false
+    url: http://monitoring-grafana.monitoring.svc.cluster.local:3000
   # This sets the URL for Loki.
-  loki: http://monitoring-loki.monitoring.svc.cluster.local:3100
+  loki:
+    enabled: true
+    url: http://monitoring-loki.monitoring.svc.cluster.local:3100
   # This sets the URL for Tempo.
-  tempo: http://monitoring-tempo.monitoring.svc.cluster.local:4318/v1/traces
+  tempo:
+    enabled: true
+    url: http://monitoring-tempo.monitoring.svc.cluster.local:4318/v1/traces
