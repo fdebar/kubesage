@@ -51,7 +51,8 @@ jobs:
             --set api.image.repository=kubesage \
             --set api.image.tag=helm-test \
             --set ai.apiKey=ollama \
-            --set ai.provider=ollama
+            --set ai.provider=ollama \
+            --set postgresql.primary.persistence.enabled=false
 
       - name: Verify deployment
         run: |
