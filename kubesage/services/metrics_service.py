@@ -17,17 +17,17 @@ class MetricsService(MetricsProvider):
 
     def __init__(self) -> None:
         self.api = create_custom_objects_api()
+        self._available: bool = self.api is not None
 
     def collect(self, namespace: str, pod: str) -> PodMetrics | None:
-        logger.info("kubernetes_metrics_start_collect", namespace=namespace, pod=pod)
-
-        if self.api is None:
-            logger.warning(
-                "kubernetes_metrics_unavailable", namespace=namespace, pod=pod
-            )
+        if not self._available:
+            logger.info("kubernetes_metrics_unavailable", namespace=namespace, pod=pod)
             return None
 
         try:
+            logger.info(
+                "kubernetes_metrics_start_collect", namespace=namespace, pod=pod
+            )
             metrics = self.api.get_namespaced_custom_object(
                 group="metrics.k8s.io",
                 version="v1beta1",
@@ -36,6 +36,9 @@ class MetricsService(MetricsProvider):
                 name=pod,
             )
         except ApiException as exc:
+            if exc.status in (404, 503):
+                self._available = False
+
             logger.warning(
                 "kubernetes_metrics_unavailable",
                 namespace=namespace,
