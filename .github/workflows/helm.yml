@@ -50,6 +50,12 @@ jobs:
             --create-namespace \
             --set api.image.repository=kubesage \
             --set api.image.tag=helm-test \
+            --set api.resources.requests.memory=56Mi \
+            --set api.resources.requests.cpu=50m \
+            --set worker.image.tag=helm-test \
+            --set worker.image.repository=kubesage \
+            --set worker.resources.requests.memory=56Mi \
+            --set worker.resources.requests.cpu=50m \
             --set ai.apiKey=ollama \
             --set ai.provider=ollama \
             --set postgresql.primary.persistence.enabled=false
