@@ -42,11 +42,6 @@ jobs:
 
       - name: Deploy Helm chart
         run: |
-          helm repo add bitnami https://charts.bitnami.com/bitnami
-          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-          helm repo update
-          helm upgrade --install prometheus prometheus-community/kube-prometheus-stack -n monitoring --create-namespace
-
           helm dependency build charts/kubesage
           helm upgrade --install kubesage ./charts/kubesage \
             --namespace kubesage \
