@@ -24,7 +24,7 @@ def upgrade() -> None:
     op.add_column("ai_reports", sa.Column("confidence", sa.Float(), nullable=True))
     op.add_column("ai_reports", sa.Column("impact", sa.Text(), nullable=True))
     op.add_column(
-        "ai_reports", sa.Column("additional_investigations", sa.JSON(), nullable=False)
+        "ai_reports", sa.Column("additional_investigations", sa.JSON(), nullable=True)
     )
     # ### end Alembic commands ###
 
