@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=75", "wheel"]
+requires = ["setuptools>=83", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -24,14 +24,13 @@ dependencies = [
     "opentelemetry-instrumentation-fastapi>=0.60b0",
     "psycopg[binary]>=3.3.3",
     "requests>=2.32.0",
-    "setuptools>=78.1.1",
     "sqlalchemy>=2.0.51",
     "structlog>=26.1.0",
     "uvicorn>=0.52.0",
 ]
 
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     "bandit>=1.9.0",
     "pytest>=9.1.0",
