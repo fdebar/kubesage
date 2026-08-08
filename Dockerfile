@@ -35,7 +35,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 RUN addgroup --system kubesage && \
-    adduser --system --ingroup kubesage kubesage
+    adduser --system --ingroup kubesage kubesage \
+    && rm -rf /usr/local/lib/python3.14/site-packages/pip*
 
 COPY --from=builder /build/.venv /build/.venv
 COPY --chown=kubesage:kubesage . /app/
