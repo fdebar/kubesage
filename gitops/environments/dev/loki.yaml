@@ -1,3 +1,17 @@
+kube-prometheus-stack:
+  grafana:
+    enabled: true
+  prometheus:
+    enabled: true
+    prometheusSpec:
+      retention: 15d
+  alertmanager:
+    enabled: true
+  kubeStateMetrics:
+    enabled: true
+  nodeExporter:
+    enabled: true
+# Loki subchart configuration
 loki:
   deploymentMode: SingleBinary
   singleBinary:
@@ -12,7 +26,6 @@ loki:
     enabled: false
   test:
     enabled: false
-
   # Disable cache in dev and set low values to avoid the pod creation
   chunksCache:
     enabled: false
