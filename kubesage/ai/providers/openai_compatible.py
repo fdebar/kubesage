@@ -55,7 +55,7 @@ class OpenAICompatibleProvider:
         """Return True if the OpenAI API is reachable and responding."""
 
         try:
-            self._client.models.list(timeout=300)
+            self._client.models.list(timeout=2.0)
             return True
         except APIConnectionError:
             return False

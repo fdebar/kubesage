@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from kubesage.ai.factory import create_ai_provider
+from kubesage.database.health import check_database_availability
 from kubesage.utils.config import settings
 
 router = APIRouter(tags=["System"])
@@ -30,8 +31,15 @@ def health() -> dict[str, str | dict[str, str]]:
     }
 
 
+@router.get("/live")
+def liveness() -> dict[str, str]:
+    return {"status": "ok"}
+
+
 @router.get("/ready")
 def readiness() -> dict[str, bool]:
+    check_database_availability()
+
     return {"ready": True}
 
 
