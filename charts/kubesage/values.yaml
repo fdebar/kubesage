@@ -18,11 +18,11 @@ api:
     # resources, such as Minikube. If you do want to specify resources, uncomment the following
     # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
     limits:
-      cpu: 1000m
+      cpu: 1.0
       memory: 2Gi
     requests:
-      cpu: 500m
-      memory: 512Mi
+      cpu: 0.25
+      memory: 256Mi
 
   # This is for setting up a service more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/
   service:
@@ -57,11 +57,11 @@ worker:
     # resources, such as Minikube. If you do want to specify resources, uncomment the following
     # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
     limits:
-      cpu: 1000m
+      cpu: 1.0
       memory: 2Gi
     requests:
-      cpu: 500m
-      memory: 512Mi
+      cpu: 0.25
+      memory: 256Mi
 
 # This is the application configuration
 application:
