@@ -68,7 +68,8 @@ jobs:
           kubectl get jobs -n kubesage
           kubectl describe deployment/kubesage-api -n kubesage
           kubectl describe job kubesage-migration -n kubesage
-          kubectl logs deployment/kubesage-api -n kubesage --previous
+          kubectl describe pod kubesage-postgresql-0 -n kubesage
+          kubectl logs kubesage-postgresql-0 -n kubesage
 
   publish:
     needs: helm-test-and-deploy
