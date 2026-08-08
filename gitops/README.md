@@ -81,7 +81,7 @@ With Argo CD set up and configured, you can now deploy applications from your Gi
 Add an application in Argo CD:
 
 ```bash
-kubectl apply -f gitops/argocd/application.yaml
+kubectl apply -f gitops/applications/my-app.yaml
 ```
 
 
