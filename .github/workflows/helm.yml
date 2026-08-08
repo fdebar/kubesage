@@ -54,7 +54,7 @@ jobs:
             --set api.image.repository=kubesage \
             --set api.image.tag=helm-test \
             --set ai.apiKey=ollama
-            --set ai.provider=OLLAMA
+            --set ai.provider=ollama
 
       - name: Verify deployment
         run: |

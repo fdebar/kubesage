@@ -69,9 +69,10 @@ application:
   environment: development
 # This is the AI configuration
 ai:
-  apiKey: "ollama"
-  endpoint: "http://host.minikube.internal:11434/v1"
-  model: "qwen2.5-coder:14b"
+  apiKey: ollama
+  endpoint: http://host.minikube.internal:11434/v1
+  provider: ollama
+  model: qwen2.5-coder:14b
 # This is the observability configuration
 observability:
   # This sets the URL for Prometheus.

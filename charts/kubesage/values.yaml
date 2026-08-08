@@ -80,6 +80,7 @@ ai:
   apiKey: ""
   endpoint: ""
   model: ""
+  provider: ""
 
 # This is the observability configuration
 observability:
