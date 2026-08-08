@@ -167,3 +167,75 @@ def test_build_prompt_with_multiple_findings() -> None:
     assert "Count: 2" in prompt
     assert "### High CPU usage" in prompt
     assert "### Container restarted" in prompt
+
+
+def test_root_causes_returns_top_level_diagnosis() -> None:
+    intermediate = Finding(
+        rule="memory_exhaustion",
+        kind=FindingKind.DIAGNOSIS,
+        severity=Severity.CRITICAL,
+        title="Memory exhaustion",
+        description="Memory exhausted",
+        caused_by=[
+            "high_memory_usage",
+            "oom_killed",
+        ],
+    )
+
+    root = Finding(
+        rule="crash_loop_root_cause",
+        kind=FindingKind.DIAGNOSIS,
+        severity=Severity.CRITICAL,
+        title="CrashLoop caused by memory exhaustion",
+        description="CrashLoop is caused by memory exhaustion",
+        caused_by=[
+            "crashloop",
+            "memory_exhaustion",
+        ],
+    )
+    context = AIContext(make_incident(), [intermediate, root])
+
+    assert context.root_causes == [root]
+
+
+def test_root_causes_returns_all_independent_diagnoses() -> None:
+    cpu = Finding(
+        rule="cpu_contention",
+        kind=FindingKind.DIAGNOSIS,
+        severity=Severity.HIGH,
+        title="CPU contention",
+        description="CPU contention detected",
+        caused_by=[
+            "high_cpu_usage",
+            "cpu_throttling",
+        ],
+    )
+
+    memory = Finding(
+        rule="memory_exhaustion",
+        kind=FindingKind.DIAGNOSIS,
+        severity=Severity.CRITICAL,
+        title="Memory exhaustion",
+        description="Memory exhaustion detected",
+        caused_by=[
+            "high_memory_usage",
+            "oom_killed",
+        ],
+    )
+    context = AIContext(make_incident(), [cpu, memory])
+
+    assert context.root_causes == [cpu, memory]
+
+
+def test_root_causes_ignores_observations() -> None:
+    observation = Finding(
+        rule="oom_killed",
+        kind=FindingKind.OBSERVATION,
+        severity=Severity.HIGH,
+        title="OOMKilled",
+        description="Container was killed",
+    )
+
+    context = AIContext(make_incident(), [observation])
+
+    assert context.root_causes == []

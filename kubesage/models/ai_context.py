@@ -52,10 +52,16 @@ class AIContext:
 
     @property
     def root_causes(self) -> list[Finding]:
+        diagnoses = self.diagnoses
+
+        caused_diagnoses = {
+            cause for diagnosis in diagnoses for cause in diagnosis.caused_by
+        }
+
         return [
-            f
-            for f in self.ctx.findings
-            if f.kind == FindingKind.DIAGNOSIS and not f.caused_by
+            diagnosis
+            for diagnosis in diagnoses
+            if diagnosis.rule not in caused_diagnoses
         ]
 
     @property
