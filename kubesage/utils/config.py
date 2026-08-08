@@ -33,7 +33,7 @@ class Settings:
     prometheus_timeout: int = int(os.getenv("PROMETHEUS_TIMEOUT", "5"))
 
     # OTLP configuration
-    otlp_endpoint: str = os.getenv("OTLP_ENDPOINT", "")
+    otlp_endpoint: str | None = os.getenv("OTLP_ENDPOINT") or None
 
     # Loki configuration
     loki_url: str = os.getenv("LOKI_URL", "")

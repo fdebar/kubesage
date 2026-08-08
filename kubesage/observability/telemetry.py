@@ -5,7 +5,7 @@ from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExport
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 from kubesage.utils.config import settings
 
@@ -29,11 +29,9 @@ def setup_telemetry(app: FastAPI) -> None:
         provider.add_span_processor(
             BatchSpanProcessor(OTLPSpanExporter(endpoint=settings.otlp_endpoint))
         )
-        logger.info("opentelemetry_with_otlp_endpoint", endpoint=settings.otlp_endpoint)
+        logger.info("opentelemetry_endpoint", endpoint=settings.otlp_endpoint)
     else:
-        provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
-        logger.info("opentelemetry_with_console_exporter")
+        logger.info("opentelemetry_without_exporter")
 
     trace.set_tracer_provider(provider)
-
     FastAPIInstrumentor.instrument_app(app, tracer_provider=provider)
