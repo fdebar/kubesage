@@ -29,6 +29,7 @@ jobs:
               - 'tests/**'
               - 'migrations/**'
               - 'alembic.ini'
+              - 'uv.lock'
 
   quality:
     name: Code Quality Checks
