@@ -1,4 +1,4 @@
----
+{{- if .Values.observability.prometheus.enabled }}
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
@@ -14,3 +14,4 @@ spec:
         severity: critical
       annotations:
         summary: "KubeSage is unreachable"
+{{- end }}
