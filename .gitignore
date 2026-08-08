@@ -11,6 +11,7 @@ __pycache__/
 *.egg-info/
 build/
 dist/
+.uv-cache/
 
 # Test / Coverage
 .pytest_cache/

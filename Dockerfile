@@ -3,7 +3,11 @@ FROM python:3.14-slim AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
     PATH="/opt/venv/bin:$PATH"
+
+COPY --from=ghcr.io/astral-sh/uv:0.11.32 /uv /uvx /bin/
 
 WORKDIR /build
 
@@ -13,13 +17,15 @@ RUN apt-get update && \
 
 RUN python -m venv /opt/venv
 
-COPY pyproject.toml .
+COPY pyproject.toml uv.lock ./
 
-RUN pip install --no-cache-dir --upgrade .
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --no-install-project --no-dev
 
 COPY . .
 
-RUN pip install --no-cache-dir .
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --no-dev --no-editable
 
 # ---------- Runtime ----------
 FROM python:3.14-slim
@@ -35,14 +41,6 @@ RUN addgroup --system kubesage && \
 
 COPY --from=builder /opt/venv /opt/venv
 COPY --chown=kubesage:kubesage . /app/
-
-# Remove system-level packages from the base python image
-RUN rm -rf /usr/local/lib/python3.14/site-packages/pip* \
-           /usr/local/lib/python3.14/site-packages/setuptools* \
-           /usr/local/lib/python3.14/site-packages/msgpack* \
-           /opt/venv/lib/python3.14/site-packages/pip* \
-           /opt/venv/lib/python3.14/site-packages/setuptools* \
-           /opt/venv/lib/python3.14/site-packages/wheel*
 
 USER kubesage
 
