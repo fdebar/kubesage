@@ -21,25 +21,28 @@ class IncidentBuilder:
     def __init__(
         self,
         kubernetes_provider: KubernetesProvider,
-        prometheus_provider: PrometheusProvider,
+        prometheus_provider: PrometheusProvider | None,
         metrics_provider: MetricsProvider,
-        log_provider: LogProvider,
+        log_provider: LogProvider | None,
         container_snapshot_builder: ContainerSnapshotBuilder,
     ) -> None:
         self.kubernetes = kubernetes_provider
-        self.prometheus = prometheus_provider
+        self.prometheus_provider = prometheus_provider
         self.metrics = metrics_provider
         self.logs = log_provider
         self.container_snapshot_builder = container_snapshot_builder
 
     def collect(self, namespace: str, pod: str) -> Incident:
         kubernetes = self.kubernetes.collect(namespace, pod)
-        prometheus = self.prometheus.collect(namespace, pod)
         metrics = self.metrics.collect(namespace, pod)
+
+        prometheus: PrometheusResourceUsage | None = None
+        if self.prometheus_provider is not None:
+            prometheus = self.prometheus_provider.collect(namespace, pod)
 
         snapshots = self.container_snapshot_builder.build(
             statuses=kubernetes.containers,
-            usages=prometheus.containers,
+            usages=prometheus.containers if prometheus else [],
             resources=kubernetes.resources,
         )
 

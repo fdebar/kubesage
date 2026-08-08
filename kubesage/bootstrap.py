@@ -23,10 +23,13 @@ from kubesage.utils.config import settings
 
 
 def create_incident_service() -> IncidentService:
+    prometheus = PrometheusService() if settings.prometheus_url else None
+    loki = LokiService() if settings.loki_url else None
+
     return IncidentService(
         kubernetes=KubernetesService(),
-        prometheus=PrometheusService(),
-        loki=LokiService(),
+        prometheus=prometheus,
+        loki=loki,
         metrics=MetricsService(),
         ai=AIService(create_ai_provider(settings=settings)),
         engine=DiagnosticEngine(),

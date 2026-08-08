@@ -26,9 +26,9 @@ class IncidentService:
     def __init__(
         self,
         kubernetes: KubernetesService,
-        prometheus: PrometheusService,
+        prometheus: PrometheusService | None,
         metrics: MetricsService,
-        loki: LokiService,
+        loki: LokiService | None,
         ai: AIService,
         engine: DiagnosticEngine,
         ai_context_builder: AIContextBuilder,
