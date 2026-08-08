@@ -38,7 +38,10 @@ def liveness() -> dict[str, str]:
 
 @router.get("/ready")
 def readiness() -> dict[str, bool]:
-    check_database_availability()
+    try:
+        check_database_availability()
+    except Exception:
+        return {"ready": False}
 
     return {"ready": True}
 
