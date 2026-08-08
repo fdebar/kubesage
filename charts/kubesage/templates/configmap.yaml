@@ -11,6 +11,12 @@ data:
   AI_MODEL: {{ .Values.ai.model | quote }}
   AI_URL: {{ .Values.ai.endpoint | quote }}
   AI_PROVIDER: {{ .Values.ai.provider | quote }}
+  {{ if .Values.observability.prometheus.enabled }}
   PROMETHEUS_URL: {{ .Values.observability.prometheus.url | quote }}
+  {{ end }}
+  {{ if .Values.observability.loki.enabled }}
   LOKI_URL: {{ .Values.observability.loki.url | quote }}
+  {{ end }}
+  {{ if .Values.observability.tempo.enabled }}
   OTLP_ENDPOINT: {{ .Values.observability.tempo.url | quote }}
+  {{ end }}
