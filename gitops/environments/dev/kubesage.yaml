@@ -90,4 +90,5 @@ observability:
   # This sets the URL for Tempo.
   tempo:
     enabled: true
-    url: http://monitoring-tempo.monitoring.svc.cluster.local:4318/v1/traces
+    url: http://monitoring-alloy.monitoring.svc.cluster.local:4318/v1/traces
+  

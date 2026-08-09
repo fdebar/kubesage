@@ -11,6 +11,7 @@ spec:
     path: gitops/charts/monitoring
     helm:
       valueFiles:
+        - ../../environments/dev/alloy.yaml
         - ../../environments/dev/loki.yaml
         - ../../environments/dev/grafana.yaml
         - ../../environments/dev/tempo.yaml
