@@ -22,7 +22,6 @@ class AIContextBuilder:
             "ai_context_building_completed",
             namespace=incident.namespace,
             pod=incident.pod,
-            context=context.ctx.model_dump(),
         )
 
         return context
