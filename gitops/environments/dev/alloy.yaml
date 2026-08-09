@@ -1,26 +1,27 @@
 alloy:
-  enableReporting: false
+  alloy:
+    enableReporting: false
 
-  extraPorts:
-    - name: "otlp-http"
-      port: 4318
-      targetPort: 4318
-      protocol: "TCP"
+    extraPorts:
+      - name: "otlp-http"
+        port: 4318
+        targetPort: 4318
+        protocol: "TCP"
 
-  configMap:
-    content: |
-      otelcol.receiver.otlp "kubesage" {
-        http {
-          endpoint = "0.0.0.0:4318"
+    configMap:
+      content: |
+        otelcol.receiver.otlp "kubesage" {
+          http {
+            endpoint = "0.0.0.0:4318"
+          }
+
+          output {
+            traces = [otelcol.exporter.otlphttp.tempo.input]
+          }
         }
 
-        output {
-          traces = [otelcol.exporter.otlphttp.tempo.input]
+        otelcol.exporter.otlphttp "tempo" {
+          client {
+            endpoint = "http://monitoring-tempo.monitoring.svc.cluster.local:4318"
+          }
         }
-      }
-
-      otelcol.exporter.otlphttp "tempo" {
-        client {
-          endpoint = "http://monitoring-tempo.monitoring.svc.cluster.local:4318"
-        }
-      }
