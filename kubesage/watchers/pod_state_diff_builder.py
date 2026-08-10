@@ -22,7 +22,8 @@ class PodStateDiffBuilder:
         else:
             previous_restart = self._restart_count(previous)
             restart_delta = current_restart - previous_restart
-        oom_killed = self._is_oom_killed(current)
+
+        oom_killed = self._is_new_oom_killed(previous, current)
 
         return PodStateDiff(
             previous_phase=previous_phase,
@@ -33,6 +34,16 @@ class PodStateDiffBuilder:
             restart_delta=restart_delta,
             oom_killed=oom_killed,
         )
+
+    def _is_new_oom_killed(self, previous: V1Pod | None, current: V1Pod) -> bool:
+        current_oom_killed = self._is_oom_killed(current)
+        if not current_oom_killed:
+            return False
+
+        if previous is None:
+            return False
+
+        return not self._is_oom_killed(previous)
 
     @staticmethod
     def _restart_count(pod: V1Pod | None) -> int:

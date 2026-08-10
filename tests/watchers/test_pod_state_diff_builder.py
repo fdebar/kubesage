@@ -1,5 +1,11 @@
 from unittest.mock import MagicMock
 
+from kubernetes.client import (
+    V1ContainerState,
+    V1ContainerStateTerminated,
+    V1ContainerStatus,
+    V1PodStatus,
+)
 from kubernetes.client.models import V1Pod
 
 from kubesage.watchers.pod_state_diff_builder import PodStateDiffBuilder
@@ -25,6 +31,60 @@ def create_mock_pod(
     mock_pod.metadata.namespace = namespace
 
     return mock_pod
+
+
+def make_pod(*, restart_count: int = 0, oom_killed: bool = False) -> V1Pod:
+    last_state = None
+    if oom_killed:
+        last_state = V1ContainerState(
+            terminated=V1ContainerStateTerminated(reason="OOMKilled", exit_code=137)
+        )
+    container_status = V1ContainerStatus(
+        name="app",
+        restart_count=restart_count,
+        last_state=last_state,
+        image="image",
+        image_id="image_id",
+        ready=False,
+    )
+    return V1Pod(
+        status=V1PodStatus(phase="Running", container_statuses=[container_status])
+    )
+
+
+def test_initial_oom_killed_pod_does_not_trigger_oom() -> None:
+    builder = PodStateDiffBuilder()
+    current = make_pod(oom_killed=True)
+    diff = builder.build(None, current)
+
+    assert diff.oom_killed is False
+
+
+def test_new_oom_killed_triggers_oom() -> None:
+    builder = PodStateDiffBuilder()
+    previous = make_pod(oom_killed=False)
+    current = make_pod(oom_killed=True)
+    diff = builder.build(previous, current)
+
+    assert diff.oom_killed is True
+
+
+def test_existing_oom_killed_does_not_trigger_again() -> None:
+    builder = PodStateDiffBuilder()
+    previous = make_pod(oom_killed=True)
+    current = make_pod(oom_killed=True)
+    diff = builder.build(previous, current)
+
+    assert diff.oom_killed is False
+
+
+def test_oom_killed_is_cleared_when_current_state_is_not_oom() -> None:
+    builder = PodStateDiffBuilder()
+    previous = make_pod(oom_killed=True)
+    current = make_pod(oom_killed=False)
+    diff = builder.build(previous, current)
+
+    assert diff.oom_killed is False
 
 
 def test_detects_phase_change() -> None:
@@ -57,28 +117,6 @@ def test_detects_restart_increment() -> None:
     diff = builder.build(previous_pod, current_pod)
 
     assert diff.restart_delta == 2
-
-
-def test_detects_oom_killed() -> None:
-    builder = PodStateDiffBuilder()
-
-    previous_pod = create_mock_pod()
-    current_pod = create_mock_pod()
-    current_pod.status.container_statuses[0].last_state.terminated.reason = "OOMKilled"
-    diff = builder.build(previous_pod, current_pod)
-
-    assert diff.oom_killed is True
-
-
-def test_not_oom_killed() -> None:
-    builder = PodStateDiffBuilder()
-
-    previous_pod = create_mock_pod()
-    current_pod = create_mock_pod()
-    previous_pod.status.container_statuses[0].last_state.terminated.reason = "OOMKilled"
-    diff = builder.build(previous_pod, current_pod)
-
-    assert diff.oom_killed is False
 
 
 def test_initial_pod_with_existing_restarts_does_not_trigger() -> None:
