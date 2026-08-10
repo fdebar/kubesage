@@ -7,6 +7,7 @@ from kubesage.bootstrap import create_analysis_service
 from kubesage.database.session import SessionLocal
 from kubesage.models.ai_report import AIReport
 from kubesage.models.analysis import AnalysisTrigger
+from kubesage.observability.metrics import ANALYSIS_TOTAL
 
 logger = structlog.get_logger(__name__)
 
@@ -23,6 +24,7 @@ def analyze_command(args: argparse.Namespace) -> None:
                 AnalysisTrigger.CLI,
             )
     except Exception as exc:
+        ANALYSIS_TOTAL.labels(status="error").inc()
         logger.exception(exc)
         raise
 

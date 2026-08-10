@@ -1,3 +1,4 @@
+import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
@@ -11,6 +12,7 @@ from kubesage.models.prometheus import (
     PrometheusResourceUsage,
     RawPrometheusMetrics,
 )
+from kubesage.observability.metrics import PROMETHEUS_DURATION
 from kubesage.services.prometheus.queries import (
     CONTAINER_CPU_QUERY,
     CONTAINER_MEMORY_QUERY,
@@ -43,11 +45,13 @@ class PrometheusService:
     def is_available(self) -> bool:
         try:
             response = self._request("/-/ready")
-            return bool(response.status_code == 200)
+            return response.status_code == 200  # type: ignore
         except requests.RequestException:
             return False
 
     def query(self, promql: str) -> list:
+        start = time.perf_counter()
+
         try:
             response = self._request(
                 "/api/v1/query",
@@ -72,6 +76,8 @@ class PrometheusService:
             )
         except requests.exceptions.RequestException as exc:
             logger.error("prometheus_query_request_exception", exc=exc)
+
+        PROMETHEUS_DURATION.observe(time.perf_counter() - start)
 
         return []
 

@@ -2,6 +2,8 @@ import structlog
 
 from kubesage.models.analysis import AnalysisTrigger
 from kubesage.observability.metrics import (
+    ANALYSIS_TOTAL,
+    WATCHER_INCIDENTS_DETECTED_TOTAL,
     WATCHER_INCIDENTS_IGNORED_TOTAL,
 )
 from kubesage.services.analysis_service import AnalysisService
@@ -41,6 +43,8 @@ class KubernetesWatcher:
             if trigger is None:
                 continue
 
+            WATCHER_INCIDENTS_DETECTED_TOTAL.labels(reason=trigger.reason).inc()
+
             if not self.deduplicator.should_process(trigger):
                 logger.info(
                     "watcher_incident_ignored_duplicate",
@@ -68,12 +72,14 @@ class KubernetesWatcher:
                 AnalysisTrigger.WATCHER,
             )
         except PodNotFoundError:
+            ANALYSIS_TOTAL.labels(status="error").inc()
             logger.info(
                 "Pod '%s' no longer exists in namespace '%s'. Skipping analysis.",
                 trigger.pod,
                 trigger.namespace,
             )
         except Exception:
+            ANALYSIS_TOTAL.labels(status="error").inc()
             logger.exception(
                 "Failed to analyze pod '%s' in namespace '%s'.",
                 trigger.pod,

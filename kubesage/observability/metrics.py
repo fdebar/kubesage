@@ -19,21 +19,30 @@ ANALYSIS_TOTAL = Counter(
 )
 
 ANALYSIS_DURATION = Histogram(
-    "kubesage_analysis_duration_seconds", "Time spent analyzing incidents"
+    "kubesage_analysis_duration_seconds",
+    "Time spent analyzing incidents",
 )
 
-KUBERNETES_ERRORS = Counter("kubesage_kubernetes_errors_total", "Kubernetes API errors")
+KUBERNETES_ERRORS = Counter(
+    "kubesage_kubernetes_errors_total",
+    "Kubernetes API errors",
+    ["reason"],
+)
 
 KUBERNETES_DURATION = Histogram(
-    "kubesage_kubernetes_duration_seconds", "Kubernetes API duration"
+    "kubesage_kubernetes_duration_seconds",
+    "Kubernetes API duration",
 )
 
 PROMETHEUS_DURATION = Histogram(
-    "kubesage_prometheus_duration_seconds", "Prometheus query duration"
+    "kubesage_prometheus_duration_seconds",
+    "Prometheus query duration",
 )
 
 LLM_REQUESTS = Counter(
-    "kubesage_llm_requests_total", "Number of LLM requests", ["status"]
+    "kubesage_llm_requests_total",
+    "Number of LLM requests",
+    ["status"],
 )
 
 LLM_TOKENS = Histogram("kubesage_llm_tokens", "Number of tokens sent to the LLM")

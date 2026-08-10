@@ -5,6 +5,7 @@ from kubesage.api.mappers import to_response
 from kubesage.api.schemas.analysis import AIReportResponse
 from kubesage.api.schemas.request import AnalyzeRequest
 from kubesage.models.analysis import AnalysisTrigger
+from kubesage.observability.metrics import ANALYSIS_TOTAL
 from kubesage.services.analysis_service import AnalysisService
 
 router = APIRouter(prefix="/analyze", tags=["Analysis"])
@@ -26,6 +27,7 @@ def analyze(
 
     analysis = analysis_service.analyze(body.namespace, body.pod, AnalysisTrigger.API)
     if analysis.report is None:
+        ANALYSIS_TOTAL.labels(status="error").inc()
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="AI analysis could not produce a report",

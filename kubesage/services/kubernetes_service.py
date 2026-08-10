@@ -1,3 +1,5 @@
+import time
+
 import structlog
 from kubernetes import client
 from kubernetes.client import Configuration, V1Pod
@@ -12,6 +14,7 @@ from kubesage.models.container import (
 from kubesage.models.event import Event
 from kubesage.models.kubernetes_snapshot import KubernetesSnapshot
 from kubesage.models.log import LogSnapshot
+from kubesage.observability.metrics import KUBERNETES_DURATION, KUBERNETES_ERRORS
 from kubesage.providers.kubernetes_provider import KubernetesProvider
 from kubesage.utils.config import settings
 from kubesage.utils.exceptions import PodNotFoundError
@@ -28,12 +31,14 @@ class KubernetesService(KubernetesProvider):
         self.v1 = create_core_v1_api()
 
     def collect(self, namespace: str, pod: str) -> KubernetesSnapshot:
+        start = time.perf_counter()
         logger.info("kubernetes_starting_collecting_data", namespace=namespace, pod=pod)
 
         try:
             pod_info = self.v1.read_namespaced_pod(name=pod, namespace=namespace)
         except ApiException as exc:
             if exc.status == 404:
+                KUBERNETES_ERRORS.labels(reason="Pod Not Found").inc()
                 logger.error(
                     "kubernetes_pod_not_found",
                     namespace=namespace,
@@ -44,13 +49,15 @@ class KubernetesService(KubernetesProvider):
                 raise PodNotFoundError(
                     f"Pod '{pod}' not found in namespace '{namespace}'."
                 ) from None
+            KUBERNETES_ERRORS.labels(reason="API Error").inc()
             logger.error(
                 "kubernetes_api_error",
                 status=exc.status,
                 reason=exc.reason,
             )
             return self._empty_snapshot(namespace, pod)
-        except Exception:
+        except Exception as exc:  # noqa: BLE001
+            KUBERNETES_ERRORS.labels(reason=str(exc)).inc()
             logger.warning(
                 "kubernetes_failed_to_collect_data", namespace=namespace, pod=pod
             )
@@ -60,6 +67,8 @@ class KubernetesService(KubernetesProvider):
         containers = self._collect_containers(pod_info)
         events = self._collect_events(namespace, pod)
         resources = self._collect_resources(pod_info)
+
+        KUBERNETES_DURATION.observe(time.perf_counter() - start)
 
         return KubernetesSnapshot(
             namespace=namespace,
