@@ -35,7 +35,7 @@ class PodEventFilter:
                 "Container killed because of memory limit",
             )
 
-        if pod_state_diff.current_phase == "Failed":
+        if pod_state_diff.phase_changed and pod_state_diff.current_phase == "Failed":
             return self._trigger(
                 namespace,
                 pod,
@@ -43,12 +43,12 @@ class PodEventFilter:
                 "Pod entered Failed phase",
             )
 
-        if pod_state_diff.restart_delta >= 3:
+        if pod_state_diff.restart_delta > 0:
             return self._trigger(
                 namespace,
                 pod,
                 "FrequentRestarts",
-                f"Pod restarted {pod_state_diff.restart_delta} times",
+                f"Pod restarted {pod_state_diff.restart_delta} time{'s' if pod_state_diff.restart_delta > 1 else ''}",  # noqa: E501
             )
 
         return None
