@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kubesage-grafana-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  kubesage-overview.json: |
+{{ .Files.Get "dashboards/kubesage-overview.json" | indent 4 }}
