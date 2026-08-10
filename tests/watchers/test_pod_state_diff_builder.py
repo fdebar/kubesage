@@ -79,3 +79,36 @@ def test_not_oom_killed() -> None:
     diff = builder.build(previous_pod, current_pod)
 
     assert diff.oom_killed is False
+
+
+def test_initial_pod_with_existing_restarts_does_not_trigger() -> None:
+    builder = PodStateDiffBuilder()
+    previous = None
+    current = create_mock_pod(restart_count=7)
+
+    diff = builder.build(previous, current)
+
+    assert diff.restart_delta == 0
+    assert diff.previous_restart_count == 7
+    assert diff.current_restart_count == 7
+    assert diff.phase_changed is False
+
+
+def test_restart_after_baseline_is_detected() -> None:
+    builder = PodStateDiffBuilder()
+    previous = create_mock_pod(restart_count=7)
+    current = create_mock_pod(restart_count=8)
+
+    diff = builder.build(previous, current)
+
+    assert diff.restart_delta == 1
+
+
+def test_unchanged_pod_does_not_trigger() -> None:
+    builder = PodStateDiffBuilder()
+    previous = create_mock_pod(restart_count=7)
+    current = create_mock_pod(restart_count=7)
+
+    diff = builder.build(previous, current)
+
+    assert diff.restart_delta == 0
