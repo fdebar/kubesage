@@ -48,7 +48,8 @@ class PodEventFilter:
                 namespace,
                 pod,
                 "FrequentRestarts",
-                f"Pod restarted {pod_state_diff.restart_delta} time{'s' if pod_state_diff.restart_delta > 1 else ''}",  # noqa: E501
+                f"Pod restarted {pod_state_diff.restart_delta} "
+                f"time{'s' if pod_state_diff.restart_delta != 1 else ''}",
             )
 
         return None
