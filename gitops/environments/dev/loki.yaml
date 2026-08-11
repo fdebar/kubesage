@@ -39,6 +39,8 @@ loki:
   
   # Inner Loki chart config
   loki:
+    commonConfig:
+      replication_factor: 1
     # Schema configuration required by Loki v6+
     schemaConfig:
       configs:
