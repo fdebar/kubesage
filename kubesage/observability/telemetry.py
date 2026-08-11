@@ -21,6 +21,7 @@ def setup_telemetry(app: FastAPI) -> None:
         {
             "service.name": settings.app_name,
             "service.version": settings.app_version,
+            "deployment.environment": settings.environment,
         }
     )
 
