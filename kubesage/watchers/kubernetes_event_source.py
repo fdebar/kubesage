@@ -4,6 +4,7 @@ from typing import Any
 
 import structlog
 from kubernetes import watch
+from kubernetes.client import V1Pod
 
 from kubesage.observability.metrics import (
     WATCHER_ERRORS_TOTAL,
@@ -18,15 +19,21 @@ logger = structlog.get_logger()
 class KubernetesPodEventSource:
     """
     Kubernetes implementation of an EventSource.
-    Watches pod changes and exposes internal PodWatchEvent objects.
+    Provides initial Pod states and watches subsequent changes.
     """
 
     def __init__(self) -> None:
         self.api = create_core_v1_api()
         self.watcher = watch.Watch()
 
+    def initial_pods(self) -> Iterator[V1Pod]:
+        response = self.api.list_pod_for_all_namespaces()
+
+        yield from response.items
+
     def watch(self) -> Iterator[PodWatchEvent]:
         logger.info("kubernetes_pod_watcher_started")
+
         while True:
             try:
                 for event in self._stream():

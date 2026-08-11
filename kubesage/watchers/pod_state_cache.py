@@ -34,6 +34,13 @@ class PodStateCache:
 
         self._pods.pop(self._key(namespace, pod), None)
 
+    def size(self) -> int:
+        """
+        Returns the number of cached Pods.
+        """
+
+        return len(self._pods)
+
     @staticmethod
     def _key(namespace: str, pod: str) -> str:
         return f"{namespace}/{pod}"

@@ -38,8 +38,14 @@ class KubernetesWatcher:
     def start(self, event_source: EventSource) -> None:
         logger.info("watcher_started")
 
+        for pod in event_source.initial_pods():
+            self.state_cache.update(pod)
+
+        logger.info("watcher_state_cache_initialized")
+
         for event in event_source.watch():
             trigger = self._evaluate_event(event)
+
             if trigger is None:
                 continue
 
@@ -87,6 +93,9 @@ class KubernetesWatcher:
             )
 
     def _evaluate_event(self, event: PodWatchEvent) -> IncidentTrigger | None:
+        if event.type != "MODIFIED":
+            return None
+
         pod = event.pod
         if pod.metadata is None:
             return None
@@ -99,7 +108,6 @@ class KubernetesWatcher:
         previous = self.state_cache.get(namespace, name)
         diff = self.diff_builder.build(previous, pod)
         self.state_cache.update(pod)
-
         trigger = self.event_filter.evaluate(diff, namespace, name)
         if trigger:
             return trigger
