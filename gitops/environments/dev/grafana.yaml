@@ -8,48 +8,51 @@ kube-prometheus-stack:
     persistence:
       enabled: true
       size: 5Gi
-    datasources:
-      datasources.yaml:
-        apiVersion: 1
-        datasources:
-        - name: Prometheus
-          type: prometheus
-          access: proxy
-          url: http://monitoring-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090
-          isDefault: true
+    additionalDataSources:
+      - name: Loki
+        uid: loki
+        type: loki
+        access: proxy
+        url: http://monitoring-loki.monitoring.svc.cluster.local:3100
+        jsonData:
+          httpHeaderName1: X-Scope-OrgID
+        secureJsonData:
+          httpHeaderValue1: kubesage
 
-        - name: Loki
-          type: loki
-          access: proxy
-          url: http://monitoring-loki.monitoring.svc.cluster.local:3100
-
-        - name: Tempo
-          type: tempo
-          access: proxy
-          url: http://monitoring-tempo.monitoring.svc.cluster.local:3200
-          jsonData:
-            httpHeaderName1: X-Scope-OrgID
-          secureJsonData:
-            httpHeaderValue1: kubesage
+      - name: Tempo
+        uid: tempo
+        type: tempo
+        access: proxy
+        url: http://monitoring-tempo.monitoring.svc.cluster.local:3200
+        jsonData:
+          httpHeaderName1: X-Scope-OrgID
           nodeGraph:
             enabled: true
           tracesToLogsV2:
             datasourceUid: loki
             spanStartTimeShift: '-1h'
             spanEndTimeShift: '1h'
-            tags: ['job', 'instance', 'pod', 'namespace']
+            tags:
+              - job
+              - instance
+              - pod
+              - namespace
             filterByTraceID: false
             filterBySpanID: false
           tracesToMetrics:
             datasourceUid: prometheus
-            tags: [{ key: 'service.name', value: 'service' }]
+            tags:
+              - key: service.name
+                value: service
             queries:
-              - name: 'RPS'
+              - name: RPS
                 query: 'sum(rate(traces_spanmetrics_calls_total{$$__tags}[5m]))'
-              - name: 'Latence'
+              - name: Latence
                 query: 'sum(rate(traces_spanmetrics_latency_bucket{$$__tags}[5m]))'
           serviceMap:
             datasourceUid: prometheus
+        secureJsonData:
+          httpHeaderValue1: kubesage
     plugins:
       - grafana-piechart-panel
     grafana.ini:
