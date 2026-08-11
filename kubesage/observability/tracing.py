@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+import structlog
 from opentelemetry import trace
 
 
@@ -19,4 +20,15 @@ def current_trace_context() -> TraceContext:
     return TraceContext(
         trace_id=format(ctx.trace_id, "032x"),
         span_id=format(ctx.span_id, "016x"),
+    )
+
+
+def bind_trace_context() -> None:
+    context = current_trace_context()
+    if context.trace_id is None:
+        return
+
+    structlog.contextvars.bind_contextvars(
+        trace_id=context.trace_id,
+        span_id=context.span_id,
     )
