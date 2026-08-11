@@ -21,12 +21,12 @@ kube-prometheus-stack:
         - name: Loki
           type: loki
           access: proxy
-          url: http://loki.monitoring.svc.cluster.local:3100
+          url: http://monitoring-loki.monitoring.svc.cluster.local:3100
 
         - name: Tempo
           type: tempo
           access: proxy
-          url: http://tempo.monitoring.svc.cluster.local:3200
+          url: http://monitoring-tempo.monitoring.svc.cluster.local:3200
           jsonData:
           nodeGraph:
             enabled: true
