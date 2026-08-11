@@ -28,6 +28,9 @@ kube-prometheus-stack:
           access: proxy
           url: http://monitoring-tempo.monitoring.svc.cluster.local:3200
           jsonData:
+            httpHeaderName1: X-Scope-OrgID
+          secureJsonData:
+            httpHeaderValue1: kubesage
           nodeGraph:
             enabled: true
           tracesToLogsV2:
