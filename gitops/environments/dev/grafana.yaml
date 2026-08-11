@@ -26,31 +26,6 @@ kube-prometheus-stack:
         url: http://monitoring-tempo.monitoring.svc.cluster.local:3200
         jsonData:
           httpHeaderName1: X-Scope-OrgID
-          nodeGraph:
-            enabled: true
-          tracesToLogsV2:
-            datasourceUid: loki
-            spanStartTimeShift: '-1h'
-            spanEndTimeShift: '1h'
-            tags:
-              - job
-              - instance
-              - pod
-              - namespace
-            filterByTraceID: false
-            filterBySpanID: false
-          tracesToMetrics:
-            datasourceUid: prometheus
-            tags:
-              - key: service.name
-                value: service
-            queries:
-              - name: RPS
-                query: 'sum(rate(traces_spanmetrics_calls_total{$$__tags}[5m]))'
-              - name: Latence
-                query: 'sum(rate(traces_spanmetrics_latency_bucket{$$__tags}[5m]))'
-          serviceMap:
-            datasourceUid: prometheus
         secureJsonData:
           httpHeaderValue1: kubesage
     plugins:
