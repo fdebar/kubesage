@@ -127,7 +127,7 @@
             },
             "fieldConfig": {
                 "defaults": {
-                    "decimals": 0,
+                    "decimals": 2,
                     "unit": "s"
                 },
                 "overrides": []
@@ -207,12 +207,12 @@
             },
             "targets": [
                 {
-                    "expr": "sum by (status) (rate(kubesage_analysis_total[5m]))",
+                    "expr": "sum by (status) (rate(kubesage_analysis_total[5m])) * 60",
                     "legendFormat": "{{status}}",
                     "refId": "A"
                 }
             ],
-            "title": "Analyses / second",
+            "title": "Analyses / minute",
             "type": "timeseries"
         },
         {
@@ -324,7 +324,7 @@
             },
             "gridPos": {
                 "h": 7,
-                "w": 8,
+                "w": 6,
                 "x": 0,
                 "y": 16
             },
@@ -363,8 +363,8 @@
             },
             "gridPos": {
                 "h": 7,
-                "w": 8,
-                "x": 8,
+                "w": 6,
+                "x": 6,
                 "y": 16
             },
             "id": 11,
@@ -402,8 +402,8 @@
             },
             "gridPos": {
                 "h": 7,
-                "w": 8,
-                "x": 16,
+                "w": 6,
+                "x": 12,
                 "y": 16
             },
             "id": 12,
@@ -428,12 +428,55 @@
             "type": "timeseries"
         },
         {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "decimals": 2,
+                    "unit": "ops"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 7,
+                "w": 6,
+                "x": 18,
+                "y": 16
+            },
+            "id": 19,
+            "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "textMode": "auto"
+            },
+            "targets": [
+                {
+                    "expr": "rate(kubesage_watcher_errors_total[5m])",
+                    "legendFormat": "Errors/s",
+                    "refId": "A"
+                }
+            ],
+            "title": "Watcher Errors / second",
+            "type": "stat"
+        },
+        {
             "collapsed": false,
             "gridPos": {
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 23
+                "y": 24
             },
             "id": 13,
             "panels": [],
@@ -456,7 +499,7 @@
                 "h": 7,
                 "w": 8,
                 "x": 0,
-                "y": 24
+                "y": 25
             },
             "id": 14,
             "options": {
@@ -495,7 +538,7 @@
                 "h": 7,
                 "w": 8,
                 "x": 8,
-                "y": 24
+                "y": 25
             },
             "id": 15,
             "options": {
@@ -538,7 +581,7 @@
                 "h": 7,
                 "w": 8,
                 "x": 16,
-                "y": 24
+                "y": 25
             },
             "id": 16,
             "options": {
@@ -581,7 +624,7 @@
                 "h": 7,
                 "w": 12,
                 "x": 0,
-                "y": 31
+                "y": 32
             },
             "id": 17,
             "options": {
@@ -596,8 +639,8 @@
             },
             "targets": [
                 {
-                    "expr": "sum(increase(kubesage_llm_tokens_sum[$__range]))",
-                    "legendFormat": "Tokens",
+                    "expr": "sum(increase(kubesage_llm_tokens_sum[5m]))",
+                    "legendFormat": "Tokens / 5m",
                     "refId": "A"
                 }
             ],
@@ -620,7 +663,7 @@
                 "h": 7,
                 "w": 12,
                 "x": 12,
-                "y": 31
+                "y": 32
             },
             "id": 18,
             "options": {
@@ -662,5 +705,5 @@
     "timezone": "browser",
     "title": "KubeSage Overview",
     "uid": "kubesage-overview",
-    "version": 1
+    "version": 2
 }
