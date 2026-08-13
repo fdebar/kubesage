@@ -4,6 +4,7 @@ from typing import Any
 
 import requests
 import structlog
+from opentelemetry import trace
 from requests import Response
 
 from kubesage.models.container import ContainerUsage
@@ -28,6 +29,7 @@ from kubesage.services.prometheus.queries import (
 from kubesage.utils.config import settings
 
 logger = structlog.get_logger()
+tracer = trace.get_tracer(__name__)
 
 
 class PrometheusService:
@@ -82,30 +84,48 @@ class PrometheusService:
         return []
 
     def collect(self, namespace: str, pod: str) -> PrometheusResourceUsage:
-        logger.info("prometheus_starting_collecting_data", namespace=namespace, pod=pod)
 
-        raw = self.collect_raw_metrics(namespace, pod)
-        if raw is None:
-            return PrometheusResourceUsage()
+        with tracer.start_as_current_span("prometheus.collect") as span:
+            span.set_attribute("k8s.namespace", namespace)
+            span.set_attribute("k8s.pod.name", pod)
 
-        return PrometheusResourceUsage(
-            cpu=self._metric_from_result("cpu", "cores/s", raw.cpu),
-            memory=self._metric_from_result("memory", "bytes", raw.memory),
-            containers=self._container_metrics_from_result(
-                raw.container_cpu, raw.container_memory
-            ),
-            cpu_throttling=self._metric_from_result(
-                "cpu_throttling", "ratio", raw.cpu_throttling
-            ),
-            restarts=self._metric_from_result("restarts", "count", raw.restarts),
-            network_rx=self._metric_from_result(
-                "network_rx", "bytes/s", raw.network_rx
-            ),
-            network_tx=self._metric_from_result(
-                "network_tx", "bytes/s", raw.network_tx
-            ),
-            filesystem=self._metric_from_result("filesystem", "bytes", raw.filesystem),
-        )
+            logger.info(
+                "prometheus_starting_collecting_data", namespace=namespace, pod=pod
+            )
+
+            raw = self.collect_raw_metrics(namespace, pod)
+            if raw is None:
+                return PrometheusResourceUsage()
+
+            return PrometheusResourceUsage(
+                cpu=self._metric_from_result("cpu", "cores/s", raw.cpu),
+                memory=self._metric_from_result("memory", "bytes", raw.memory),
+                restarts=self._metric_from_result("restarts", "count", raw.restarts),
+                containers=self._container_metrics_from_result(
+                    raw.container_cpu,
+                    raw.container_memory,
+                ),
+                cpu_throttling=self._metric_from_result(
+                    "cpu_throttling",
+                    "ratio",
+                    raw.cpu_throttling,
+                ),
+                network_rx=self._metric_from_result(
+                    "network_rx",
+                    "bytes/s",
+                    raw.network_rx,
+                ),
+                network_tx=self._metric_from_result(
+                    "network_tx",
+                    "bytes/s",
+                    raw.network_tx,
+                ),
+                filesystem=self._metric_from_result(
+                    "filesystem",
+                    "bytes",
+                    raw.filesystem,
+                ),
+            )
 
     def collect_raw_metrics(self, namespace: str, pod: str) -> RawPrometheusMetrics:
         queries = {
@@ -131,7 +151,7 @@ class PrometheusService:
         results = {}
         with ThreadPoolExecutor(max_workers=5) as executor:
             futures = {
-                name: executor.submit(self.query, query)
+                name: executor.submit(self._query_with_span, name, query)
                 for name, query in queries.items()
             }
             for name, future in futures.items():
@@ -146,6 +166,12 @@ class PrometheusService:
                     results[name] = []
 
         return RawPrometheusMetrics(**results)
+
+    def _query_with_span(self, name: str, promql: str) -> list:
+        with tracer.start_as_current_span(f"prometheus.query.{name}") as span:
+            span.set_attribute("prometheus.query.name", name)
+
+            return self.query(promql)
 
     def _request(self, path: str, **kwargs: Any) -> Response:
         return self.session.get(
