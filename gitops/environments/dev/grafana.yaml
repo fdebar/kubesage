@@ -31,6 +31,17 @@ kube-prometheus-stack:
         url: http://monitoring-tempo.monitoring.svc.cluster.local:3200
         jsonData:
           httpHeaderName1: X-Scope-OrgID
+          tracesToLogsV2:
+            datasourceUid: loki
+            spanStartTimeShift: "-5m"
+            spanEndTimeShift: "5m"
+            tags:
+              - key: namespace
+                value: namespace
+              - key: pod
+                value: pod
+            filterByTraceID: true
+            filterBySpanID: false
         secureJsonData:
           httpHeaderValue1: kubesage
     plugins:
