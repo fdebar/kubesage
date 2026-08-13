@@ -8,3 +8,5 @@ metadata:
 data:
   kubesage-overview.json: |
 {{ .Files.Get "dashboards/kubesage-overview.json" | indent 4 }}
+  kubesage-sre.json: |
+{{ .Files.Get "dashboards/kubesage-sre.json" | indent 4 }}
