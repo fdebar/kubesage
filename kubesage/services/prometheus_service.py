@@ -4,7 +4,7 @@ from typing import Any
 
 import requests
 import structlog
-from opentelemetry import trace
+from opentelemetry import context, trace
 from requests import Response
 
 from kubesage.models.container import ContainerUsage
@@ -84,7 +84,6 @@ class PrometheusService:
         return []
 
     def collect(self, namespace: str, pod: str) -> PrometheusResourceUsage:
-
         with tracer.start_as_current_span("prometheus.collect") as span:
             span.set_attribute("k8s.namespace", namespace)
             span.set_attribute("k8s.pod.name", pod)
@@ -149,9 +148,15 @@ class PrometheusService:
         }
 
         results = {}
+        parent_context = context.get_current()
         with ThreadPoolExecutor(max_workers=5) as executor:
             futures = {
-                name: executor.submit(self._query_with_span, name, query)
+                name: executor.submit(
+                    self._query_with_span,
+                    name,
+                    query,
+                    parent_context,
+                )
                 for name, query in queries.items()
             }
             for name, future in futures.items():
@@ -167,19 +172,37 @@ class PrometheusService:
 
         return RawPrometheusMetrics(**results)
 
-    def _query_with_span(self, name: str, promql: str) -> list:
+    def _query_with_span(
+        self,
+        name: str,
+        promql: str,
+        parent_context: context.Context,
+    ) -> list:
         with tracer.start_as_current_span(f"prometheus.query.{name}") as span:
-            span.set_attribute("prometheus.query.name", name)
+            token = context.attach(parent_context)
 
-            return self.query(promql)
+            try:
+                with tracer.start_as_current_span(f"prometheus.query.{name}") as span:
+                    result = self.query(promql)
+
+                    span.set_attribute("prometheus.query.name", name)
+                    span.set_attribute("prometheus.query.result_count", len(result))
+
+                    return result
+            finally:
+                context.detach(token)
 
     def _request(self, path: str, **kwargs: Any) -> Response:
         return self.session.get(
-            f"{self.base_url}{path}", timeout=settings.prometheus_timeout, **kwargs
+            f"{self.base_url}{path}",
+            timeout=settings.prometheus_timeout,
+            **kwargs,
         )
 
     def _container_metrics_from_result(
-        self, cpu_result: list, memory_result: list
+        self,
+        cpu_result: list,
+        memory_result: list,
     ) -> list[ContainerUsage]:
         containers: dict[str, ContainerUsage] = {}
 
