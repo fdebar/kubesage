@@ -108,8 +108,5 @@ class KubernetesWatcher:
         previous = self.state_cache.get(namespace, name)
         diff = self.diff_builder.build(previous, pod)
         self.state_cache.update(pod)
-        trigger = self.event_filter.evaluate(diff, namespace, name)
-        if trigger:
-            return trigger
 
-        return self.event_filter.build_trigger(event)
+        return self.event_filter.evaluate(diff, namespace, name)

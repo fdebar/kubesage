@@ -48,47 +48,6 @@ def build_event(pod: V1Pod, event_type: str = "MODIFIED") -> PodWatchEvent:
     return PodWatchEvent(type=event_type, pod=pod, received_at=datetime.now(UTC))
 
 
-def test_build_trigger_returns_trigger_for_crash_loop() -> None:
-    event_filter = PodEventFilter()
-    event = build_event(build_pod("CrashLoopBackOff"))
-    trigger = event_filter.build_trigger(event)
-
-    assert trigger is not None
-    assert trigger.reason == "CrashLoopBackOff"
-    assert trigger.namespace == "production"
-    assert trigger.pod == "payment-api"
-
-
-def test_build_trigger_returns_none_for_non_incident_reason() -> None:
-    event_filter = PodEventFilter()
-    event = build_event(build_pod("ContainerCreating"))
-    trigger = event_filter.build_trigger(event)
-
-    assert trigger is None
-
-
-def test_build_trigger_ignores_added_events() -> None:
-    event_filter = PodEventFilter()
-    event = build_event(build_pod("CrashLoopBackOff"), event_type="ADDED")
-    trigger = event_filter.build_trigger(event)
-
-    assert trigger is None
-
-
-def test_build_trigger_ignores_pod_without_status() -> None:
-    event_filter = PodEventFilter()
-    pod = V1Pod(
-        metadata=V1ObjectMeta(
-            name="payment-api",
-            namespace="production",
-        )
-    )
-    event = build_event(pod)
-    trigger = event_filter.build_trigger(event)
-
-    assert trigger is None
-
-
 def test_returns_none_when_no_change() -> None:
     event_filter = PodEventFilter()
     trigger = event_filter.evaluate(PodStateDiff(), "default", "test-pod")
@@ -97,8 +56,7 @@ def test_returns_none_when_no_change() -> None:
 
 
 def test_triggers_oom_killed() -> None:
-    event_filter = PodEventFilter()
-    trigger = event_filter.evaluate(
+    trigger = PodEventFilter().evaluate(
         PodStateDiff(oom_killed=True), "default", "test-pod"
     )
 
@@ -107,8 +65,7 @@ def test_triggers_oom_killed() -> None:
 
 
 def test_triggers_crashloop_transition() -> None:
-    event_filter = PodEventFilter()
-    trigger = event_filter.evaluate(
+    trigger = PodEventFilter().evaluate(
         PodStateDiff(
             previous_waiting_reason=None,
             current_waiting_reason="CrashLoopBackOff",
@@ -123,8 +80,7 @@ def test_triggers_crashloop_transition() -> None:
 
 
 def test_does_not_trigger_when_crashloop_is_unchanged() -> None:
-    event_filter = PodEventFilter()
-    trigger = event_filter.evaluate(
+    trigger = PodEventFilter().evaluate(
         PodStateDiff(
             previous_waiting_reason="CrashLoopBackOff",
             current_waiting_reason="CrashLoopBackOff",
@@ -138,8 +94,7 @@ def test_does_not_trigger_when_crashloop_is_unchanged() -> None:
 
 
 def test_triggers_failed_phase_transition() -> None:
-    event_filter = PodEventFilter()
-    trigger = event_filter.evaluate(
+    trigger = PodEventFilter().evaluate(
         PodStateDiff(
             previous_phase="Running",
             current_phase="Failed",
@@ -151,3 +106,46 @@ def test_triggers_failed_phase_transition() -> None:
 
     assert trigger is not None
     assert trigger.reason == "PodFailed"
+
+
+def test_crash_loop_backoff_triggers_only_when_waiting_reason_changes() -> None:
+    diff = PodStateDiff(
+        previous_phase="Running",
+        current_phase="Running",
+        phase_changed=False,
+        previous_restart_count=3,
+        current_restart_count=3,
+        restart_delta=0,
+        previous_waiting_reason=None,
+        current_waiting_reason="CrashLoopBackOff",
+        previous_ready=True,
+        current_ready=False,
+        ready_changed=True,
+        waiting_reason_changed=True,
+        oom_killed=False,
+    )
+    trigger = PodEventFilter().evaluate(diff, namespace="default", pod="my-pod")
+
+    assert trigger is not None
+    assert trigger.reason == "CrashLoopBackOff"
+
+
+def test_existing_crash_loop_backoff_does_not_trigger_again() -> None:
+    diff = PodStateDiff(
+        previous_phase="Running",
+        current_phase="Running",
+        phase_changed=False,
+        previous_restart_count=3,
+        current_restart_count=3,
+        restart_delta=0,
+        previous_waiting_reason="CrashLoopBackOff",
+        current_waiting_reason="CrashLoopBackOff",
+        previous_ready=False,
+        current_ready=False,
+        ready_changed=False,
+        waiting_reason_changed=False,
+        oom_killed=False,
+    )
+    trigger = PodEventFilter().evaluate(diff, namespace="default", pod="my-pod")
+
+    assert trigger is None

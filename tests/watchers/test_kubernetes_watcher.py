@@ -1,125 +1,242 @@
-from collections.abc import Iterator
 from datetime import UTC, datetime
-from unittest.mock import Mock
+from unittest.mock import MagicMock
 
-from kubernetes.client import (
-    V1ContainerState,
-    V1ContainerStateWaiting,
-    V1ContainerStatus,
-    V1ObjectMeta,
-    V1Pod,
-    V1PodStatus,
-)
+import pytest
+from kubernetes.client import V1ObjectMeta, V1Pod, V1PodStatus
 
-from kubesage.models.analysis import Analysis, AnalysisTrigger
-from kubesage.watchers.incident_deduplicator import IncidentDeduplicator
 from kubesage.watchers.kubernetes_watcher import KubernetesWatcher
-from kubesage.watchers.models.incident_trigger import (
-    IncidentTrigger,
-    PodWatchEvent,
-)
-from kubesage.watchers.pod_event_filter import PodEventFilter
-from kubesage.watchers.pod_state_cache import PodStateCache
-from kubesage.watchers.pod_state_diff_builder import PodStateDiffBuilder
-from tests.watchers.test_pod_event_filter import build_event, build_pod
+from kubesage.watchers.models.incident_trigger import IncidentTrigger, PodWatchEvent
+from kubesage.watchers.models.pod_state_diff import PodStateDiff
 
 
-class FakeEventSource:
-    def __init__(self, event: PodWatchEvent) -> None:
-        self.event = event
-
-    def watch(self) -> Iterator[PodWatchEvent]:
-        yield self.event
-
-    def initial_pods(self) -> Iterator[V1Pod]:
-        pod = V1Pod(
-            metadata=V1ObjectMeta(
-                name="payment-api",
-                namespace="production",
-            ),
-            status=V1PodStatus(
-                container_statuses=[
-                    V1ContainerStatus(
-                        name="payment",
-                        image="payment:v1",
-                        state=V1ContainerState(
-                            waiting=V1ContainerStateWaiting,
-                        ),
-                        image_id="image_id",
-                        ready=True,
-                        restart_count=0,
-                    )
-                ]
-            ),
-        )
-
-        yield pod
+@pytest.fixture
+def analysis_service() -> MagicMock:
+    return MagicMock()
 
 
-def test_watcher_triggers_analysis() -> None:
-    analysis_service = Mock()
-    expected_analysis = Mock(spec=Analysis)
-    analysis_service.analyze.return_value = expected_analysis
+@pytest.fixture
+def event_filter() -> MagicMock:
+    return MagicMock()
 
-    watcher = KubernetesWatcher(
+
+@pytest.fixture
+def deduplicator() -> MagicMock:
+    deduplicator = MagicMock()
+    deduplicator.should_process.return_value = True
+    return deduplicator
+
+
+@pytest.fixture
+def state_cache() -> MagicMock:
+    return MagicMock()
+
+
+@pytest.fixture
+def diff_builder() -> MagicMock:
+    return MagicMock()
+
+
+@pytest.fixture
+def watcher(
+    analysis_service: MagicMock,
+    event_filter: MagicMock,
+    deduplicator: MagicMock,
+    state_cache: MagicMock,
+    diff_builder: MagicMock,
+) -> KubernetesWatcher:
+    return KubernetesWatcher(
         analysis_service=analysis_service,
-        event_filter=PodEventFilter(),
-        deduplicator=IncidentDeduplicator(),
-        state_cache=PodStateCache(),
-        diff_builder=PodStateDiffBuilder(),
+        event_filter=event_filter,
+        deduplicator=deduplicator,
+        state_cache=state_cache,
+        diff_builder=diff_builder,
     )
-    trigger = IncidentTrigger(
-        reason="BackOff",
-        namespace="kubesage",
-        pod="payment-api",
-        message="Back-off restarting failed container",
+
+
+def make_pod(
+    name: str = "my-pod", namespace: str = "default", phase: str = "Running"
+) -> V1Pod:
+    return V1Pod(
+        metadata=V1ObjectMeta(name=name, namespace=namespace),
+        status=V1PodStatus(phase=phase),
+    )
+
+
+def make_event(
+    pod: V1Pod,
+    event_type: str = "MODIFIED",
+) -> PodWatchEvent:
+    return PodWatchEvent(type=event_type, pod=pod)
+
+
+def make_trigger(
+    reason: str = "CrashLoopBackOff",
+    namespace: str = "default",
+    pod: str = "my-pod",
+) -> IncidentTrigger:
+    return IncidentTrigger(
+        source="watcher",
+        reason=reason,
+        namespace=namespace,
+        pod=pod,
+        message="Container entered CrashLoopBackOff",
         occurred_at=datetime.now(UTC),
     )
-    watcher.handle(trigger)
-
-    analysis_service.analyze.assert_called_once_with(
-        "kubesage",
-        "payment-api",
-        AnalysisTrigger.WATCHER,
-    )
 
 
-def test_watcher_starts_analysis_for_incident() -> None:
-    analysis_service = Mock()
-    analysis_service.analyze.return_value = Mock(spec=Analysis)
-
-    watcher = KubernetesWatcher(
-        analysis_service=analysis_service,
-        event_filter=PodEventFilter(),
-        deduplicator=IncidentDeduplicator(),
-        state_cache=PodStateCache(),
-        diff_builder=PodStateDiffBuilder(),
-    )
-    event_source = FakeEventSource(build_event(build_pod("CrashLoopBackOff")))
-    watcher.start(event_source)
-
-    analysis_service.analyze.assert_called_once_with(
-        "production",
-        "payment-api",
-        AnalysisTrigger.WATCHER,
-    )
-
-
-def test_duplicate_incident_is_ignored() -> None:
-    analysis_service = Mock()
-    analysis_service.analyze.return_value = Mock(spec=Analysis)
-
-    watcher = KubernetesWatcher(
-        analysis_service=analysis_service,
-        event_filter=PodEventFilter(),
-        deduplicator=IncidentDeduplicator(),
-        state_cache=PodStateCache(),
-        diff_builder=PodStateDiffBuilder(),
-    )
-
-    event_source = FakeEventSource(build_event(build_pod("CrashLoopBackOff")))
+def test_initial_pods_initialize_state_cache_before_watch(
+    watcher: KubernetesWatcher,
+    state_cache: MagicMock,
+) -> None:
+    initial_pod = make_pod()
+    event_source = MagicMock()
+    event_source.initial_pods.return_value = [initial_pod]
+    event_source.watch.return_value = []
 
     watcher.start(event_source)
-    watcher.start(event_source)
 
-    assert True
+    event_source.initial_pods.assert_called_once_with()
+    state_cache.update.assert_called_once_with(initial_pod)
+    event_source.watch.assert_called_once_with()
+
+
+def test_non_modified_event_is_ignored(
+    watcher: KubernetesWatcher,
+    state_cache: MagicMock,
+    diff_builder: MagicMock,
+    event_filter: MagicMock,
+) -> None:
+    pod = make_pod()
+    event = make_event(pod, event_type="ADDED")
+    result = watcher._evaluate_event(event)
+
+    assert result is None
+    state_cache.get.assert_not_called()
+    state_cache.update.assert_not_called()
+    diff_builder.build.assert_not_called()
+    event_filter.evaluate.assert_not_called()
+
+
+def test_event_without_metadata_is_ignored(
+    watcher: KubernetesWatcher,
+    state_cache: MagicMock,
+    diff_builder: MagicMock,
+    event_filter: MagicMock,
+) -> None:
+    pod = V1Pod(metadata=None, status=V1PodStatus(phase="Running"))
+    event = make_event(pod)
+    result = watcher._evaluate_event(event)
+
+    assert result is None
+    state_cache.get.assert_not_called()
+    state_cache.update.assert_not_called()
+    diff_builder.build.assert_not_called()
+    event_filter.evaluate.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "namespace,name",
+    [
+        (None, "my-pod"),
+        ("default", None),
+        (None, None),
+    ],
+)
+def test_event_without_namespace_or_name_is_ignored(
+    watcher: KubernetesWatcher,
+    state_cache: MagicMock,
+    diff_builder: MagicMock,
+    event_filter: MagicMock,
+    namespace: str,
+    name: str,
+) -> None:
+    pod = V1Pod(
+        metadata=V1ObjectMeta(namespace=namespace, name=name),
+        status=V1PodStatus(phase="Running"),
+    )
+    event = make_event(pod)
+    result = watcher._evaluate_event(event)
+
+    assert result is None
+    state_cache.get.assert_not_called()
+    state_cache.update.assert_not_called()
+    diff_builder.build.assert_not_called()
+    event_filter.evaluate.assert_not_called()
+
+
+def test_modified_event_builds_diff_updates_cache_and_evaluates_filter(
+    watcher: KubernetesWatcher,
+    state_cache: MagicMock,
+    diff_builder: MagicMock,
+    event_filter: MagicMock,
+) -> None:
+    pod = make_pod()
+    previous = make_pod(phase="Pending")
+    diff = MagicMock(spec=PodStateDiff)
+
+    state_cache.get.return_value = previous
+    diff_builder.build.return_value = diff
+    event_filter.evaluate.return_value = None
+
+    event = make_event(pod)
+
+    result = watcher._evaluate_event(event)
+
+    assert result is None
+
+    state_cache.get.assert_called_once_with("default", "my-pod")
+    diff_builder.build.assert_called_once_with(previous, pod)
+    state_cache.update.assert_called_once_with(pod)
+    event_filter.evaluate.assert_called_once_with(diff, "default", "my-pod")
+
+
+def test_modified_event_returns_trigger_from_filter(
+    watcher: KubernetesWatcher,
+    state_cache: MagicMock,
+    diff_builder: MagicMock,
+    event_filter: MagicMock,
+) -> None:
+    pod = make_pod()
+    previous = make_pod(phase="Running")
+    diff = MagicMock(spec=PodStateDiff)
+    trigger = make_trigger()
+
+    state_cache.get.return_value = previous
+    diff_builder.build.return_value = diff
+    event_filter.evaluate.return_value = trigger
+
+    event = make_event(pod)
+
+    result = watcher._evaluate_event(event)
+
+    assert result is trigger
+
+    state_cache.get.assert_called_once_with("default", "my-pod")
+    diff_builder.build.assert_called_once_with(previous, pod)
+    state_cache.update.assert_called_once_with(pod)
+    event_filter.evaluate.assert_called_once_with(diff, "default", "my-pod")
+
+
+def test_modified_event_with_no_previous_state_is_handled_by_diff_builder(
+    watcher: KubernetesWatcher,
+    state_cache: MagicMock,
+    diff_builder: MagicMock,
+    event_filter: MagicMock,
+) -> None:
+    pod = make_pod()
+    diff = MagicMock(spec=PodStateDiff)
+
+    state_cache.get.return_value = None
+    diff_builder.build.return_value = diff
+    event_filter.evaluate.return_value = None
+
+    event = make_event(pod)
+
+    result = watcher._evaluate_event(event)
+
+    assert result is None
+
+    state_cache.get.assert_called_once_with("default", "my-pod")
+    diff_builder.build.assert_called_once_with(None, pod)
+    state_cache.update.assert_called_once_with(pod)
+    event_filter.evaluate.assert_called_once_with(diff, "default", "my-pod")

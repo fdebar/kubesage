@@ -2,7 +2,6 @@ from datetime import UTC, datetime
 
 from kubesage.watchers.models.incident_trigger import (
     IncidentTrigger,
-    PodWatchEvent,
 )
 from kubesage.watchers.models.pod_state_diff import PodStateDiff
 
@@ -54,47 +53,6 @@ class PodEventFilter:
                 pod,
                 "PodFailed",
                 "Pod entered Failed phase",
-            )
-
-        return None
-
-    def build_trigger(self, event: PodWatchEvent) -> IncidentTrigger | None:
-        if event.type != "MODIFIED":
-            return None
-
-        pod = event.pod
-        if pod.status is None:
-            return None
-
-        statuses = pod.status.container_statuses or []
-        for container in statuses:
-            state = container.state
-            if state is None or state.waiting is None:
-                continue
-
-            reason = state.waiting.reason
-            if reason is None:
-                continue
-
-            if reason not in INTERESTING_REASONS:
-                continue
-
-            if pod.metadata is None:
-                return None
-
-            namespace = pod.metadata.namespace
-            name = pod.metadata.name
-
-            if namespace is None or name is None:
-                return None
-
-            return IncidentTrigger(
-                source="kubernetes",
-                reason=reason,
-                namespace=namespace,
-                pod=name,
-                message=state.waiting.message,
-                occurred_at=event.received_at,
             )
 
         return None

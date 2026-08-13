@@ -135,3 +135,50 @@ def test_build_does_not_repeat_existing_oom_event() -> None:
     diff = builder.build(previous, current)
 
     assert diff.oom_killed is False
+
+
+def make_pod_with_restart_count(
+    restart_count: int, name: str = "my-pod", namespace: str = "default"
+) -> V1Pod:
+    return V1Pod(
+        metadata=V1ObjectMeta(name=name, namespace=namespace),
+        status=V1PodStatus(
+            phase="Running",
+            container_statuses=[
+                V1ContainerStatus(
+                    name="app",
+                    ready=True,
+                    restart_count=restart_count,
+                    image="python",
+                    image_id="sha256:abcd",
+                )
+            ],
+        ),
+    )
+
+
+def test_first_observation_does_not_report_historical_restarts() -> None:
+    builder = PodStateDiffBuilder()
+
+    current = make_pod_with_restart_count(5)
+
+    diff = builder.build(None, current)
+
+    assert diff.previous_restart_count == 5
+    assert diff.current_restart_count == 5
+    assert diff.restart_delta == 0
+
+
+def test_restart_after_initial_observation_is_detected() -> None:
+    builder = PodStateDiffBuilder()
+
+    initial = make_pod_with_restart_count(5)
+    current = make_pod_with_restart_count(6)
+
+    builder.build(None, initial)
+
+    diff = builder.build(initial, current)
+
+    assert diff.previous_restart_count == 5
+    assert diff.current_restart_count == 6
+    assert diff.restart_delta == 1
