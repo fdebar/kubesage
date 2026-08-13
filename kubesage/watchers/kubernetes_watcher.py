@@ -107,6 +107,20 @@ class KubernetesWatcher:
 
         previous = self.state_cache.get(namespace, name)
         diff = self.diff_builder.build(previous, pod)
+
+        logger.debug(
+            "watcher_state_diff",
+            namespace=namespace,
+            pod=name,
+            previous_found=previous is not None,
+            previous_waiting_reason=diff.previous_waiting_reason,
+            current_waiting_reason=diff.current_waiting_reason,
+            waiting_reason_changed=diff.waiting_reason_changed,
+            previous_restart_count=diff.previous_restart_count,
+            current_restart_count=diff.current_restart_count,
+            restart_delta=diff.restart_delta,
+        )
+
         self.state_cache.update(pod)
 
         return self.event_filter.evaluate(diff, namespace, name)

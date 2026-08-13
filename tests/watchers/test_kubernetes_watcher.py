@@ -20,6 +20,25 @@ def event_filter() -> MagicMock:
 
 
 @pytest.fixture
+def pod_diff() -> PodStateDiff:
+    return PodStateDiff(
+        previous_phase="Pending",
+        current_phase="Running",
+        phase_changed=True,
+        previous_restart_count=0,
+        current_restart_count=1,
+        restart_delta=1,
+        previous_waiting_reason="Pending",
+        current_waiting_reason="Running",
+        previous_ready=False,
+        current_ready=True,
+        ready_changed=True,
+        waiting_reason_changed=True,
+        oom_killed=False,
+    )
+
+
+@pytest.fixture
 def deduplicator() -> MagicMock:
     deduplicator = MagicMock()
     deduplicator.should_process.return_value = True
@@ -100,6 +119,23 @@ def test_initial_pods_initialize_state_cache_before_watch(
     event_source.watch.assert_called_once_with()
 
 
+def test_initial_pods_do_not_trigger_analysis(
+    watcher: KubernetesWatcher,
+    analysis_service: MagicMock,
+    deduplicator: MagicMock,
+) -> None:
+    initial_pod = make_pod()
+
+    event_source = MagicMock()
+    event_source.initial_pods.return_value = [initial_pod]
+    event_source.watch.return_value = []
+
+    watcher.start(event_source)
+
+    analysis_service.analyze.assert_not_called()
+    deduplicator.should_process.assert_not_called()
+
+
 def test_non_modified_event_is_ignored(
     watcher: KubernetesWatcher,
     state_cache: MagicMock,
@@ -169,13 +205,13 @@ def test_modified_event_builds_diff_updates_cache_and_evaluates_filter(
     state_cache: MagicMock,
     diff_builder: MagicMock,
     event_filter: MagicMock,
+    pod_diff: PodStateDiff,
 ) -> None:
     pod = make_pod()
     previous = make_pod(phase="Pending")
-    diff = MagicMock(spec=PodStateDiff)
 
     state_cache.get.return_value = previous
-    diff_builder.build.return_value = diff
+    diff_builder.build.return_value = pod_diff
     event_filter.evaluate.return_value = None
 
     event = make_event(pod)
@@ -187,7 +223,7 @@ def test_modified_event_builds_diff_updates_cache_and_evaluates_filter(
     state_cache.get.assert_called_once_with("default", "my-pod")
     diff_builder.build.assert_called_once_with(previous, pod)
     state_cache.update.assert_called_once_with(pod)
-    event_filter.evaluate.assert_called_once_with(diff, "default", "my-pod")
+    event_filter.evaluate.assert_called_once_with(pod_diff, "default", "my-pod")
 
 
 def test_modified_event_returns_trigger_from_filter(
@@ -195,14 +231,14 @@ def test_modified_event_returns_trigger_from_filter(
     state_cache: MagicMock,
     diff_builder: MagicMock,
     event_filter: MagicMock,
+    pod_diff: PodStateDiff,
 ) -> None:
     pod = make_pod()
     previous = make_pod(phase="Running")
-    diff = MagicMock(spec=PodStateDiff)
     trigger = make_trigger()
 
     state_cache.get.return_value = previous
-    diff_builder.build.return_value = diff
+    diff_builder.build.return_value = pod_diff
     event_filter.evaluate.return_value = trigger
 
     event = make_event(pod)
@@ -214,7 +250,7 @@ def test_modified_event_returns_trigger_from_filter(
     state_cache.get.assert_called_once_with("default", "my-pod")
     diff_builder.build.assert_called_once_with(previous, pod)
     state_cache.update.assert_called_once_with(pod)
-    event_filter.evaluate.assert_called_once_with(diff, "default", "my-pod")
+    event_filter.evaluate.assert_called_once_with(pod_diff, "default", "my-pod")
 
 
 def test_modified_event_with_no_previous_state_is_handled_by_diff_builder(
@@ -222,12 +258,12 @@ def test_modified_event_with_no_previous_state_is_handled_by_diff_builder(
     state_cache: MagicMock,
     diff_builder: MagicMock,
     event_filter: MagicMock,
+    pod_diff: PodStateDiff,
 ) -> None:
     pod = make_pod()
-    diff = MagicMock(spec=PodStateDiff)
 
     state_cache.get.return_value = None
-    diff_builder.build.return_value = diff
+    diff_builder.build.return_value = pod_diff
     event_filter.evaluate.return_value = None
 
     event = make_event(pod)
@@ -239,4 +275,28 @@ def test_modified_event_with_no_previous_state_is_handled_by_diff_builder(
     state_cache.get.assert_called_once_with("default", "my-pod")
     diff_builder.build.assert_called_once_with(None, pod)
     state_cache.update.assert_called_once_with(pod)
-    event_filter.evaluate.assert_called_once_with(diff, "default", "my-pod")
+    event_filter.evaluate.assert_called_once_with(pod_diff, "default", "my-pod")
+
+    def test_all_initial_pods_are_loaded_without_triggering_analysis(
+        watcher: KubernetesWatcher,
+        state_cache: MagicMock,
+        analysis_service: MagicMock,
+    ) -> None:
+        pods = [
+            make_pod(name="kubesage-crashloop"),
+            make_pod(name="argocd-applicationset-controller"),
+            make_pod(name="healthy-pod"),
+        ]
+
+        event_source = MagicMock()
+        event_source.initial_pods.return_value = pods
+        event_source.watch.return_value = []
+
+        watcher.start(event_source)
+
+        assert state_cache.update.call_count == 3
+        state_cache.update.assert_any_call(pods[0])
+        state_cache.update.assert_any_call(pods[1])
+        state_cache.update.assert_any_call(pods[2])
+
+        analysis_service.analyze.assert_not_called()
