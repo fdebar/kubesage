@@ -4,6 +4,7 @@ import structlog
 from kubernetes import client
 from kubernetes.client import Configuration, V1Pod
 from kubernetes.client.exceptions import ApiException
+from opentelemetry import trace
 
 from kubesage.models.cluster_info import ClusterInfo
 from kubesage.models.container import (
@@ -22,6 +23,7 @@ from kubesage.utils.kube_client import create_core_v1_api
 from kubesage.utils.resource_quantity import parse_cpu_quantity, parse_memory_quantity
 
 logger = structlog.get_logger()
+tracer = trace.get_tracer(__name__)
 
 
 class KubernetesService(KubernetesProvider):
@@ -34,84 +36,102 @@ class KubernetesService(KubernetesProvider):
         start = time.perf_counter()
         logger.info("kubernetes_starting_collecting_data", namespace=namespace, pod=pod)
 
-        try:
-            pod_info = self.v1.read_namespaced_pod(name=pod, namespace=namespace)
-        except ApiException as exc:
-            if exc.status == 404:
-                KUBERNETES_ERRORS.labels(reason="Pod Not Found").inc()
-                logger.error(
-                    "kubernetes_pod_not_found",
+        with tracer.start_as_current_span("kubernetes.collect") as span:
+            span.set_attribute("k8s.namespace", namespace)
+            span.set_attribute("k8s.pod.name", pod)
+
+            with tracer.start_as_current_span("kubernetes.get_pod") as span:
+                span.set_attribute("k8s.namespace", namespace)
+                span.set_attribute("k8s.pod.name", pod)
+
+                try:
+                    pod_info = self.v1.read_namespaced_pod(
+                        name=pod, namespace=namespace
+                    )
+                except ApiException as exc:
+                    if exc.status == 404:
+                        KUBERNETES_ERRORS.labels(reason="Pod Not Found").inc()
+                        logger.error(
+                            "kubernetes_pod_not_found",
+                            namespace=namespace,
+                            pod=pod,
+                            status=exc.status,
+                            reason=exc.reason,
+                        )
+                        raise PodNotFoundError(
+                            f"Pod '{pod}' not found in namespace '{namespace}'."
+                        ) from None
+
+                        KUBERNETES_ERRORS.labels(reason="API Error").inc()
+                        logger.error(
+                            "kubernetes_api_error",
+                            status=exc.status,
+                            reason=exc.reason,
+                        )
+                    return self._empty_snapshot(namespace, pod)
+
+                except Exception as exc:  # noqa: BLE001
+                    KUBERNETES_ERRORS.labels(reason=str(exc)).inc()
+                    logger.warning(
+                        "kubernetes_failed_to_collect_data",
+                        namespace=namespace,
+                        pod=pod,
+                    )
+                    return self._empty_snapshot(namespace, pod)
+
+            logs = self._collect_logs(namespace, pod)
+            containers = self._collect_containers(pod_info)
+            events = self._collect_events(namespace, pod)
+            resources = self._collect_resources(pod_info)
+
+            KUBERNETES_DURATION.observe(time.perf_counter() - start)
+
+            return KubernetesSnapshot(
+                namespace=namespace,
+                pod=pod,
+                phase=pod_info.status.phase,
+                logs=logs,
+                containers=containers,
+                events=events,
+                resources=resources,
+            )
+
+    def _collect_logs(self, namespace: str, pod: str) -> LogSnapshot:
+        with tracer.start_as_current_span("kubernetes.get_logs") as span:
+            span.set_attribute("k8s.namespace", namespace)
+            span.set_attribute("k8s.pod.name", pod)
+
+            try:
+                logs = self.v1.read_namespaced_pod_log(
+                    name=pod,
                     namespace=namespace,
-                    pod=pod,
-                    status=exc.status,
-                    reason=exc.reason,
+                    tail_lines=settings.log_tail_lines,
                 )
+            except ApiException as exc:
+                if exc.status == 404:
+                    logger.warning(
+                        "kubernetes_failed_to_collect_logs",
+                        namespace=namespace,
+                        pod=pod,
+                        status=exc.status,
+                        reason=exc.reason,
+                    )
                 raise PodNotFoundError(
                     f"Pod '{pod}' not found in namespace '{namespace}'."
                 ) from None
-            KUBERNETES_ERRORS.labels(reason="API Error").inc()
-            logger.error(
-                "kubernetes_api_error",
-                status=exc.status,
-                reason=exc.reason,
-            )
-            return self._empty_snapshot(namespace, pod)
-        except Exception as exc:  # noqa: BLE001
-            KUBERNETES_ERRORS.labels(reason=str(exc)).inc()
-            logger.warning(
-                "kubernetes_failed_to_collect_data", namespace=namespace, pod=pod
-            )
-            return self._empty_snapshot(namespace, pod)
-
-        logs = self._collect_logs(namespace, pod)
-        containers = self._collect_containers(pod_info)
-        events = self._collect_events(namespace, pod)
-        resources = self._collect_resources(pod_info)
-
-        KUBERNETES_DURATION.observe(time.perf_counter() - start)
-
-        return KubernetesSnapshot(
-            namespace=namespace,
-            pod=pod,
-            phase=pod_info.status.phase,
-            logs=logs,
-            containers=containers,
-            events=events,
-            resources=resources,
-        )
-
-    def _collect_logs(self, namespace: str, pod: str) -> LogSnapshot:
-        try:
-            logs = self.v1.read_namespaced_pod_log(
-                name=pod,
-                namespace=namespace,
-                tail_lines=settings.log_tail_lines,
-            )
-        except ApiException as exc:
-            if exc.status == 404:
+            except Exception:
                 logger.warning(
-                    "kubernetes_failed_to_collect_logs",
-                    namespace=namespace,
-                    pod=pod,
-                    status=exc.status,
-                    reason=exc.reason,
+                    "kubernetes_failed_to_collect_logs", namespace=namespace, pod=pod
                 )
-            raise PodNotFoundError(
-                f"Pod '{pod}' not found in namespace '{namespace}'."
-            ) from None
-        except Exception:
-            logger.warning(
-                "kubernetes_failed_to_collect_logs", namespace=namespace, pod=pod
+                return LogSnapshot(source="kubernetes", lines=[])
+
+            if isinstance(logs, bytes):
+                logs = logs.decode("utf-8")
+
+            return LogSnapshot(
+                source="kubernetes",
+                lines=logs.split("\n") if logs else [],
             )
-            return LogSnapshot(source="kubernetes", lines=[])
-
-        if isinstance(logs, bytes):
-            logs = logs.decode("utf-8")
-
-        return LogSnapshot(
-            source="kubernetes",
-            lines=logs.split("\n") if logs else [],
-        )
 
     def _collect_containers(self, pod_info: V1Pod) -> list[ContainerStatus]:
         containers = []
@@ -147,45 +167,49 @@ class KubernetesService(KubernetesProvider):
         return containers
 
     def _collect_events(self, namespace: str, pod: str) -> list[Event]:
-        try:
-            events = self.v1.list_namespaced_event(
-                namespace=namespace,
-                field_selector=f"involvedObject.name={pod}",
-            )
-        except ApiException as exc:
-            logger.warning("kubernetes_failed_to_collect_events: %s", exc.reason)
-            return []
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("kubernetes_failed_to_collect_events: %s", exc)
-            return []
+        with tracer.start_as_current_span("kubernetes.get_events") as span:
+            span.set_attribute("k8s.namespace", namespace)
+            span.set_attribute("k8s.pod.name", pod)
 
-        if events is None:
-            logger.warning(
-                "kubernetes_no_events_collected",
-                namespace=namespace,
-                pod=pod,
-            )
-            return []
-
-        warnings = []
-        for event_item in events.items:
-            if event_item.type != "Warning":
-                continue
-
-            warnings.append(
-                Event(
-                    type=event_item.type,
-                    reason=event_item.reason,
-                    message=event_item.message,
-                    last_timestamp=(
-                        event_item.last_timestamp.timestamp()
-                        if event_item.last_timestamp
-                        else None
-                    ),
+            try:
+                events = self.v1.list_namespaced_event(
+                    namespace=namespace,
+                    field_selector=f"involvedObject.name={pod}",
                 )
-            )
+            except ApiException as exc:
+                logger.warning("kubernetes_failed_to_collect_events: %s", exc.reason)
+                return []
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("kubernetes_failed_to_collect_events: %s", exc)
+                return []
 
-        return warnings
+            if events is None:
+                logger.warning(
+                    "kubernetes_no_events_collected",
+                    namespace=namespace,
+                    pod=pod,
+                )
+                return []
+
+            warnings = []
+            for event_item in events.items:
+                if event_item.type != "Warning":
+                    continue
+
+                warnings.append(
+                    Event(
+                        type=event_item.type,
+                        reason=event_item.reason,
+                        message=event_item.message,
+                        last_timestamp=(
+                            event_item.last_timestamp.timestamp()
+                            if event_item.last_timestamp
+                            else None
+                        ),
+                    )
+                )
+
+            return warnings
 
     def _collect_resources(self, pod_info: V1Pod) -> PodResources:
         containers = []
