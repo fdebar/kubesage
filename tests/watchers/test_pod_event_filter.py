@@ -10,6 +10,7 @@ from kubernetes.client import (
 )
 
 from kubesage.watchers.models.incident_trigger import PodWatchEvent
+from kubesage.watchers.models.pod_state_diff import PodStateDiff
 from kubesage.watchers.pod_event_filter import PodEventFilter
 
 
@@ -86,3 +87,67 @@ def test_build_trigger_ignores_pod_without_status() -> None:
     trigger = event_filter.build_trigger(event)
 
     assert trigger is None
+
+
+def test_returns_none_when_no_change() -> None:
+    event_filter = PodEventFilter()
+    trigger = event_filter.evaluate(PodStateDiff(), "default", "test-pod")
+
+    assert trigger is None
+
+
+def test_triggers_oom_killed() -> None:
+    event_filter = PodEventFilter()
+    trigger = event_filter.evaluate(
+        PodStateDiff(oom_killed=True), "default", "test-pod"
+    )
+
+    assert trigger is not None
+    assert trigger.reason == "OOMKilled"
+
+
+def test_triggers_crashloop_transition() -> None:
+    event_filter = PodEventFilter()
+    trigger = event_filter.evaluate(
+        PodStateDiff(
+            previous_waiting_reason=None,
+            current_waiting_reason="CrashLoopBackOff",
+            waiting_reason_changed=True,
+        ),
+        "default",
+        "test-pod",
+    )
+
+    assert trigger is not None
+    assert trigger.reason == "CrashLoopBackOff"
+
+
+def test_does_not_trigger_when_crashloop_is_unchanged() -> None:
+    event_filter = PodEventFilter()
+    trigger = event_filter.evaluate(
+        PodStateDiff(
+            previous_waiting_reason="CrashLoopBackOff",
+            current_waiting_reason="CrashLoopBackOff",
+            waiting_reason_changed=False,
+        ),
+        "default",
+        "test-pod",
+    )
+
+    assert trigger is None
+
+
+def test_triggers_failed_phase_transition() -> None:
+    event_filter = PodEventFilter()
+    trigger = event_filter.evaluate(
+        PodStateDiff(
+            previous_phase="Running",
+            current_phase="Failed",
+            phase_changed=True,
+        ),
+        "default",
+        "test-pod",
+    )
+
+    assert trigger is not None
+    assert trigger.reason == "PodFailed"

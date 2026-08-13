@@ -35,21 +35,25 @@ class PodEventFilter:
                 "Container killed because of memory limit",
             )
 
+        reason = pod_state_diff.current_waiting_reason
+        if (
+            pod_state_diff.waiting_reason_changed
+            and reason is not None
+            and reason in INTERESTING_REASONS
+        ):
+            return self._trigger(
+                namespace,
+                pod,
+                reason,
+                f"Container entered {reason}",
+            )
+
         if pod_state_diff.phase_changed and pod_state_diff.current_phase == "Failed":
             return self._trigger(
                 namespace,
                 pod,
                 "PodFailed",
                 "Pod entered Failed phase",
-            )
-
-        if pod_state_diff.restart_delta > 0:
-            return self._trigger(
-                namespace,
-                pod,
-                "FrequentRestarts",
-                f"Pod restarted {pod_state_diff.restart_delta} "
-                f"time{'s' if pod_state_diff.restart_delta != 1 else ''}",
             )
 
         return None
@@ -69,14 +73,26 @@ class PodEventFilter:
                 continue
 
             reason = state.waiting.reason
+            if reason is None:
+                continue
+
             if reason not in INTERESTING_REASONS:
                 continue
+
+            if pod.metadata is None:
+                return None
+
+            namespace = pod.metadata.namespace
+            name = pod.metadata.name
+
+            if namespace is None or name is None:
+                return None
 
             return IncidentTrigger(
                 source="kubernetes",
                 reason=reason,
-                namespace=pod.metadata.namespace,
-                pod=pod.metadata.name,
+                namespace=namespace,
+                pod=name,
                 message=state.waiting.message,
                 occurred_at=event.received_at,
             )

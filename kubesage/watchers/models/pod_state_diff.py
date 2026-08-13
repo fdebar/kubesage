@@ -15,4 +15,12 @@ class PodStateDiff(BaseModel):
     current_restart_count: int = 0
     restart_delta: int = 0
 
+    previous_waiting_reason: str | None = None
+    current_waiting_reason: str | None = None
+    waiting_reason_changed: bool = False
+
+    previous_ready: bool = False
+    current_ready: bool = False
+    ready_changed: bool = False
+
     oom_killed: bool = False
