@@ -1,5 +1,6 @@
 from datetime import UTC, datetime
 
+from kubesage.models.analysis import AnalysisTrigger
 from kubesage.watchers.models.incident_trigger import (
     IncidentTrigger,
 )
@@ -47,14 +48,6 @@ class PodEventFilter:
                 f"Container entered {reason}",
             )
 
-        if pod_state_diff.phase_changed and pod_state_diff.current_phase == "Failed":
-            return self._trigger(
-                namespace,
-                pod,
-                "PodFailed",
-                "Pod entered Failed phase",
-            )
-
         return None
 
     def _trigger(
@@ -65,7 +58,7 @@ class PodEventFilter:
         message: str,
     ) -> IncidentTrigger:
         return IncidentTrigger(
-            source="watcher",
+            source=AnalysisTrigger.WATCHER,
             reason=reason,
             namespace=namespace,
             pod=pod,

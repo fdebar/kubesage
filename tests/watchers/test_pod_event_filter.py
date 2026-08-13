@@ -93,21 +93,6 @@ def test_does_not_trigger_when_crashloop_is_unchanged() -> None:
     assert trigger is None
 
 
-def test_triggers_failed_phase_transition() -> None:
-    trigger = PodEventFilter().evaluate(
-        PodStateDiff(
-            previous_phase="Running",
-            current_phase="Failed",
-            phase_changed=True,
-        ),
-        "default",
-        "test-pod",
-    )
-
-    assert trigger is not None
-    assert trigger.reason == "PodFailed"
-
-
 def test_crash_loop_backoff_triggers_only_when_waiting_reason_changes() -> None:
     diff = PodStateDiff(
         previous_phase="Running",
