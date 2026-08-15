@@ -4,6 +4,7 @@ from typing import Any
 import requests
 import structlog
 from opentelemetry import trace
+from opentelemetry.trace import Status, StatusCode
 
 from kubesage.models.log import LogSnapshot, LogSource
 from kubesage.providers.log_provider import LogProvider
@@ -48,15 +49,24 @@ class LokiService(LogProvider):
 
                 return response.json()
 
-            except requests.exceptions.ConnectionError:
+            except requests.exceptions.ConnectionError as exc:
+                span.record_exception(exc)
+                span.set_status(Status(StatusCode.ERROR, "Loki server unreachable"))
+
                 logger.warning("loki_server_unreachable_or_offline")
                 return {}
 
-            except requests.exceptions.Timeout:
+            except requests.exceptions.Timeout as exc:
+                span.record_exception(exc)
+                span.set_status(Status(StatusCode.ERROR, "Loki query timed out"))
+
                 logger.warning("loki_query_timed_out")
                 return {}
 
             except requests.exceptions.HTTPError as exc:
+                span.record_exception(exc)
+                span.set_status(Status(StatusCode.ERROR, "Loki returned HTTP error"))
+
                 logger.error(
                     "Loki returned HTTP error status %s: %s",
                     response.status_code,
@@ -65,8 +75,10 @@ class LokiService(LogProvider):
                 return {}
 
             except requests.exceptions.RequestException as exc:
-                logger.error("Loki query failed: %s", exc)
+                span.record_exception(exc)
+                span.set_status(Status(StatusCode.ERROR, str(exc)))
 
+                logger.error("Loki query failed: %s", exc)
                 return {}
 
     def collect(
