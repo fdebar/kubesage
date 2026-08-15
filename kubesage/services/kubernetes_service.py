@@ -49,6 +49,14 @@ class KubernetesService(KubernetesProvider):
                         name=pod, namespace=namespace
                     )
                 except ApiException as exc:
+                    span.record_exception(exc)
+                    span.set_status(
+                        trace.Status(
+                            trace.StatusCode.ERROR,
+                            f"Kubernetes API error: {exc.status}",
+                        )
+                    )
+
                     if exc.status == 404:
                         KUBERNETES_ERRORS.labels(reason="Pod Not Found").inc()
                         logger.error(
@@ -62,15 +70,17 @@ class KubernetesService(KubernetesProvider):
                             f"Pod '{pod}' not found in namespace '{namespace}'."
                         ) from None
 
-                        KUBERNETES_ERRORS.labels(reason="API Error").inc()
-                        logger.error(
-                            "kubernetes_api_error",
-                            status=exc.status,
-                            reason=exc.reason,
-                        )
+                    KUBERNETES_ERRORS.labels(reason="API Error").inc()
+                    logger.error(
+                        "kubernetes_api_error", status=exc.status, reason=exc.reason
+                    )
+
                     return self._empty_snapshot(namespace, pod)
 
                 except Exception as exc:  # noqa: BLE001
+                    span.record_exception(exc)
+                    span.set_status(trace.Status(trace.StatusCode.ERROR, str(exc)))
+
                     KUBERNETES_ERRORS.labels(reason=str(exc)).inc()
                     logger.warning(
                         "kubernetes_failed_to_collect_data",
@@ -108,6 +118,14 @@ class KubernetesService(KubernetesProvider):
                     tail_lines=settings.log_tail_lines,
                 )
             except ApiException as exc:
+                span.record_exception(exc)
+                span.set_status(
+                    trace.Status(
+                        trace.StatusCode.ERROR,
+                        f"Kubernetes log API error: {exc.status}",
+                    )
+                )
+
                 if exc.status == 404:
                     logger.warning(
                         "kubernetes_failed_to_collect_logs",
@@ -116,13 +134,25 @@ class KubernetesService(KubernetesProvider):
                         status=exc.status,
                         reason=exc.reason,
                     )
-                raise PodNotFoundError(
-                    f"Pod '{pod}' not found in namespace '{namespace}'."
-                ) from None
-            except Exception:
+
+                    raise PodNotFoundError(
+                        f"Pod '{pod}' not found in namespace '{namespace}'."
+                    ) from None
+                logger.warning(
+                    "kubernetes_failed_to_collect_logs",
+                    namespace=namespace,
+                    pod=pod,
+                    status=exc.status,
+                    reason=exc.reason,
+                )
+            except Exception as exc:  # noqa: BLE001
+                span.record_exception(exc)
+                span.set_status(trace.Status(trace.StatusCode.ERROR, str(exc)))
+
                 logger.warning(
                     "kubernetes_failed_to_collect_logs", namespace=namespace, pod=pod
                 )
+
                 return LogSnapshot(source="kubernetes", lines=[])
 
             if isinstance(logs, bytes):
@@ -177,10 +207,31 @@ class KubernetesService(KubernetesProvider):
                     field_selector=f"involvedObject.name={pod}",
                 )
             except ApiException as exc:
-                logger.warning("kubernetes_failed_to_collect_events: %s", exc.reason)
+                span.record_exception(exc)
+                span.set_status(
+                    trace.Status(
+                        trace.StatusCode.ERROR,
+                        f"Kubernetes events API error: {exc.status}",
+                    )
+                )
+                logger.warning(
+                    "kubernetes_failed_to_collect_events",
+                    reason=exc.reason,
+                    status=exc.status,
+                )
+
                 return []
             except Exception as exc:  # noqa: BLE001
-                logger.warning("kubernetes_failed_to_collect_events: %s", exc)
+                span.record_exception(exc)
+                span.set_status(trace.Status(trace.StatusCode.ERROR, str(exc)))
+
+                logger.warning(
+                    "kubernetes_failed_to_collect_events",
+                    namespace=namespace,
+                    pod=pod,
+                    reason=str(exc),
+                )
+
                 return []
 
             if events is None:

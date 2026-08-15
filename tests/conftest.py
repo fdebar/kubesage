@@ -8,7 +8,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
 )
 
 from kubesage.ai.providers import openai_compatible
-from kubesage.services import loki_service
+from kubesage.services import kubernetes_service, loki_service
 
 
 @pytest.fixture
@@ -25,6 +25,9 @@ def span_exporter(
 
     loki_tracer = provider.get_tracer(loki_service.__name__)
     monkeypatch.setattr(loki_service, "tracer", loki_tracer)
+
+    kubernetes_tracer = provider.get_tracer(kubernetes_service.__name__)
+    monkeypatch.setattr(kubernetes_service, "tracer", kubernetes_tracer)
 
     yield exporter
 
