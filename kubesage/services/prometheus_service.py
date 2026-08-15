@@ -62,24 +62,45 @@ class PrometheusService:
             response.raise_for_status()
             payload = response.json()
             if payload.get("status") != "success":
-                logger.warning("prometheus_query_failed", response=payload)
+                logger.warning(
+                    "prometheus_query_failed",
+                    promql=promql,
+                    response=payload,
+                )
                 return []
 
             return payload["data"]["result"]  # type: ignore
+
         except requests.exceptions.ConnectionError:
             logger.warning("prometheus_connection_error", promql=promql)
+
         except requests.exceptions.Timeout:
             logger.warning("prometheus_query_failed_timeout", promql=promql)
+
         except requests.exceptions.HTTPError as exc:
             logger.error(
                 "prometheus_query_failed_http_error",
+                promql=promql,
                 code=response.status_code,
-                reason=exc,
+                reason=str(exc),
             )
-        except requests.exceptions.RequestException as exc:
-            logger.error("prometheus_query_request_exception", exc=exc)
 
-        PROMETHEUS_DURATION.observe(time.perf_counter() - start)
+        except requests.exceptions.RequestException as exc:
+            logger.error(
+                "prometheus_query_request_exception",
+                promql=promql,
+                error=str(exc),
+            )
+
+        except (KeyError, TypeError, ValueError) as exc:
+            logger.error(
+                "prometheus_invalid_response",
+                promql=promql,
+                error=str(exc),
+            )
+
+        finally:
+            PROMETHEUS_DURATION.observe(time.perf_counter() - start)
 
         return []
 
@@ -89,12 +110,12 @@ class PrometheusService:
             span.set_attribute("k8s.pod.name", pod)
 
             logger.info(
-                "prometheus_starting_collecting_data", namespace=namespace, pod=pod
+                "prometheus_starting_collecting_data",
+                namespace=namespace,
+                pod=pod,
             )
 
             raw = self.collect_raw_metrics(namespace, pod)
-            if raw is None:
-                return PrometheusResourceUsage()
 
             return PrometheusResourceUsage(
                 cpu=self._metric_from_result("cpu", "cores/s", raw.cpu),
@@ -147,7 +168,7 @@ class PrometheusService:
             ),
         }
 
-        results = {}
+        results: dict[str, list] = {}
         parent_context = context.get_current()
         with ThreadPoolExecutor(max_workers=5) as executor:
             futures = {
@@ -178,19 +199,17 @@ class PrometheusService:
         promql: str,
         parent_context: context.Context,
     ) -> list:
-        with tracer.start_as_current_span(f"prometheus.query.{name}") as span:
-            token = context.attach(parent_context)
+        token = context.attach(parent_context)
 
-            try:
-                with tracer.start_as_current_span(f"prometheus.query.{name}") as span:
-                    result = self.query(promql)
+        try:
+            with tracer.start_as_current_span(f"prometheus.query.{name}") as span:
+                result = self.query(promql)
+                span.set_attribute("prometheus.query.name", name)
+                span.set_attribute("prometheus.query.result_count", len(result))
 
-                    span.set_attribute("prometheus.query.name", name)
-                    span.set_attribute("prometheus.query.result_count", len(result))
-
-                    return result
-            finally:
-                context.detach(token)
+                return result
+        finally:
+            context.detach(token)
 
     def _request(self, path: str, **kwargs: Any) -> Response:
         return self.session.get(
