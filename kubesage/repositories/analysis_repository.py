@@ -1,6 +1,8 @@
 from uuid import UUID
 
+from opentelemetry import trace
 from sqlalchemy import func, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from kubesage.database.models.analysis import AnalysisModel
@@ -10,15 +12,27 @@ from kubesage.mappers.analysis_summary_mapper import AnalysisSummaryMapper
 from kubesage.models.analysis import Analysis
 from kubesage.models.analysis_summary import AnalysisSummary
 
+tracer = trace.get_tracer(__name__)
+
 
 class AnalysisRepository:
     def __init__(self, session: Session) -> None:
         self.session = session
 
     def save(self, analysis: Analysis) -> None:
-        model = AnalysisMapper.to_model(analysis)
-        self.session.add(model)
-        self.session.commit()
+        with tracer.start_as_current_span("database.save_analysis") as span:
+            try:
+                span.set_attribute("analysis.findings.count", len(analysis.findings))
+                span.set_attribute("analysis.has_report", analysis.report is not None)
+
+                model = AnalysisMapper.to_model(analysis)
+                self.session.add(model)
+                self.session.commit()
+
+            except SQLAlchemyError as exc:
+                self.session.rollback()
+                span.record_exception(exc)
+                raise
 
     def get(self, analysis_id: UUID) -> Analysis | None:
         statement = select(AnalysisModel).where(AnalysisModel.id == str(analysis_id))
