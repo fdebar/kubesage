@@ -34,6 +34,7 @@ class MetricsService(MetricsProvider):
                     pod=pod,
                 )
                 return None
+
             try:
                 logger.info(
                     "kubernetes_metrics_start_collect",
@@ -43,9 +44,9 @@ class MetricsService(MetricsProvider):
 
                 with tracer.start_as_current_span(
                     "metrics.k8s.get_pod_metrics"
-                ) as span:
-                    span.set_attribute("k8s.namespace", namespace)
-                    span.set_attribute("k8s.pod.name", pod)
+                ) as metrics_span:
+                    metrics_span.set_attribute("k8s.namespace", namespace)
+                    metrics_span.set_attribute("k8s.pod.name", pod)
 
                     metrics = self.api.get_namespaced_custom_object(
                         group="metrics.k8s.io",
@@ -56,6 +57,9 @@ class MetricsService(MetricsProvider):
                     )
 
             except ApiException as exc:
+                span.record_exception(exc)
+                span.set_status(trace.Status(trace.StatusCode.ERROR, str(exc)))
+
                 if exc.status in (404, 503):
                     self._available = False
 
@@ -68,7 +72,9 @@ class MetricsService(MetricsProvider):
                 )
                 return None
 
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
+                span.record_exception(exc)
+                span.set_status(trace.Status(trace.StatusCode.ERROR, str(exc)))
                 logger.warning(
                     "kubernetes_metrics_collection_failed",
                     namespace=namespace,
@@ -77,8 +83,15 @@ class MetricsService(MetricsProvider):
                 )
                 return None
 
+            if not isinstance(metrics, dict):
+                logger.warning(
+                    "kubernetes_metrics_invalid_response", namespace=namespace, pod=pod
+                )
+                return None
+
             result = PodMetrics()
-            for container in metrics["containers"]:
+
+            for container in metrics.get("containers", []):
                 usage = container.get("usage", {})
                 result.containers.append(
                     ContainerMetrics(

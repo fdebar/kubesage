@@ -68,9 +68,7 @@ class LokiService(LogProvider):
                 span.set_status(Status(StatusCode.ERROR, "Loki returned HTTP error"))
 
                 logger.error(
-                    "Loki returned HTTP error status %s: %s",
-                    response.status_code,
-                    exc,
+                    "loki_http_error", status=response.status_code, error=str(exc)
                 )
                 return {}
 
