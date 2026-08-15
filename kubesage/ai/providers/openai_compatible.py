@@ -2,6 +2,7 @@ import time
 
 import structlog
 from openai import APIConnectionError, APIStatusError, Client
+from opentelemetry import trace
 
 from kubesage.models.ai_report import AIReport
 from kubesage.observability.metrics import (
@@ -11,6 +12,7 @@ from kubesage.observability.metrics import (
 )
 
 logger = structlog.get_logger()
+tracer = trace.get_tracer(__name__)
 
 
 class OpenAICompatibleProvider:
@@ -19,33 +21,40 @@ class OpenAICompatibleProvider:
         self._model = model
 
     def analyze(self, prompt: str) -> AIReport:
-        logger.info("ollama_start", model=self._model)
+        logger.info("llm_start", model=self._model)
 
-        try:
-            start = time.perf_counter()
-            response = self._client.chat.completions.parse(
-                model=self._model,
-                messages=[
-                    {"role": "system", "content": "You are an expert Kubernetes SRE."},
-                    {"role": "user", "content": prompt},
-                ],
-                response_format=AIReport,
-            )
-            LLM_DURATION.observe(time.perf_counter() - start)
-            LLM_REQUESTS.labels(status="success").inc()
-            if response.usage:
-                LLM_TOKENS.observe(response.usage.total_tokens)
+        with tracer.start_as_current_span("llm.generate_report") as span:
+            span.set_attribute("llm.model", self._model)
 
-        except Exception as exc:  # noqa: BLE001
-            logger.error("ollama_response_failed", reason=repr(exc))
-            LLM_REQUESTS.labels(status="error").inc()
+            try:
+                start = time.perf_counter()
+                response = self._client.chat.completions.parse(
+                    model=self._model,
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": "You are an expert Kubernetes SRE.",
+                        },
+                        {"role": "user", "content": prompt},
+                    ],
+                    response_format=AIReport,
+                )
+                LLM_DURATION.observe(time.perf_counter() - start)
+                LLM_REQUESTS.labels(status="success").inc()
+                if response.usage:
+                    LLM_TOKENS.observe(response.usage.total_tokens)
+                    span.set_attribute("llm.tokens.total", response.usage.total_tokens)
 
-            return AIReport(summary="AI analysis could not be completed.")
-        logger.debug("ollama_response_raw", response=response)
+            except Exception as exc:  # noqa: BLE001
+                logger.error("llm_response_failed", reason=repr(exc))
+                LLM_REQUESTS.labels(status="error").inc()
+
+                return AIReport(summary="AI analysis could not be completed.")
+            logger.debug("llm_response_raw", response=response)
 
         report: AIReport | None = response.choices[0].message.parsed
         if report is None:
-            logger.error("ollama_response_empty")
+            logger.error("llm_response_empty")
 
             return AIReport(summary="AI analysis could not be completed.")
 
