@@ -29,13 +29,24 @@ class AnalysisService:
             span.set_attribute("k8s.namespace", namespace)
             span.set_attribute("k8s.pod.name", pod)
 
-            analysis = self.incident_service.analyze(namespace, pod, trigger)
-            self.repository.save(analysis)
+            try:
+                analysis = self.incident_service.analyze(namespace, pod, trigger)
+                self.repository.save(analysis)
 
-        ANALYSIS_DURATION.observe(time.perf_counter() - start)
-        ANALYSIS_TOTAL.labels(status="success").inc()
+                ANALYSIS_TOTAL.labels(status="success").inc()
 
-        return analysis
+                return analysis
+
+            except Exception as exc:  # noqa: BLE001
+                span.record_exception(exc)
+                span.set_status(trace.Status(trace.StatusCode.ERROR, str(exc)))
+
+                ANALYSIS_TOTAL.labels(status="error").inc()
+
+                raise
+
+            finally:
+                ANALYSIS_DURATION.observe(time.perf_counter() - start)
 
     def get(self, analysis_id: UUID) -> Analysis | None:
         return self.repository.get(analysis_id)
