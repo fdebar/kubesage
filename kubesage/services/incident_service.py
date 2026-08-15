@@ -51,8 +51,10 @@ class IncidentService:
         start = time.perf_counter()
 
         with tracer.start_as_current_span("analysis.incident.build") as span:
-            span.set_attribute("analysis.namespace", namespace)
-            span.set_attribute("analysis.pod", pod)
+            span.set_attribute("k8s.namespace", namespace)
+            span.set_attribute("k8s.pod.name", pod)
+            span.set_attribute("analysis.trigger", trigger.value)
+
             self.builder = IncidentBuilder(
                 kubernetes_provider=self.kubernetes,
                 prometheus_provider=self.prometheus,
@@ -62,6 +64,9 @@ class IncidentService:
             )
 
             incident = self.builder.collect(namespace, pod)
+            span.set_attribute("k8s.containers.count", len(incident.containers))
+            span.set_attribute("k8s.events.count", len(incident.events))
+
             if incident.containers == [] and incident.events == []:
                 logger.error("analysis.incident.build.no_kubernetes_data")
                 return Analysis(
@@ -77,11 +82,13 @@ class IncidentService:
                 )
 
         with tracer.start_as_current_span("analysis.rules.engine.analyze") as span:
-            span.set_attribute("analysis.rules.namespace", namespace)
-            span.set_attribute("analysis.rules.pod", pod)
+            span.set_attribute("k8s.namespace", namespace)
+            span.set_attribute("k8s.pod.name", pod)
+            span.set_attribute("analysis.trigger", trigger.value)
+
             findings = self.engine.analyze(incident)
 
-            span.set_attribute("analysis.rules.count", len(findings))
+            span.set_attribute("analysis.findings.count", len(findings))
 
         if not findings:
             logger.info("analysis.skipped", namespace=namespace, pod=pod)
@@ -95,18 +102,24 @@ class IncidentService:
             )
 
         with tracer.start_as_current_span("analysis.ai_context.build") as span:
-            span.set_attribute("analysis.ai_context.namespace", namespace)
-            span.set_attribute("analysis.ai_context.pod", pod)
+            span.set_attribute("k8s.namespace", namespace)
+            span.set_attribute("k8s.pod.name", pod)
+            span.set_attribute("analysis.trigger", trigger.value)
+
             ctxbuilder = self.ai_context_builder.build(incident, findings)
 
         with tracer.start_as_current_span("analysis.ai_prompt.build") as span:
-            span.set_attribute("analysis.ai_prompt.namespace", namespace)
-            span.set_attribute("analysis.ai_prompt.pod", pod)
+            span.set_attribute("k8s.namespace", namespace)
+            span.set_attribute("k8s.pod.name", pod)
+            span.set_attribute("analysis.trigger", trigger.value)
+
             prompt = self.prompt_builder.build(ctxbuilder)
 
         with tracer.start_as_current_span("analysis.ai.analyze") as span:
-            span.set_attribute("analysis.ai.namespace", namespace)
-            span.set_attribute("analysis.ai.pod", pod)
+            span.set_attribute("k8s.namespace", namespace)
+            span.set_attribute("k8s.pod.name", pod)
+            span.set_attribute("analysis.trigger", trigger.value)
+
             report = self.ai.analyze(prompt)
 
         logger.info("analysis.completed", namespace=namespace, pod=pod, trigger=trigger)
