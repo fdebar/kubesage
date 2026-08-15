@@ -55,7 +55,7 @@ class IncidentService:
             span.set_attribute("k8s.pod.name", pod)
             span.set_attribute("analysis.trigger", trigger.value)
 
-            self.builder = IncidentBuilder(
+            builder = IncidentBuilder(
                 kubernetes_provider=self.kubernetes,
                 prometheus_provider=self.prometheus,
                 log_provider=self.loki,
@@ -63,19 +63,31 @@ class IncidentService:
                 container_snapshot_builder=self.container_snapshot_builder,
             )
 
-            incident = self.builder.collect(namespace, pod)
+            incident = builder.collect(namespace, pod)
             span.set_attribute("k8s.containers.count", len(incident.containers))
             span.set_attribute("k8s.events.count", len(incident.events))
 
             loki_logs_count = len(incident.loki_logs.lines) if incident.loki_logs else 0
             span.set_attribute("loki.logs.count", loki_logs_count)
 
-            if incident.containers == [] and incident.events == []:
-                logger.error("analysis.incident.build.no_kubernetes_data")
+            if not incident.containers and not incident.events:
+                logger.error(
+                    "analysis.incident.build.no_kubernetes_data",
+                    namespace=namespace,
+                    pod=pod,
+                )
+
                 return Analysis(
                     report=AIReport(
-                        summary="AI analysis could not be completed due to unavailable Kubernetes data.",  # noqa
-                        root_cause="Kubernetes data collection failed. This could be due to authentication issues, network problems, or the pod not existing.",  # noqa
+                        summary=(
+                            "AI analysis could not be completed due to "
+                            "unavailable Kubernetes data."
+                        ),
+                        root_cause=(
+                            "Kubernetes data collection failed. This could "
+                            "be due to authentication issues, network "
+                            "problems, or the pod not existing."
+                        ),
                         evidence=[],
                     ),
                     incident=incident,
@@ -109,14 +121,14 @@ class IncidentService:
             span.set_attribute("k8s.pod.name", pod)
             span.set_attribute("analysis.trigger", trigger.value)
 
-            ctxbuilder = self.ai_context_builder.build(incident, findings)
+            context = self.ai_context_builder.build(incident, findings)
 
         with tracer.start_as_current_span("analysis.ai_prompt.build") as span:
             span.set_attribute("k8s.namespace", namespace)
             span.set_attribute("k8s.pod.name", pod)
             span.set_attribute("analysis.trigger", trigger.value)
 
-            prompt = self.prompt_builder.build(ctxbuilder)
+            prompt = self.prompt_builder.build(context)
 
         with tracer.start_as_current_span("analysis.ai.analyze") as span:
             span.set_attribute("k8s.namespace", namespace)
@@ -127,12 +139,10 @@ class IncidentService:
 
         logger.info("analysis.completed", namespace=namespace, pod=pod, trigger=trigger)
 
-        analysis = Analysis(
+        return Analysis(
             incident=incident,
             findings=findings,
             report=report,
             duration_ms=int((time.perf_counter() - start) * 1000),
             trigger=trigger,
         )
-
-        return analysis
