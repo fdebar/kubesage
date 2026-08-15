@@ -25,9 +25,9 @@ class OpenAICompatibleProvider:
 
         with tracer.start_as_current_span("llm.generate_report") as span:
             span.set_attribute("llm.model", self._model)
+            start = time.perf_counter()
 
             try:
-                start = time.perf_counter()
                 response = self._client.chat.completions.parse(
                     model=self._model,
                     messages=[
@@ -39,18 +39,31 @@ class OpenAICompatibleProvider:
                     ],
                     response_format=AIReport,
                 )
-                LLM_DURATION.observe(time.perf_counter() - start)
+
                 LLM_REQUESTS.labels(status="success").inc()
+
                 if response.usage:
                     LLM_TOKENS.observe(response.usage.total_tokens)
+
+                    span.set_attribute("llm.tokens.input", response.usage.prompt_tokens)
+                    span.set_attribute(
+                        "llm.tokens.output", response.usage.completion_tokens
+                    )
                     span.set_attribute("llm.tokens.total", response.usage.total_tokens)
 
             except Exception as exc:  # noqa: BLE001
+                span.record_exception(exc)
+                span.set_status(trace.Status(trace.StatusCode.ERROR, str(exc)))
+
                 logger.error("llm_response_failed", reason=repr(exc))
                 LLM_REQUESTS.labels(status="error").inc()
 
                 return AIReport(summary="AI analysis could not be completed.")
-            logger.debug("llm_response_raw", response=response)
+
+            finally:
+                LLM_DURATION.observe(time.perf_counter() - start)
+
+        logger.debug("llm_response_raw", response=response)
 
         report: AIReport | None = response.choices[0].message.parsed
         if report is None:
