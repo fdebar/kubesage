@@ -67,6 +67,9 @@ class IncidentService:
             span.set_attribute("k8s.containers.count", len(incident.containers))
             span.set_attribute("k8s.events.count", len(incident.events))
 
+            loki_logs_count = len(incident.loki_logs.lines) if incident.loki_logs else 0
+            span.set_attribute("loki.logs.count", loki_logs_count)
+
             if incident.containers == [] and incident.events == []:
                 logger.error("analysis.incident.build.no_kubernetes_data")
                 return Analysis(
