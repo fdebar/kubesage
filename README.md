@@ -185,50 +185,66 @@ The deployment configuration is managed declaratively through GitOps.
 
 A typical KubeSage analysis follows this workflow:
 
-Incident
-   │
-   ▼
-Collect Kubernetes Context
-   │
-   ├── Pod information
-   ├── Events
-   └── Logs
-   │
-   ▼
-Collect Observability Data
-   │
-   ├── Prometheus metrics
-   ├── Loki logs
-   └── Tempo traces
-   │
-   ▼
-Diagnostic Engine
-   │
-   ├── Rule evaluation
-   └── Finding generation
-   │
-   ▼
-Finding Correlation
-   │
-   ├── Related findings
-   ├── Evidence
-   └── Confidence
-   │
-   ▼
-AI Analysis
-   │
-   ├── Context construction
-   ├── Prompt generation
-   └── LLM analysis
-   │
-   ▼
-Incident Report
-   │
-   ├── Summary
-   ├── Severity
-   ├── Findings
-   ├── Root cause hypotheses
-   └── Recommendations
+```text
+┌─────────────────────────┐
+│   Kubernetes Incident   │
+└────────────┬────────────┘
+             │
+             ▼
+┌─────────────────────────┐
+│ Collect Kubernetes Data │
+├─────────────────────────┤
+│ • Pod information       │
+│ • Events                │
+│ • Application logs      │
+└────────────┬────────────┘
+             │
+             ▼
+┌─────────────────────────────┐
+│ Collect Observability Data  │
+├─────────────────────────────┤
+│ • Prometheus metrics        │
+│ • Loki logs                 │
+│ • Tempo traces              │
+└────────────┬────────────────┘
+             │
+             ▼
+┌─────────────────────────┐
+│   Diagnostic Engine     │
+├─────────────────────────┤
+│ • Rule evaluation       │
+│ • Finding generation    │
+└────────────┬────────────┘
+             │
+             ▼
+┌─────────────────────────┐
+│  Finding Correlation    │
+├─────────────────────────┤
+│ • Related findings      │
+│ • Evidence              │
+│ • Confidence            │
+└────────────┬────────────┘
+             │
+             ▼
+┌─────────────────────────┐
+│      AI Analysis        │
+├─────────────────────────┤
+│ • Context construction  │
+│ • Prompt generation     │
+│ • LLM analysis          │
+└────────────┬────────────┘
+             │
+             ▼
+┌─────────────────────────┐
+│    Incident Report      │
+├─────────────────────────┤
+│ • Summary               │
+│ • Severity              │
+│ • Findings              │
+│ • Root cause hypotheses │
+│ • Recommendations       │
+└─────────────────────────┘
+```
 
 Each analysis is also instrumented with OpenTelemetry spans, making the internal execution flow visible through distributed tracing.
 
