@@ -33,19 +33,24 @@ Observe • Explain • Recommend • Act
 
 </h4>
 
-KubeSage is an intelligent Kubernetes troubleshooting assistant designed to accelerate incident investigation by combining:
+KubeSage is an AI-assisted Kubernetes incident analysis platform designed to help engineers understand, investigate and troubleshoot production incidents faster.
 
-* Kubernetes data collection
-* Prometheus metrics
-* Rule-based diagnostics
-* Structured findings
-* Large Language Models (LLMs)
+Instead of relying on a single signal such as application logs, KubeSage combines multiple sources of operational data:
 
-Instead of simply summarizing logs, KubeSage correlates operational signals to identify probable root causes and generate actionable recommendations.
+Kubernetes resources and events
+Application logs
+Prometheus metrics
+Distributed traces
+Rule-based diagnostics
+Finding correlation
+OpenTelemetry telemetry
+Large Language Models (LLMs)
+
+KubeSage transforms these signals into a structured incident analysis containing detected findings, correlations, severity, explanations and actionable recommendations.
 
 The goal is simple:
 
-**Reduce the time required to understand and troubleshoot Kubernetes incidents.**
+> **Reduce the time required to understand and troubleshoot Kubernetes incidents.**
 
 # 🚀 Quick Start
 
@@ -67,20 +72,57 @@ kubesage analyze --namespace default --pod nginx
 
 ---
 
-# Why KubeSage?
+# ✨ What is KubeSage?
 
-Modern Kubernetes troubleshooting often requires switching between multiple tools:
+Kubernetes incidents rarely have a single obvious cause.
 
-* `kubectl`
-* Application logs
-* Kubernetes events
-* Prometheus dashboards
-* Resource metrics
-* Monitoring tools
+A failing application may involve:
 
-KubeSage automates this workflow by collecting, correlating and explaining operational data in a single structured incident report.
+* a container running out of memory;
+* repeated pod restarts;
+* resource contention;
+* failing health checks;
+* abnormal application logs;
+* degraded dependencies;
+* unusual resource consumption;
+* or several of these conditions at the same time.
 
-The AI component does not replace deterministic diagnostics. It enhances them by providing context-aware explanations and recommendations.
+Investigating such incidents traditionally requires switching between kubectl, logs, metrics, traces and monitoring dashboards.
+
+KubeSage brings these signals together into a single analysis workflow.
+
+                 Kubernetes
+                     │
+        ┌────────────┼────────────┐
+        │            │            │
+       Logs        Events       Resources
+        │            │            │
+        └────────────┼────────────┘
+                     │
+               ┌─────▼─────┐
+               │  KubeSage │
+               │  Analysis │
+               └─────┬─────┘
+                     │
+        ┌────────────┼────────────┐
+        │            │            │
+    Prometheus      Loki        Tempo
+        │            │            │
+        └────────────┼────────────┘
+                     │
+             Diagnostic Engine
+                     │
+             Findings Correlation
+                     │
+                AI Analysis
+                     │
+                     ▼
+            Incident Explanation
+            + Recommendations
+
+The AI layer is not intended to replace deterministic diagnostics.
+
+KubeSage first collects and analyzes operational evidence using deterministic rules and correlations, then provides this context to an LLM for higher-level explanation and recommendations.
 
 ---
 
@@ -88,136 +130,359 @@ The AI component does not replace deterministic diagnostics. It enhances them by
 
 <img src="docs/architecture.png" alt="KubeSage Architecture" />
 
+KubeSage is composed of several main components:
+
+## **Backend**
+
+A Python/FastAPI service responsible for:
+
+* Kubernetes data collection
+* Prometheus queries
+* Loki queries
+* incident construction
+* diagnostic rules
+* finding correlation
+* AI analysis
+* analysis persistence
+* API endpoints
+
+## **Frontend**
+
+A React web application providing:
+
+* incident overview
+* cluster status
+* finding summaries
+* analysis details
+* analysis history
+* operational metrics
+* AI-generated explanations
+
+## **Observability**
+
+KubeSage integrates with:
+
+* Prometheus
+* Loki
+* Tempo
+* Grafana
+* Grafana Alloy
+* OpenTelemetry
+
+This allows both the Kubernetes environment and KubeSage itself to be observed.
+
+## **GitOps**
+
+KubeSage can be deployed using:
+
+* Helm
+* Argo CD
+* Kubernetes
+
+The deployment configuration is managed declaratively through GitOps.
+
+# 🔍 Analysis Workflow
+
+A typical KubeSage analysis follows this workflow:
+
+Incident
+   │
+   ▼
+Collect Kubernetes Context
+   │
+   ├── Pod information
+   ├── Events
+   └── Logs
+   │
+   ▼
+Collect Observability Data
+   │
+   ├── Prometheus metrics
+   ├── Loki logs
+   └── Tempo traces
+   │
+   ▼
+Diagnostic Engine
+   │
+   ├── Rule evaluation
+   └── Finding generation
+   │
+   ▼
+Finding Correlation
+   │
+   ├── Related findings
+   ├── Evidence
+   └── Confidence
+   │
+   ▼
+AI Analysis
+   │
+   ├── Context construction
+   ├── Prompt generation
+   └── LLM analysis
+   │
+   ▼
+Incident Report
+   │
+   ├── Summary
+   ├── Severity
+   ├── Findings
+   ├── Root cause hypotheses
+   └── Recommendations
+
+Each analysis is also instrumented with OpenTelemetry spans, making the internal execution flow visible through distributed tracing.
+
 ---
 
 # Features
 
 ## Kubernetes Analysis
 
-* 🔍 Pod information collection
-* 📜 Application log analysis
-* 📅 Kubernetes events retrieval
-* 📊 Resource usage collection through Metrics Server
-
-## Observability
-
-* 📈 Prometheus metrics integration
-* 🔎 Metrics correlation with incidents
-* 📝 Structured operational logging
-* 🆔 Request ID tracing
+* 🔍 Kubernetes resource inspection
+* 📜 Pod log collection
+* 📅 Kubernetes event retrieval
+* 📊 Resource usage analysis
+* 🔄 Incident context aggregation
 
 ## Diagnostic Engine
 
-* 🧠 Rule-based incident detection
-* 🔌 Plugin architecture for custom diagnostic rules
+* 🧠 Rule-based diagnostics
+* 🔌 Discoverable diagnostic rules
 * 📋 Structured findings
-* 🎯 Confidence scoring
+* 🎯 Severity and confidence
+* 🔗 Finding correlation
+* 🧩 Correlation rules for related operational symptoms
+
+The diagnostic engine is designed to provide deterministic evidence before involving the AI layer.
+
+## Observability
+
+* 📈 Prometheus integration
+* 📝 Loki integration
+* 🔎 Tempo distributed tracing
+* 📡 Grafana Alloy integration
+* 🧭 OpenTelemetry instrumentation
+* 🔗 Trace correlation
+* 📊 KubeSage operational metrics
+* 🪵 Structured logging
+
+KubeSage instruments important parts of the analysis pipeline, including Kubernetes collection, observability queries, diagnostic processing, correlation and AI generation.
 
 ## AI Analysis
 
-* 🧩 Context aggregation
+* 🤖 OpenAI-compatible LLM providers
+* 🧩 Structured incident context
 * 📝 Prompt generation
-* 🤖 LLM-powered incident explanation
-* 🛠 Actionable kubectl recommendations
+* 🧠 Context-aware incident explanation
+* 🎯 Root-cause hypotheses
+* 🛠 Actionable recommendations
+
+The AI operates on structured evidence collected by KubeSage rather than directly querying the Kubernetes cluster.
+
+## Web Dashboard
+
+The React frontend provides a centralized interface for:
+
+* 📊 Cluster overview
+* 🚨 Incident analysis
+* 🔎 Finding details
+* 📚 Analysis history
+* 📈 Operational metrics
+* 🤖 AI-generated reports
+
+The frontend is designed to provide a dedicated incident-analysis experience rather than replacing the underlying observability stack. 
 
 ## Developer Experience
 
-* 💻 CLI interface
+* 💻 CLI
 * 🌐 REST API with FastAPI
-* 📦 Helm Chart
-* 🚀 One-command Kubernetes deployment
-* 🔄 Environment-specific configuration
-* ✅ Automated tests
-* 🔍 Static analysis
-* 🧹 Code formatting
+* ⚛️ React frontend
+* 📦 Helm deployment
+* 🔄 GitOps with Argo CD
+* 🐳 Docker
+* 🧪 Automated tests
+* 🔍 Ruff linting
+* 🧠 MyPy type checking
+* 📐 OpenTelemetry instrumentation
+* 🚀 GitHub Actions CI/CD
+
 
 ---
 
-# Project Structure
-
-```
-kubesage/
-
-├── analyzers/
-│   ├── diagnostic_engine.py
-│   └── rules/
-│
-├── builders/
-│   ├── context_builder.py
-│   └── prompt_builder.py
-│
-├── models/
-│   ├── incident.py
-│   ├── finding.py
-│   ├── ai_context.py
-│   ├── ai_report.py
-│   └── prometheus.py
-│
-├── services/
-│   ├── ai_service.py
-│   ├── incident_service.py
-│   ├── kubernetes_service.py
-│   ├── metrics_service.py
-│   └── prometheus_service.py
-│
-├── api/
-│   └── routes/
-│
-├── tests/
-│
-├── config.py
-├── exceptions.py
-├── logging_config.py
-├── main.py
-└── README.md
-```
-
----
-
-# Technology Stack
+# 🧰 Technology Stack
 
 ## Backend
 
 * Python 3.14+
 * FastAPI
 * Kubernetes Python Client
-* Requests
+* Pydantic
 * Pytest
+* OpenTelemetry
+
+## Frontend
+
+* React
+* TypeScript
+* Modern React hooks and components
+* REST API integration
 
 ## Observability
 
-* Grafana Alloy
 * Prometheus
 * Loki
 * Tempo
+* Grafana
+* Grafana Alloy
+* OpenTelemetry
 * Kubernetes Metrics Server
-* Structured logging
 
 ## AI
 
-* OpenAI API
-* Ollama local development environment
+* OpenAI-compatible APIs
+* OpenAI
+* Ollama for local development
 * LLM prompt engineering
+
+## Infrastructure
+
+* Kubernetes
+* Helm
+* Argo CD
+* Terraform
 
 ## Development
 
+* Docker
+* GitHub Actions
 * Ruff
 * MyPy
-* Makefile automation
+* Pytest
+* Make
 
 ---
 
-# Prerequisites
+# 🔭 Observability Architecture
 
-Before installing KubeSage, ensure the following components are available.
+KubeSage uses an observability stack based on the Grafana ecosystem and OpenTelemetry.
 
-## Kubernetes
+                    Kubernetes
+                         │
+                         ▼
+                   Grafana Alloy
+                         │
+              ┌──────────┼──────────┐
+              │          │          │
+              ▼          ▼          ▼
+           Prometheus   Loki       Tempo
+              │          │          │
+              └──────────┼──────────┘
+                         │
+                         ▼
+                     KubeSage
+                         │
+                         ▼
+                    React UI
+                         │
+                         ▼
+                      Grafana
+
+KubeSage itself is also instrumented using OpenTelemetry.
+
+Important operations generate spans such as:
+
+analysis.execute
+├── kubernetes.get_pod
+├── kubernetes.get_events
+├── kubernetes.get_logs
+├── prometheus.get_cpu_metrics
+├── prometheus.get_memory_metrics
+├── rules.crashloop
+├── rules.oomkilled
+├── findings.correlate
+├── prompt.build
+├── llm.generate_report
+└── database.save_analysis
+
+This makes it possible to investigate not only the Kubernetes incident itself, but also the execution of KubeSage's analysis pipeline.
+
+---
+
+# 📊 Metrics
+
+KubeSage exposes Prometheus metrics covering the application and analysis pipeline.
+
+Examples include:
+
+kubesage_http_requests_total
+kubesage_analysis_total
+kubesage_analysis_duration_seconds
+kubesage_kubernetes_duration_seconds
+kubesage_kubernetes_errors_total
+kubesage_llm_requests_total
+kubesage_llm_tokens
+kubesage_llm_duration_seconds
+kubesage_watcher_incidents_detected_total
+
+These metrics provide visibility into:
+
+* API traffic
+* analysis throughput
+* analysis duration
+* Kubernetes API interactions
+* Kubernetes collection errors
+* LLM requests
+* LLM token usage
+* LLM latency
+* automatically detected incidents
+
+---
+
+# 🧭 GitOps Deployment
+
+KubeSage supports Kubernetes deployment through Helm and Argo CD.
+
+The GitOps configuration contains the application and observability stack configuration.
+
+Git Repository
+      │
+      ▼
+    Argo CD
+      │
+      ▼
+   Kubernetes
+      │
+      ├── KubeSage Backend
+      ├── KubeSage Frontend
+      │
+      └── Observability
+          ├── Prometheus
+          ├── Loki
+          ├── Tempo
+          ├── Grafana
+          └── Alloy
+
+This approach allows infrastructure and application configuration to be version-controlled and deployed declaratively.
+
+---
+
+# ⚡ Quick Start
+
+## Prerequisites
+
+You will need:
 
 * Python 3.14+
-* Kubernetes 1.30+ cluster
-* `kubectl` configured and connected to the target cluster
-* Metrics Server installed
-* Prometheus installed
+* Kubernetes 1.30+
+* kubectl
+* Helm 3+
+* Docker
+* Metrics Server
+* Prometheus
+* Loki
+* Tempo
+* Grafana Alloy
+* OpenAI-compatible LLM provider (or implement your own provider)
 
 Verify your cluster:
 
@@ -226,69 +491,16 @@ kubectl cluster-info
 kubectl get nodes
 kubectl top nodes
 ```
+---
 
-## Observability stack
+# 💻 Local Development
 
-KubeSage relies on a standard observability stack.
-
-Required components:
-
-* Grafana Alloy
-* Prometheus
-* Loki
-* Tempo
-
-The recommended installation method is Helm.
-You can use [Grafana Cloud](https://grafana.com/products/cloud/) for a production deployment.
-
-## AI Provider
-
-KubeSage supports multiple AI backends.
-
-### OpenAI (recommended)
-
-Provide an API key:
+Clone the repository:
 
 ```bash
-AI_API_KEY=<your_api_key>
+git clone https://github.com/fdebar/KubeSage.git
+cd KubeSage
 ```
-
-### Ollama (local development)
-
-Install and start Ollama, then pull a compatible model:
-
-```bash
-ollama pull llama3
-```
-
-### Helm
-
-Helm is the recommended deployment method.
-
-Verify your installation:
-
-```bash
-helm version
-```
-
-### Install KubeSage
-
-Deploy KubeSage using Helm:
-
-helm upgrade --install kubesage \
-    deploy/kubesage \
-    --namespace kubesage \
-    --create-namespace \
-    -f deploy/kubesage/values.yaml
-
-Verify the deployment:
-
-```bash
-kubectl get pods -n kubesage
-kubectl get svc -n kubesage
-```
-
-### Local development
 
 Create a virtual environment:
 
@@ -297,137 +509,27 @@ python -m venv .venv
 source .venv/bin/activate
 ```
 
-Install dependencies:
+Install the project:
 
 ```bash
 pip install -e .
 ```
 
-Run the CLI:
-
-```bash
-kubesage analyze \
-    --namespace default \
-    --pod ai-demo-app
-````
-
-Or start the REST API:
+Run the backend:
 
 ```bash
 uvicorn kubesage.api.app:app --reload
 ```
 
----
+The API is then available locally.
 
-# Configuration
-
-Create a `.env` file:
-
-```env
-AI_URL=http://localhost:11434/v1
-AI_API_KEY=your_api_key
-AI_MODEL=qwen2.5-coder:14b
-
-PROMETHEUS_URL=http://localhost:9090
-PROMETHEUS_TIMEOUT=5
-
-KUBERNETES_NAMESPACE=default
-
-LOG_LEVEL=INFO
-```
-
----
-
-# Running
-
-## CLI
-
-Analyze a Kubernetes pod:
+Run the CLI:
 
 ```bash
-kubesage analyze --pod ai-demo-app
+kubesage analyze --namespace default -pod ai-demo-app
 ```
 
-Example:
-
-```
-Collecting Kubernetes data...
-Collecting Prometheus metrics...
-Running diagnostic rules...
-Generating AI analysis...
-
-Analysis completed.
-```
-
----
-
-## API
-
-Start the REST API:
-
-```bash
-uvicorn api.app:app --reload
-```
-
-Example request:
-
-```http
-POST /analyze
-```
-
-```json
-{
-  "namespace": "default",
-  "pod": "ai-demo-app"
-}
-```
-
-Example response:
-
-```json
-{
-  "summary": "Application cannot connect to Redis",
-  "severity": "critical",
-  "findings": [
-    {
-      "type": "connection_error",
-      "confidence": 0.92
-    }
-  ],
-  "kubectl_commands": [
-    "kubectl describe pod ai-demo-app"
-  ]
-}
-```
-
----
-
-# Observability
-
-KubeSage exposes operational information through:
-
-## Logs
-
-Structured logs include:
-
-* request_id
-* namespace
-* pod
-* execution status
-* errors
-
-## Metrics
-
-Prometheus metrics include:
-
-* API request duration
-* Analysis count
-* Error count
-* AI processing latency
-
----
-
-# Example Analysis
+Example Analysis
 
 ```bash
 $ kubesage analyze --namespace production --pod payment-api
@@ -455,29 +557,115 @@ Confidence: 94%
 
 ---
 
-# Development Commands
+# ⚙️ Configuration
 
-Using Makefile:
+KubeSage can be configured through environment variables.
+
+Example local configuration:
 
 ```bash
-make test
+AI_URL=http://localhost:11434/v1
+AI_API_KEY=your_api_key
+AI_MODEL=qwen2.5-coder:14b
 
-make lint
+PROMETHEUS_URL=http://localhost:9090
+PROMETHEUS_TIMEOUT=5
 
-make format
+LOKI_URL=http://localhost:3100
+TEMPO_URL=http://localhost:3200
 
-make check
+KUBERNETES_NAMESPACE=default
+LOG_LEVEL=INFO
+```
 
-make fix
+The exact configuration depends on the deployment environment and enabled integrations.
 
-make dev-run
+---
 
-make dev-stop
+# 🤖 AI Providers
+
+KubeSage uses an OpenAI-compatible interface so that different LLM backends can be used without changing the analysis pipeline.
+
+## OpenAI
+
+Configure an OpenAI API-compatible endpoint and API key.
+
+```bash
+AI_URL=https://api.openai.com/v1
+AI_API_KEY=<your_api_key>
+AI_MODEL=<your_model>
+```
+
+### Ollama
+
+For local development, Ollama can be used.
+
+Example:
+
+```bash
+ollama pull llama3
+```
+
+Then configure:
+
+```bash
+AI_URL=http://localhost:11434/v1
+AI_API_KEY=ollama
+AI_MODEL=llama3
 ```
 
 ---
 
-# Testing
+# 📦 Helm Deployment
+
+Install KubeSage with Helm:
+
+```bash
+helm upgrade --install kubesage \
+    deploy/kubesage \
+    --namespace kubesage \
+    --create-namespace \
+    -f deploy/kubesage/values.yaml
+```
+
+Verify the deployment:
+
+```bash
+kubectl get pods -n kubesage
+kubectl get svc -n kubesage
+```
+
+---
+
+# 🔄 GitOps Deployment
+
+For a GitOps deployment, use the Argo CD application definition provided by the repository.
+
+Once Argo CD is configured, changes committed to the GitOps configuration can be synchronized automatically with the Kubernetes cluster.
+
+This allows:
+
+* version-controlled infrastructure;
+* reproducible environments;
+* declarative deployments;
+* controlled application upgrades;
+* separation between application code and deployment configuration.
+
+For a GitOps deployment, use the Argo CD application definition provided by the repository.
+
+Once Argo CD is configured, changes committed to the GitOps configuration can be synchronized automatically with the Kubernetes cluster.
+
+This allows:
+
+* version-controlled infrastructure;
+* reproducible environments;
+* declarative deployments;
+* controlled application upgrades;
+* separation between application code and deployment configuration.
+
+---
+
+# 🧪 Testing
 
 Run tests:
 
@@ -493,7 +681,7 @@ python -m pytest
 
 ---
 
-# Code Quality
+# 🧹 Code Quality
 
 Format:
 
@@ -513,29 +701,128 @@ Type checking:
 mypy .
 ```
 
+Additional development commands are available through the Makefile:
+
+```bash
+make test
+make lint
+make format
+make check
+make fix
+make dev-run
+make dev-stop
+```
+
 ---
 
-# Roadmap
+# 🔎 Example Analysis
+
+A typical incident analysis can combine several operational signals:
+
+Incident: payment-api
+
+Severity: HIGH
+
+Findings:
+  • Container restarted repeatedly
+  • Memory usage reached container limit
+  • Kubernetes reported OOMKilled
+  • Memory consumption increased significantly before restart
+
+Correlations:
+  • High memory usage
+  • OOMKilled
+  • Pod restart loop
+
+Root Cause Hypothesis:
+  The application exceeded its configured memory limit.
+
+Recommendations:
+  • Review the application's memory consumption
+  • Check recent deployment changes
+  • Review container memory limits
+  • Investigate potential memory leaks
+
+The final report can then be explored through the KubeSage dashboard together with the underlying findings and analysis context.
+
+# 🖥️ Dashboard
+
+The KubeSage frontend provides a dedicated interface for incident analysis.
+
+The dashboard currently focuses on:
+
+* cluster overview;
+* incident summaries;
+* finding summaries;
+* analysis details;
+* historical analyses;
+* operational metrics;
+* AI-generated reports.
+
+The frontend complements Grafana rather than attempting to replace it.
+
+Grafana remains useful for low-level infrastructure and observability exploration, while KubeSage focuses on incident investigation and contextual analysis.
+
+---
+
+# 🛣️ Roadmap
+
+# 🗺️ Roadmap
 
 | Feature | Status |
 |----------|--------|
+| Kubernetes analysis | ✅ |
 | CLI | ✅ |
 | REST API | ✅ |
-| Helm Chart | ✅ |
-| Grafana Integration | ✅ |
-| Prometheus | ✅ |
-| Loki | ✅ |
-| Tempo | ✅ |
+| Diagnostic engine | ✅ |
+| Rule-based findings | ✅ |
+| Finding correlation | ✅ |
+| Prometheus integration | ✅ |
+| Loki integration | ✅ |
+| Tempo integration | ✅ |
 | Grafana Alloy | ✅ |
-| Docker Scout | ✅ |
+| OpenTelemetry instrumentation | ✅ |
+| Distributed analysis tracing | 🚧 |
+| React dashboard | ✅ |
+| Analysis history | ✅ |
+| Helm deployment | ✅ |
+| Docker | ✅ |
 | GitHub Actions | ✅ |
-| GitOps | 🚧 |
-| Auto-remediation | 🚧 |
-| FinOps | 🚧 |
+| GitOps with Argo CD | ✅ |
+| AI incident reports | ✅ |
+| Conversational AI | 🚧 |
+| Auto-remediation | 🔮 |
+| FinOps analysis | 🔮 |
 
 ---
 
-# Contributing
+# 🧑‍💻 Development Philosophy
+
+KubeSage follows a few core principles:
+
+## Deterministic first
+
+Operational evidence should be collected and evaluated using deterministic mechanisms whenever possible.
+
+## AI as an analysis layer
+
+LLMs should explain and contextualize evidence rather than invent it.
+
+## Observability by design
+
+The analysis engine itself should be observable through metrics, logs and distributed traces.
+
+## Kubernetes-native
+
+KubeSage is designed to run alongside the workloads it analyzes and integrates directly with the Kubernetes ecosystem.
+
+## GitOps-ready
+
+Deployment configuration should be declarative, version-controlled and reproducible.
+
+---
+
+# 🤝 Contributing
 
 Contributions are welcome.
 
@@ -548,18 +835,21 @@ Before submitting major changes:
 
 ---
 
-# License
+# 📄 License
 
 MIT License.
 
 ---
 
-# Author
+# 👨‍💻 Author
 
-Developed as an engineering project exploring the intersection of:
+KubeSage is developed as an engineering project exploring the intersection of:
 
 * Kubernetes
+* Cloud infrastructure
 * DevOps
+* Platform Engineering
 * Site Reliability Engineering
+* Observability
 * Artificial Intelligence
 * Large Language Models
