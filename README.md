@@ -407,6 +407,7 @@ KubeSage itself is also instrumented using OpenTelemetry.
 
 Important operations generate spans such as:
 
+```text
 analysis.execute
 ├── kubernetes.get_pod
 ├── kubernetes.get_events
@@ -419,6 +420,7 @@ analysis.execute
 ├── prompt.build
 ├── llm.generate_report
 └── database.save_analysis
+```
 
 This makes it possible to investigate not only the Kubernetes incident itself, but also the execution of KubeSage's analysis pipeline.
 
