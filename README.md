@@ -763,8 +763,6 @@ Grafana remains useful for low-level infrastructure and observability exploratio
 
 ---
 
-# 🛣️ Roadmap
-
 # 🗺️ Roadmap
 
 | Feature | Status |
