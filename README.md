@@ -432,6 +432,7 @@ KubeSage exposes Prometheus metrics covering the application and analysis pipeli
 
 Examples include:
 
+```text
 kubesage_http_requests_total
 kubesage_analysis_total
 kubesage_analysis_duration_seconds
@@ -441,6 +442,7 @@ kubesage_llm_requests_total
 kubesage_llm_tokens
 kubesage_llm_duration_seconds
 kubesage_watcher_incidents_detected_total
+````
 
 These metrics provide visibility into:
 
@@ -462,6 +464,7 @@ KubeSage supports Kubernetes deployment through Helm and Argo CD.
 
 The GitOps configuration contains the application and observability stack configuration.
 
+```text
 Git Repository
       │
       ▼
@@ -479,6 +482,7 @@ Git Repository
           ├── Tempo
           ├── Grafana
           └── Alloy
+```
 
 This approach allows infrastructure and application configuration to be version-controlled and deployed declaratively.
 
