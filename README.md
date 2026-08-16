@@ -551,32 +551,6 @@ Run the CLI:
 kubesage analyze --namespace default -pod ai-demo-app
 ```
 
-Example Analysis
-
-```bash
-$ kubesage analyze --namespace production --pod payment-api
-
-✔ Kubernetes context collected
-✔ Metrics retrieved
-✔ Logs analyzed
-✔ Traces correlated
-
-Severity: HIGH
-
-Root cause:
-OOMKilled after 12 restarts.
-
-AI explanation:
-The application exceeds its memory limit during startup.
-
-Recommendations:
-• Increase memory limit to 1Gi.
-• Investigate recent deployment changes.
-• Check JVM heap configuration.
-
-Confidence: 94%
-```
-
 ---
 
 # ⚙️ Configuration
@@ -741,6 +715,7 @@ make dev-stop
 
 A typical incident analysis can combine several operational signals:
 
+```text
 Incident: payment-api
 
 Severity: HIGH
@@ -764,6 +739,7 @@ Recommendations:
   • Check recent deployment changes
   • Review container memory limits
   • Investigate potential memory leaks
+```
 
 The final report can then be explored through the KubeSage dashboard together with the underlying findings and analysis context.
 
