@@ -10,7 +10,7 @@ class Settings:
 
     # Application configuration
     app_name: str = "KubeSage"
-    app_version: str = "0.11.0"
+    app_version: str = "1.0.0-beta"
 
     # Database configuration
     database_url: str = os.getenv("DATABASE_URL", "")
