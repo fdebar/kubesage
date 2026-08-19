@@ -2,7 +2,7 @@ import pytest
 
 from kubesage.mappers.finding_mapper import FindingMapper
 from kubesage.models.evidence import Evidence, EvidenceType
-from kubesage.models.finding import Finding, FindingKind, Severity
+from kubesage.models.finding import Finding, FindingKind, ResourceRef, Severity
 
 
 @pytest.fixture
@@ -13,6 +13,12 @@ def finding() -> Finding:
         severity=Severity.HIGH,
         title="Container restarting",
         description="Container restarted multiple times",
+        resource=ResourceRef(
+            api_version="v1",
+            kind="Pod",
+            namespace="production",
+            name="api-7d8f6c9b7d-xk92m",
+        ),
         recommendations=[
             "Check container logs",
             "Review resource limits",
@@ -43,6 +49,11 @@ def test_to_model_creates_complete_model(finding: Finding) -> None:
     assert model.title == "Container restarting"
     assert model.description == "Container restarted multiple times"
 
+    assert model.resource_api_version == "v1"
+    assert model.resource_kind == "Pod"
+    assert model.resource_namespace == "production"
+    assert model.resource_name == "api-7d8f6c9b7d-xk92m"
+
     assert len(model.evidences) == 1
     assert model.evidences[0].name == "restart_count"
     assert model.evidences[0].value == "10"
@@ -61,7 +72,13 @@ def test_to_model_without_optional_data() -> None:
         title="Pod pending",
         description="Pod cannot be scheduled",
     )
+
     model = FindingMapper.to_model(finding, analysis_id="123")
+
+    assert model.resource_api_version is None
+    assert model.resource_kind is None
+    assert model.resource_namespace is None
+    assert model.resource_name is None
 
     assert model.evidences == []
     assert model.recommendations == []
@@ -87,6 +104,12 @@ def test_to_domain_restores_finding(finding: Finding) -> None:
     assert domain.title == finding.title
     assert domain.description == finding.description
 
+    assert domain.resource is not None
+    assert domain.resource.api_version == "v1"
+    assert domain.resource.kind == "Pod"
+    assert domain.resource.namespace == "production"
+    assert domain.resource.name == "api-7d8f6c9b7d-xk92m"
+
     assert domain.recommendations == [
         "Check container logs",
         "Review resource limits",
@@ -102,6 +125,21 @@ def test_to_domain_restores_finding(finding: Finding) -> None:
     assert evidence.metadata == {"container": "api"}
 
 
+def test_to_domain_without_resource() -> None:
+    finding = Finding(
+        rule="pending",
+        kind=FindingKind.OBSERVATION,
+        severity=Severity.WARNING,
+        title="Pod pending",
+        description="Pod cannot be scheduled",
+    )
+
+    model = FindingMapper.to_model(finding, analysis_id="123")
+    domain = FindingMapper.to_domain(model)
+
+    assert domain.resource is None
+
+
 def test_to_domain_handles_evidence_without_type() -> None:
     model = FindingMapper.to_model(
         Finding(
@@ -111,11 +149,16 @@ def test_to_domain_handles_evidence_without_type() -> None:
             title="Memory issue",
             description="High memory",
             structured_evidences=[
-                Evidence(name="memory", value="512Mi", source=EvidenceType.METRIC)
+                Evidence(
+                    name="memory",
+                    value="512Mi",
+                    source=EvidenceType.METRIC,
+                )
             ],
         ),
         analysis_id="123",
     )
+
     domain = FindingMapper.to_domain(model)
 
     assert len(domain.structured_evidences) == 1
@@ -131,4 +174,8 @@ def test_finding_mapper_round_trip(finding: Finding) -> None:
     assert restored.severity == finding.severity
     assert restored.title == finding.title
     assert restored.description == finding.description
+
+    assert restored.resource is not None
+    assert restored.resource == finding.resource
+
     assert restored.recommendations == finding.recommendations

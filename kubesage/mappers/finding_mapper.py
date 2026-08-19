@@ -1,7 +1,7 @@
 from kubesage.database.models import EvidenceModel, RecommendationModel
 from kubesage.database.models.finding import FindingModel
 from kubesage.models.evidence import Evidence, EvidenceType
-from kubesage.models.finding import Finding, FindingKind, Severity
+from kubesage.models.finding import Finding, FindingKind, ResourceRef, Severity
 
 
 class FindingMapper:
@@ -16,6 +16,14 @@ class FindingMapper:
             severity=finding.severity.value,
             title=finding.title,
             description=finding.description,
+            resource_api_version=(
+                finding.resource.api_version if finding.resource else None
+            ),
+            resource_kind=finding.resource.kind if finding.resource else None,
+            resource_namespace=(
+                finding.resource.namespace if finding.resource else None
+            ),
+            resource_name=finding.resource.name if finding.resource else None,
         )
 
         finding_model.evidences = [
@@ -40,12 +48,22 @@ class FindingMapper:
     def to_domain(model: FindingModel) -> Finding:
         """Convert a FindingModel to a Finding."""
 
+        resource = None
+        if model.resource_kind and model.resource_name:
+            resource = ResourceRef(
+                api_version=model.resource_api_version,
+                kind=model.resource_kind,
+                namespace=model.resource_namespace,
+                name=model.resource_name,
+            )
+
         return Finding(
             rule=model.rule,
             kind=FindingKind(model.kind),
             severity=Severity(model.severity),
             title=model.title,
             description=model.description,
+            resource=resource,
             recommendations=[r.text for r in model.recommendations],
             structured_evidences=[
                 Evidence(

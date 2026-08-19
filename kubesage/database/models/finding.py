@@ -16,6 +16,10 @@ class FindingModel(Base):
     severity: Mapped[str] = mapped_column(String(50), nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
+    resource_api_version: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    resource_kind: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    resource_namespace: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    resource_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     evidences = relationship(
         "EvidenceModel", back_populates="finding", cascade="all, delete-orphan"
     )
