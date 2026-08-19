@@ -10,6 +10,7 @@ from kubesage.api.routes.analysis import router as analysis_router
 from kubesage.api.routes.analyze import router as analyze_router
 from kubesage.api.routes.dashboard import router as dashboard_router
 from kubesage.api.routes.metrics import router as metrics_router
+from kubesage.api.routes.settings import router as settings_router
 from kubesage.api.routes.system import router as system_router
 from kubesage.observability.telemetry import setup_telemetry
 from kubesage.utils.config import settings
@@ -23,11 +24,12 @@ app = FastAPI(
 
 setup_telemetry(app)
 
-app.include_router(system_router)
 app.include_router(analyze_router, prefix="/api/v1")
 app.include_router(analysis_router, prefix="/api/v1")
 app.include_router(dashboard_router, prefix="/api/v1")
+app.include_router(settings_router, prefix="/api/v1")
 app.include_router(metrics_router)
+app.include_router(system_router)
 
 app.add_middleware(MetricsMiddleware)
 app.add_middleware(RequestIDMiddleware)
