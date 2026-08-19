@@ -35,54 +35,111 @@ class AnalysisRepository:
                 raise
 
     def get(self, analysis_id: UUID) -> Analysis | None:
-        statement = select(AnalysisModel).where(AnalysisModel.id == str(analysis_id))
-        result = self.session.execute(statement)
+        with tracer.start_as_current_span("database.get_analysis") as span:
+            try:
+                span.set_attribute("analysis.id", str(analysis_id))
 
-        model = result.scalar_one_or_none()
-        if model is None:
-            return None
+                statement = select(AnalysisModel).where(
+                    AnalysisModel.id == str(analysis_id)
+                )
+                result = self.session.execute(statement)
 
-        return AnalysisMapper.to_domain(model)
+                model = result.scalar_one_or_none()
+                if model is None:
+                    return None
+
+                return AnalysisMapper.to_domain(model)
+
+            except SQLAlchemyError as exc:
+                span.record_exception(exc)
+                raise
 
     def list_analyses(self, limit: int = 20, offset: int = 0) -> list[Analysis]:
-        statement = (
-            select(AnalysisModel)
-            .order_by(AnalysisModel.created_at.desc())
-            .offset(offset)
-            .limit(limit)
-        )
-        result = self.session.execute(statement)
-        models = result.scalars().all()
+        with tracer.start_as_current_span("database.list_analyses") as span:
+            try:
+                span.set_attribute("analysis.limit", limit)
+                span.set_attribute("analysis.offset", offset)
 
-        return [AnalysisMapper.to_domain(m) for m in models]
+                statement = (
+                    select(AnalysisModel)
+                    .order_by(AnalysisModel.created_at.desc())
+                    .offset(offset)
+                    .limit(limit)
+                )
+                result = self.session.execute(statement)
+                models = result.scalars().all()
+
+                return [AnalysisMapper.to_domain(m) for m in models]
+
+            except SQLAlchemyError as exc:
+                span.record_exception(exc)
+                raise
 
     def list_summaries(self, limit: int = 20, offset: int = 0) -> list[AnalysisSummary]:
-        statement = (
-            select(AnalysisModel)
-            .order_by(AnalysisModel.created_at.desc())
-            .offset(offset)
-            .limit(limit)
-        )
-        result = self.session.execute(statement)
-        models = result.scalars().all()
+        with tracer.start_as_current_span("database.list_summaries") as span:
+            try:
+                span.set_attribute("analysis.limit", limit)
+                span.set_attribute("analysis.offset", offset)
 
-        return [AnalysisSummaryMapper.to_domain(m) for m in models]
+                statement = (
+                    select(AnalysisModel)
+                    .order_by(AnalysisModel.created_at.desc())
+                    .offset(offset)
+                    .limit(limit)
+                )
+                result = self.session.execute(statement)
+                models = result.scalars().all()
+
+                return [AnalysisSummaryMapper.to_domain(m) for m in models]
+
+            except SQLAlchemyError as exc:
+                span.record_exception(exc)
+                raise
 
     def count(self) -> int:
-        statement = select(func.count(AnalysisModel.id))
-        count = self.session.scalar(statement)
+        with tracer.start_as_current_span("database.count_analyses") as span:
+            try:
+                statement = select(func.count(AnalysisModel.id))
+                count = self.session.scalar(statement)
 
-        return count or 0
+                span.set_attribute("analysis.count", count or 0)
+
+                return count or 0
+
+            except SQLAlchemyError as exc:
+                span.record_exception(exc)
+                raise
 
     def count_findings_by_severity(self, severity: str) -> int:
-        statement = select(func.count(FindingModel.id)).where(
-            FindingModel.severity == severity
-        )
-        count = self.session.scalar(statement)
+        with tracer.start_as_current_span(
+            "database.count_findings_by_severity"
+        ) as span:
+            try:
+                span.set_attribute("analysis.severity", severity)
 
-        return count or 0
+                statement = select(func.count(FindingModel.id)).where(
+                    FindingModel.severity == severity
+                )
+                count = self.session.scalar(statement)
+
+                span.set_attribute("analysis.count", count or 0)
+
+                return count or 0
+
+            except SQLAlchemyError as exc:
+                span.record_exception(exc)
+                raise
 
     def count_findings(self) -> int:
-        statement = select(func.count(FindingModel.id))
+        with tracer.start_as_current_span("database.count_findings") as span:
+            try:
+                statement = select(func.count(FindingModel.id))
+                count = self.session.scalar(statement)
 
-        return self.session.scalar(statement) or 0
+                span.set_attribute("analysis.count", count or 0)
+
+                return count or 0
+
+            except SQLAlchemyError as exc:
+                span.record_exception(exc)
+                raise
