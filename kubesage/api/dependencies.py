@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from kubesage.bootstrap import create_analysis_service
 from kubesage.database.session import SessionLocal
 from kubesage.repositories.analysis_repository import AnalysisRepository
+from kubesage.repositories.finding_repository import FindingRepository
 from kubesage.services.analysis_service import AnalysisService
 from kubesage.services.dashboard_service import DashboardService
 from kubesage.services.kubernetes_service import KubernetesService
@@ -30,3 +31,7 @@ def get_analysis_service(db: Session = Depends(get_db)) -> AnalysisService:
 
 def get_dashboard_service(db: Session = Depends(get_db)) -> DashboardService:
     return DashboardService(AnalysisRepository(db), KubernetesService())
+
+
+def get_finding_repository(session: Session = Depends(get_db)) -> FindingRepository:
+    return FindingRepository(session)

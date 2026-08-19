@@ -1,7 +1,18 @@
+from datetime import datetime
+from uuid import UUID
+
 from pydantic import BaseModel
 
+from kubesage.models.finding import FindingKind, ResourceRef, Severity
 
-class FindingResponse(BaseModel):
+
+class FindingListItemResponse(BaseModel):
+    id: UUID
+    analysis_id: UUID
+    rule: str
+    kind: FindingKind
+    severity: Severity
     title: str
     description: str
-    severity: str
+    resource: ResourceRef | None
+    created_at: datetime
