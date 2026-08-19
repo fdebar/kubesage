@@ -3,6 +3,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 
 from kubesage.ai.factory import create_ai_provider
+from kubesage.ai.provider import AIProvider
 from kubesage.models.settings_service import SettingsService
 from kubesage.models.settings_test import (
     ServiceStatus,
@@ -17,7 +18,7 @@ class SettingsHealthService:
     def __init__(self) -> None:
         self.prometheus = PrometheusService()
         self.loki = LokiService()
-        self.ai = create_ai_provider(settings=settings)
+        self.ai: AIProvider | None = None
 
     def test(self, service: SettingsService) -> ServiceTestResponse:
         match service:
@@ -52,6 +53,8 @@ class SettingsHealthService:
         )
 
     def _test_ai(self) -> ServiceTestResponse:
+        if self.ai is None:
+            self.ai = create_ai_provider(settings=settings)
         return self._test(self.ai.is_server_reachable, "AI")
 
     def _test(
