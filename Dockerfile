@@ -34,7 +34,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-RUN addgroup --system kubesage && \
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    rm -rf /var/lib/apt/lists/* && \
+    addgroup --system kubesage && \
     adduser --system --ingroup kubesage kubesage \
     && rm -rf /usr/local/lib/python3.14/site-packages/pip*
 
