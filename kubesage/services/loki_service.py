@@ -129,3 +129,13 @@ class LokiService(LogProvider):
                 lines.append(line)
 
         return lines
+
+    def is_available(self) -> bool:
+        try:
+            response = requests.get(
+                f"{self.base_url}/ready",
+                timeout=settings.loki_timeout,
+            )
+            return response.status_code == 200  # type: ignore
+        except requests.RequestException:
+            return False
