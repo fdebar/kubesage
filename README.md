@@ -33,7 +33,7 @@ Observe • Explain • Recommend • Act
 
 </h4>
 
-KubeSage is an AI-assisted Kubernetes incident analysis platform designed to help engineers understand, investigate and troubleshoot production incidents faster.
+KubeSage is an AI-assisted Kubernetes incident analysis engine designed to help engineers understand, investigate and troubleshoot production incidents faster.
 
 Instead of relying on a single signal such as application logs, KubeSage combines multiple sources of operational data:
 
@@ -132,6 +132,13 @@ KubeSage first collects and analyzes operational evidence using deterministic ru
 
 KubeSage is composed of several main components:
 
+## Repositories
+
+| Repository | Description |
+| ---------- | ---------- |
+| [KubeSage](https://github.com/fdebar/KubeSage) | Backend, analysis engine, API, observability and GitOps |
+| [KubeSage Web](https://github.com/fdebar/kubesage-web) | React dashboard |
+
 ## **Backend**
 
 A Python/FastAPI service responsible for:
@@ -148,15 +155,16 @@ A Python/FastAPI service responsible for:
 
 ## **Frontend**
 
-A React web application providing:
+The KubeSage web dashboard is maintained in a dedicated repository.
 
-* incident overview
-* cluster status
-* finding summaries
-* analysis details
-* analysis history
-* operational metrics
-* AI-generated explanations
+The React application provides:
+
+- Incident overview
+- Cluster status
+- Finding summaries
+- Analysis details
+- Analysis history
+- AI-generated reports
 
 ## **Observability**
 
@@ -297,7 +305,9 @@ The AI operates on structured evidence collected by KubeSage rather than directl
 
 ## Web Dashboard
 
-The React frontend provides a centralized interface for:
+The KubeSage web dashboard is developed in a separate repository.
+
+The dashboard provides:
 
 * 📊 Cluster overview
 * 🚨 Incident analysis
@@ -306,7 +316,9 @@ The React frontend provides a centralized interface for:
 * 📈 Operational metrics
 * 🤖 AI-generated reports
 
-The frontend is designed to provide a dedicated incident-analysis experience rather than replacing the underlying observability stack. 
+The dashboard complements Grafana rather than replacing it.
+
+Grafana remains focused on observability and infrastructure exploration, while KubeSage focuses on incident investigation and contextual analysis.
 
 ## Developer Experience
 
