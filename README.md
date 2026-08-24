@@ -597,6 +597,7 @@ AI_MODEL=llama3
 Install KubeSage with Helm:
 
 ```bash
+helm dependency build charts/kubesage
 helm upgrade --install kubesage \
     deploy/kubesage \
     --namespace kubesage \
@@ -610,6 +611,8 @@ Verify the deployment:
 kubectl get pods -n kubesage
 kubectl get svc -n kubesage
 ```
+
+For GitOps deployments, see the [KubeSage GitOps repository](https://github.com/fdebar/kubesage-gitops).
 
 ---
 
