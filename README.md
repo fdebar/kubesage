@@ -56,12 +56,9 @@ The goal is simple:
 
 ```bash
 git clone https://github.com/fdebar/KubeSage.git
-
-cd KubeSage
-
-helm install kubesage deploy/kubesage \
-    -n kubesage \
-    --create-namespace
+cd kubesage
+make install
+uvicorn kubesage.api.app:app --reload
 ```
 
 Analyze a pod:
@@ -635,7 +632,6 @@ KubeSage uses a dedicated GitOps repository for Kubernetes deployment configurat
 Argo CD continuously reconciles the desired state from the GitOps repository into Kubernetes.
 
 The application Helm chart and environment-specific configuration are intentionally kept in separate repositories.
-
 ---
 
 # 🧪 Testing
