@@ -135,8 +135,9 @@ KubeSage is composed of several main components:
 ## Repositories
 
 | Repository | Description |
-| ---------- | ---------- |
-| [KubeSage](https://github.com/fdebar/KubeSage) | Backend, analysis engine, API, observability and GitOps |
+| --- | --- |
+| [KubeSage](https://github.com/fdebar/kubesage) | Backend, analysis engine, API and Helm chart |
+| [KubeSage GitOps](https://github.com/fdebar/kubesage-gitops) | Argo CD applications, environment configuration and observability stack |
 | [KubeSage Web](https://github.com/fdebar/kubesage-web) | React dashboard |
 
 ## **Backend**
@@ -470,36 +471,6 @@ These metrics provide visibility into:
 
 ---
 
-# 🧭 GitOps Deployment
-
-KubeSage supports Kubernetes deployment through Helm and Argo CD.
-
-The GitOps configuration contains the application and observability stack configuration.
-
-```text
-Git Repository
-      │
-      ▼
-    Argo CD
-      │
-      ▼
-   Kubernetes
-      │
-      ├── KubeSage Backend
-      ├── KubeSage Frontend
-      │
-      └── Observability
-          ├── Prometheus
-          ├── Loki
-          ├── Tempo
-          ├── Grafana
-          └── Alloy
-```
-
-This approach allows infrastructure and application configuration to be version-controlled and deployed declaratively.
-
----
-
 # ⚡ Quick Start
 
 ## Prerequisites
@@ -647,29 +618,23 @@ kubectl get svc -n kubesage
 
 # 🔄 GitOps Deployment
 
-For a GitOps deployment, use the Argo CD application definition provided by the repository.
+KubeSage uses a dedicated GitOps repository for Kubernetes deployment configuration.
 
-Once Argo CD is configured, changes committed to the GitOps configuration can be synchronized automatically with the Kubernetes cluster.
+- **[KubeSage](https://github.com/fdebar/kubesage)**
+  - Application source code
+  - Backend
+  - Analysis engine
+  - Helm chart
 
-This allows:
+- **[KubeSage GitOps](https://github.com/fdebar/kubesage-gitops)**
+  - Argo CD Applications
+  - Environment configuration
+  - Monitoring stack
+  - GitOps deployment configuration
 
-* version-controlled infrastructure;
-* reproducible environments;
-* declarative deployments;
-* controlled application upgrades;
-* separation between application code and deployment configuration.
+Argo CD continuously reconciles the desired state from the GitOps repository into Kubernetes.
 
-For a GitOps deployment, use the Argo CD application definition provided by the repository.
-
-Once Argo CD is configured, changes committed to the GitOps configuration can be synchronized automatically with the Kubernetes cluster.
-
-This allows:
-
-* version-controlled infrastructure;
-* reproducible environments;
-* declarative deployments;
-* controlled application upgrades;
-* separation between application code and deployment configuration.
+The application Helm chart and environment-specific configuration are intentionally kept in separate repositories.
 
 ---
 
