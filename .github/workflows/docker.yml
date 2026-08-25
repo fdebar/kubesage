@@ -3,7 +3,6 @@ permissions:
   contents: write
   packages: write
 on:
-  # TODO: Update the rules once the project is sufficiently mature
   push:
     tags:
       - 'v\d+\.\d+\.\d+'
@@ -36,9 +35,14 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v7
 
-      - name: Set outputs
+      - name: Set image metadata
         id: vars
-        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+        run: |
+          SHA_SHORT=$(git rev-parse --short HEAD)
+          VERSION="${GITHUB_REF_NAME}"
+
+          echo "sha_short=${SHA_SHORT}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
@@ -62,6 +66,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           tags: |
+            ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.version }}
             ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.sha_short }}
             ghcr.io/${{ github.repository }}:latest
 
@@ -69,14 +74,11 @@ jobs:
         if: success()
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.sha_short }}
+          image-ref: ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.version }}
           trivy-config: trivy.yaml
 
       - name: Install yq
-        run: |
-          wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 \
-            -O /usr/local/bin/yq
-          chmod +x /usr/local/bin/yq
+        uses: mikefarah/yq@v4
 
       - name: Checkout GitOps repository
         uses: actions/checkout@v7
@@ -88,18 +90,42 @@ jobs:
       - name: Update image tag
         if: success()
         run: |
-          yq -i '.api.image.tag = "${{ steps.vars.outputs.sha_short }}"' \
+          yq -i '.api.image.tag = "${{ steps.vars.outputs.version }}"' \
             gitops/environments/dev/kubesage.yaml
-          yq -i '.worker.image.tag = "${{ steps.vars.outputs.sha_short }}"' \
+          yq -i '.worker.image.tag = "${{ steps.vars.outputs.version }}"' \
             gitops/environments/dev/kubesage.yaml
 
-      - name: Commit updated values
-        if: success()
-        run: |
-          cd gitops
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add environments/dev/kubesage.yaml
-          git diff --cached --quiet && exit 0
-          git commit -m "chore: deploy ${{ steps.vars.outputs.sha_short }} [skip ci]"
-          git push
+      - name: Create GitOps pull request
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ secrets.GITOPS_TOKEN }}
+          path: gitops
+          base: main
+          branch: automation/kubesage-${{ steps.vars.outputs.version }}
+          delete-branch: true
+          title: "chore: deploy KubeSage ${{ steps.vars.outputs.version }} to dev"
+          commit-message: "chore: deploy KubeSage ${{ steps.vars.outputs.version }} to dev"
+          body: |
+            ## KubeSage release
+
+            This PR updates the development environment to:
+
+            **KubeSage:** `${{ steps.vars.outputs.version }}`
+
+            Docker image:
+
+            `ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.version }}`
+
+            ### Validation
+
+            - Docker image built successfully
+            - Docker image scanned with Trivy
+            - GitOps CI will validate:
+              - Monitoring Helm chart
+              - KubeSage Helm chart
+              - Argo CD Applications
+
+            This PR was automatically created by the KubeSage release workflow.
+          labels: |
+            automated
+            deployment
