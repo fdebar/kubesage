@@ -75,7 +75,7 @@ jobs:
             gitops/environments/dev/kubesage.yaml
           yq -i '.worker.image.tag = "${{ steps.vars.outputs.version }}"' \
             gitops/environments/dev/kubesage.yaml
-          yq -i '.spec.source.targetRevision = "${{ steps.vars.outputs.version }}"' \
+          yq -i '.spec.sources[0].targetRevision = "${{ steps.vars.outputs.version }}"' \
             gitops/applications/kubesage.yaml
 
           echo "GitOps changes:"
