@@ -71,17 +71,15 @@ jobs:
       - name: Update GitOps Kubesage version
         if: success()
         run: |
-          echo "KubeSage API image:"
-          yq '.api.image.tag = "${{ steps.vars.outputs.version }}"' \
+          yq -i '.api.image.tag = "${{ steps.vars.outputs.version }}"' \
             gitops/environments/dev/kubesage.yaml
-
-          echo "KubeSage worker image:"
-          yq '.worker.image.tag = "${{ steps.vars.outputs.version }}"' \
+          yq -i '.worker.image.tag = "${{ steps.vars.outputs.version }}"' \
             gitops/environments/dev/kubesage.yaml
-
-          echo "KubeSage chart version:"
-          yq '.spec.source.targetRevision = "${{ steps.vars.outputs.version }}"' \
+          yq -i '.spec.source.targetRevision = "${{ steps.vars.outputs.version }}"' \
             gitops/applications/kubesage.yaml
+
+          echo "GitOps changes:"
+          git -C gitops diff
 
       - name: Create GitOps pull request
         uses: peter-evans/create-pull-request@v8
