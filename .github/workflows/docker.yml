@@ -68,13 +68,20 @@ jobs:
           token: ${{ secrets.GITOPS_TOKEN }}
           path: gitops
 
-      - name: Update image tag
+      - name: Update GitOps Kubesage version
         if: success()
         run: |
-          yq -i '.api.image.tag = "${{ steps.vars.outputs.version }}"' \
+          echo "KubeSage API image:"
+          yq '.api.image.tag = "${{ steps.vars.outputs.version }}"' \
             gitops/environments/dev/kubesage.yaml
-          yq -i '.worker.image.tag = "${{ steps.vars.outputs.version }}"' \
+
+          echo "KubeSage worker image:"
+          yq '.worker.image.tag = "${{ steps.vars.outputs.version }}"' \
             gitops/environments/dev/kubesage.yaml
+
+          echo "KubeSage chart version:"
+          yq '.spec.source.targetRevision = "${{ steps.vars.outputs.version }}"' \
+            gitops/applications/kubesage.yaml
 
       - name: Create GitOps pull request
         uses: peter-evans/create-pull-request@v8
