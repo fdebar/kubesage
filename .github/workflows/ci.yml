@@ -31,6 +31,21 @@ jobs:
               - 'alembic.ini'
               - 'uv.lock'
 
+  security:
+    name: Repository secret scanning
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Scan repository for secrets
+        uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   quality:
     name: Code Quality Checks
     needs: changes
