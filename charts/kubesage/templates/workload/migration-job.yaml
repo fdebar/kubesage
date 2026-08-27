@@ -32,7 +32,7 @@ spec:
             done
       containers:
       - name: migration
-        image: "{{ .Values.api.image.repository }}:{{ .Values.api.image.tag }}"
+        image: "{{ .Values.api.image.repository }}:{{ .Values.api.image.tag }}{{- if .Values.worker.image.digest }}@{{ .Values.worker.image.digest }}{{- end }}"
         imagePullPolicy: "{{ .Values.api.image.pullPolicy }}"
         command:
           - alembic
