@@ -81,12 +81,12 @@ jobs:
 
       - name: Sign Docker image
         env:
-          IMAGE: ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.version }}
+          IMAGE: ghcr.io/${{ github.repository }}@${{ steps.build.outputs.digest }}
         run: cosign sign --yes "${IMAGE}"
 
       - name: Verify Docker image signature
         env:
-          IMAGE: ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.version }}
+          IMAGE: ghcr.io/${{ github.repository }}@${{ steps.build.outputs.digest }}
         run: |
           cosign verify "${IMAGE}" \
             --certificate-identity-regexp "https://github.com/${{ github.repository }}/.github/workflows/.*" \
