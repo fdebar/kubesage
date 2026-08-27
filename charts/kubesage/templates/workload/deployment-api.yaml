@@ -14,7 +14,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/config: {{ include (print $.Template.BasePath "/config/configmap.yaml") . | sha256sum }}
         checksum/ai-secret: {{ include (print $.Template.BasePath "/secrets/ai.yaml") . | sha256sum }}
       labels:
         {{- include "kubesage.selectorLabels" . | nindent 8 }}
