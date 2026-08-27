@@ -25,8 +25,7 @@ class LogQueryType(StrEnum):
 class LokiService(LogProvider):
     def __init__(self) -> None:
         self.base_url = settings.loki_url
-        # TODO: We want to keep enable Loki multi-tenant - a configuration must be added
-        self.loki_tenant = "kubesage-fake"
+        self.loki_tenant = settings.loki_tenant
 
     def query(self, logql: str) -> Any:
         with tracer.start_as_current_span("loki.query") as span:

@@ -44,6 +44,7 @@ class Settings:
     loki_url: str = os.getenv("LOKI_URL", "")
     loki_timeout: int = int(os.getenv("LOKI_TIMEOUT", "5"))
     loki_query_limit: int = int(os.getenv("LOKI_QUERY_LIMIT", "500"))
+    loki_tenant: str = os.getenv("LOKI_TENANT", "kubesage")
 
     # Metrics configuration
     metrics_port: int = int(os.getenv("WORKER_EXPOSED_METRICS_PORT", "9090"))
