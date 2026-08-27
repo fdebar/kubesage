@@ -38,6 +38,23 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Build Docker image for security scan
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: kubesage:security-scan
+
+      - name: Scan Docker image
+        if: success()
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: kubesage:security-scan
+          trivy-config: trivy.yaml
+
       - name: Build Docker image
         uses: docker/build-push-action@v7
         with:
@@ -49,13 +66,6 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.version }}
             ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.sha_short }}
-
-      - name: Scan Docker image
-        if: success()
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          image-ref: ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.version }}
-          trivy-config: trivy.yaml
 
       - name: Install yq
         uses: mikefarah/yq@v4
