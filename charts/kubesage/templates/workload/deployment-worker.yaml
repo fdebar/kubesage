@@ -38,8 +38,8 @@ spec:
           - name: DATABASE_PASSWORD
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.postgresql.fullnameOverride }}
-                key: password
+                name: {{ .Values.database.existingSecret }}
+                key: {{ .Values.database.passwordKey }}
         ports:
           - name: metrics
             containerPort: {{ .Values.worker.metrics.port }}

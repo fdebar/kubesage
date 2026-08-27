@@ -1,5 +1,8 @@
 name: KubeSage Helm Chart
 
+permissions:
+  contents: read
+
 on:
   pull_request:
     branches:
@@ -10,9 +13,6 @@ on:
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+"
 
-  workflow_dispatch:
-permissions:
-  contents: read
 
 jobs:
   helm-test:
@@ -42,14 +42,33 @@ jobs:
           cluster_name: kind-kubesage
 
       - name: Load Docker image into Kind
-        run: |
-          kind load docker-image kubesage:helm-test \
-            --name kind-kubesage
+        run: kind load docker-image kubesage:helm-test --name kind-kubesage
 
-      - name: Deploy Helm chart
+      - name: Add Helm repositories
         run: |
           helm repo add bitnami https://charts.bitnami.com/bitnami
           helm repo update
+
+      - name: Deploy PostgreSQL
+        run: |
+          helm upgrade --install postgresql bitnami/postgresql \
+            --namespace kubesage \
+            --create-namespace \
+            --set fullnameOverride=kubesage-postgresql \
+            --set auth.username=kubesage \
+            --set auth.database=kubesage \
+            --set auth.password=kubesage-dev \
+            --set auth.postgresPassword=kubesage-postgres-dev \
+            --set primary.persistence.enabled=false
+
+      - name: Wait for PostgreSQL
+        run: |
+          kubectl rollout status statefulset/kubesage-postgresql \
+            -n kubesage \
+            --timeout=360s
+
+      - name: Deploy Helm chart
+        run: |
           helm dependency build charts/kubesage
           helm upgrade --install kubesage ./charts/kubesage \
             --namespace kubesage \
@@ -64,11 +83,30 @@ jobs:
             --set worker.resources.requests.cpu=50m \
             --set ai.apiKey=ollama \
             --set ai.provider=ollama \
-            --set postgresql.primary.persistence.enabled=false
+            --set database.host=kubesage-postgresql \
+            --set database.port=5432 \
+            --set database.name=kubesage \
+            --set database.username=kubesage \
+            --set database.existingSecret=kubesage-postgresql \
+            --set database.passwordKey=password
+
+      - name: Verify migration
+        run: |
+          kubectl wait \
+            --for=condition=complete \
+            job/kubesage-migration \
+            -n kubesage \
+            --timeout=360s
 
       - name: Verify deployment
         run: |
           kubectl rollout status deployment/kubesage-api \
+            -n kubesage \
+            --timeout=360s
+
+      - name: Verify worker deployment
+        run: |
+          kubectl rollout status deployment/kubesage-worker \
             -n kubesage \
             --timeout=360s
 
@@ -77,10 +115,14 @@ jobs:
         run: |
           kubectl get all -n kubesage
           kubectl get jobs -n kubesage
-          kubectl describe deployment/kubesage-api -n kubesage
           kubectl describe job kubesage-migration -n kubesage
-          kubectl describe pod kubesage-postgresql-0 -n kubesage
-          kubectl logs kubesage-postgresql-0 -n kubesage
+          kubectl logs job/kubesage-migration -n kubesage --all-containers=true || true
+          kubectl describe statefulset kubesage-postgresql -n kubesage
+          kubectl logs statefulset/kubesage-postgresql -n kubesage --all-containers=true || true
+          kubectl describe deployment/kubesage-api -n kubesage
+          kubectl logs deployment/kubesage-api -n kubesage --all-containers=true || true
+          kubectl describe deployment/kubesage-worker -n kubesage
+          kubectl logs deployment/kubesage-worker -n kubesage --all-containers=true || true
 
   publish:
     name: Publish Helm Chart

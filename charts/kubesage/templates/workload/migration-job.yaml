@@ -1,4 +1,3 @@
-{{- if .Values.postgresql.enabled }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -20,18 +19,6 @@ spec:
         {{- include "kubesage.selectorLabels" . | nindent 8 }}
     spec:
       restartPolicy: Never
-      initContainers:
-      - name: wait-postgresql
-        image: busybox
-        command:
-          - sh
-          - -c
-          - |
-            until nc -z {{ .Values.postgresql.fullnameOverride }} 5432;
-            do
-              echo "Waiting for postgres";
-              sleep 2;
-            done
       containers:
       - name: migration
         image: "{{ .Values.api.image.repository }}:{{ .Values.api.image.tag }}{{- if .Values.api.image.digest }}@{{ .Values.api.image.digest }}{{- end }}"
@@ -49,6 +36,5 @@ spec:
           - name: DATABASE_PASSWORD
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.postgresql.fullnameOverride }}
-                key: password
-{{- end }}
+                name: {{ .Values.database.existingSecret }}
+                key: {{ .Values.database.passwordKey }}
