@@ -237,7 +237,6 @@ postgresql:
   auth:
     username: kubesage
     database: kubesage
-    existingSecret: kubesage-postgresql
 
   # This is for setting up the persistence for postgresql.
   primary:

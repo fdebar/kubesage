@@ -15,7 +15,6 @@ spec:
     metadata:
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
-        checksum/secret: {{ include (print $.Template.BasePath "/secrets/postgresql.yaml") . | sha256sum }}
         checksum/ai-secret: {{ include (print $.Template.BasePath "/secrets/ai.yaml") . | sha256sum }}
       labels:
         {{- include "kubesage.selectorLabels" . | nindent 8 }}
@@ -34,14 +33,12 @@ spec:
         - configMapRef:
             name: {{ include "kubesage.fullname" . }}-config
         - secretRef:
-            name: {{ include "kubesage.fullname" . }}-postgresql-secret
-        - secretRef:
             name: {{ include "kubesage.fullname" . }}-ai-secret
         env:
           - name: DATABASE_PASSWORD
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.postgresql.auth.existingSecret }}
+                name: {{ .Values.postgresql.fullnameOverride }}
                 key: password
         ports:
           - name: metrics

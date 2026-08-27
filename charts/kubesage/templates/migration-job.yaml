@@ -38,9 +38,15 @@ spec:
           - alembic
           - upgrade
           - head
-        envFrom:
+      envFrom:
         - configMapRef:
             name: {{ include "kubesage.fullname" . }}-config
         - secretRef:
-            name: {{ include "kubesage.fullname" . }}-secret
+            name: {{ include "kubesage.fullname" . }}-ai-secret
+      env:
+        - name: DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.postgresql.fullnameOverride }}
+              key: password
 {{- end }}

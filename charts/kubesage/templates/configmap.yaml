@@ -7,6 +7,7 @@ data:
   DATABASE_HOST: {{ .Values.postgresql.fullnameOverride | quote }}
   DATABASE_PORT: "5432"
   DATABASE_NAME: {{ .Values.postgresql.auth.database | quote }}
+  DATABASE_USER: {{ .Values.postgresql.auth.username | quote }}
   ENVIRONMENT: {{ .Values.application.environment | quote }}
   LOG_LEVEL: {{ .Values.application.logLevel | quote }}
   AI_MODEL: {{ .Values.ai.model | quote }}
