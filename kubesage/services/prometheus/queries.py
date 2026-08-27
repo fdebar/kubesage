@@ -78,7 +78,7 @@ sum by (container) (
 
 CONTAINER_MEMORY_QUERY = """
 sum by (container) (
-    container_memory_usage_bytes{{
+    container_memory_working_set_bytes{{
         namespace="{namespace}",
         pod="{pod}",
         container!="POD",
