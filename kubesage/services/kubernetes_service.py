@@ -89,8 +89,8 @@ class KubernetesService(KubernetesProvider):
                     )
                     return self._empty_snapshot(namespace, pod)
 
-            logs = self._collect_logs(namespace, pod)
             containers = self._collect_containers(pod_info)
+            logs = self._collect_logs(namespace, pod, containers)
             events = self._collect_events(namespace, pod)
             resources = self._collect_resources(pod_info)
             pod_uid = pod_info.metadata.uid
@@ -113,27 +113,46 @@ class KubernetesService(KubernetesProvider):
                 resources=resources,
             )
 
-    def _collect_logs(self, namespace: str, pod: str) -> LogSnapshot:
+    def _collect_logs(
+        self,
+        namespace: str,
+        pod: str,
+        containers: list[ContainerStatus],
+    ) -> LogSnapshot:
         with tracer.start_as_current_span("kubernetes.get_logs") as span:
             span.set_attribute("k8s.namespace", namespace)
             span.set_attribute("k8s.pod.name", pod)
 
-            try:
-                logs = self.v1.read_namespaced_pod_log(
-                    name=pod,
-                    namespace=namespace,
-                    tail_lines=settings.log_tail_lines,
-                )
-            except ApiException as exc:
-                span.record_exception(exc)
-                span.set_status(
-                    trace.Status(
-                        trace.StatusCode.ERROR,
-                        f"Kubernetes log API error: {exc.status}",
+            lines: list[str] = []
+            for container in containers:
+                try:
+                    logs = self.v1.read_namespaced_pod_log(
+                        name=pod,
+                        namespace=namespace,
+                        container=container.name,
+                        tail_lines=settings.log_tail_lines,
                     )
-                )
 
-                if exc.status == 404:
+                    if isinstance(logs, bytes):
+                        logs = logs.decode("utf-8")
+
+                    if logs:
+                        lines.extend(
+                            [
+                                f"=== Container: {container.name} ===",
+                                *logs.split("\n"),
+                            ]
+                        )
+
+                except ApiException as exc:
+                    span.record_exception(exc)
+                    span.set_status(
+                        trace.Status(
+                            trace.StatusCode.ERROR,
+                            f"Kubernetes log API error: {exc.status}",
+                        )
+                    )
+
                     logger.warning(
                         "kubernetes_failed_to_collect_logs",
                         namespace=namespace,
@@ -142,33 +161,23 @@ class KubernetesService(KubernetesProvider):
                         reason=exc.reason,
                     )
 
-                    raise PodNotFoundError(
-                        f"Pod '{pod}' not found in namespace '{namespace}'."
-                    ) from None
-                logger.warning(
-                    "kubernetes_failed_to_collect_logs",
-                    namespace=namespace,
-                    pod=pod,
-                    status=exc.status,
-                    reason=exc.reason,
-                )
-            except Exception as exc:  # noqa: BLE001
-                span.record_exception(exc)
-                span.set_status(trace.Status(trace.StatusCode.ERROR, str(exc)))
+                    if exc.status == 404:
+                        raise PodNotFoundError(
+                            f"Pod '{pod}' not found in namespace '{namespace}'."
+                        ) from None
+                except Exception as exc:  # noqa: BLE001
+                    span.record_exception(exc)
+                    span.set_status(trace.Status(trace.StatusCode.ERROR, str(exc)))
 
-                logger.warning(
-                    "kubernetes_failed_to_collect_logs", namespace=namespace, pod=pod
-                )
+                    logger.warning(
+                        "kubernetes_failed_to_collect_logs",
+                        namespace=namespace,
+                        pod=pod,
+                        container=container.name,
+                        reason=str(exc),
+                    )
 
-                return LogSnapshot(source="kubernetes", lines=[])
-
-            if isinstance(logs, bytes):
-                logs = logs.decode("utf-8")
-
-            return LogSnapshot(
-                source="kubernetes",
-                lines=logs.split("\n") if logs else [],
-            )
+            return LogSnapshot(source="kubernetes", lines=lines)
 
     def _collect_containers(self, pod_info: V1Pod) -> list[ContainerStatus]:
         containers = []

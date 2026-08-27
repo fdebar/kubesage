@@ -149,15 +149,7 @@ def test_collect_success(
     mock_event.type = "Warning"
     mock_event.reason = "FailedScheduling"
     mock_event.message = "0/1 nodes are available"
-    mock_event.last_timestamp = datetime(
-        2026,
-        7,
-        25,
-        12,
-        0,
-        0,
-        tzinfo=UTC,
-    )
+    mock_event.last_timestamp = datetime(2026, 7, 25, 12, 0, 0, tzinfo=UTC)
 
     mock_events_list = MagicMock()
     mock_events_list.items = [mock_event]
@@ -176,7 +168,7 @@ def test_collect_success(
     assert snapshot.containers[0].last_exit_code == 137
     assert snapshot.containers[0].last_exit_reason == "OOMKilled"
 
-    assert snapshot.logs.lines == ["Hello Logs"]
+    assert snapshot.logs.lines == ["=== Container: web ===", "Hello Logs"]
 
     assert len(snapshot.events) == 1
     assert snapshot.events[0].reason == "FailedScheduling"
@@ -205,12 +197,12 @@ def test_collect_logs_returns_snapshot(
 
     service = KubernetesService()
 
-    result = service._collect_logs(
-        namespace="default",
-        pod="my-pod",
-    )
+    container = MagicMock()
+    container.name = "web"
 
-    assert result.lines == ["line one", "line two"]
+    result = service._collect_logs("default", "my-pod", [container])
+
+    assert result.lines == ["=== Container: web ===", "line one", "line two"]
     assert result.source == "kubernetes"
 
     span = _get_span(span_exporter, "kubernetes.get_logs")
@@ -233,10 +225,7 @@ def test_collect_logs_returns_empty_snapshot_on_error(
 
     service = KubernetesService()
 
-    result = service._collect_logs(
-        namespace="default",
-        pod="my-pod",
-    )
+    result = service._collect_logs("default", "my-pod", [MagicMock(name="web")])
 
     assert result.lines == []
     assert result.source == "kubernetes"
@@ -267,7 +256,7 @@ def test_collect_logs_raises_pod_not_found(
         PodNotFoundError,
         match="Pod 'my-pod' not found in namespace 'default'.",
     ):
-        service._collect_logs("default", "my-pod")
+        service._collect_logs("default", "my-pod", [MagicMock(name="web")])
 
     span = _get_span(span_exporter, "kubernetes.get_logs")
 
