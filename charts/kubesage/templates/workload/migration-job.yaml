@@ -6,11 +6,10 @@ metadata:
   labels:
     {{- include "kubesage.labels" . | nindent 4 }}
   annotations:
-    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook: post-install,post-upgrade
     helm.sh/hook-weight: "10"
     helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
 spec:
-  ttlSecondsAfterFinished: 300
   backoffLimit: 3
   template:
     metadata:
@@ -35,7 +34,7 @@ spec:
             done
       containers:
       - name: migration
-        image: "{{ .Values.api.image.repository }}:{{ .Values.api.image.tag }}{{- if .Values.worker.image.digest }}@{{ .Values.worker.image.digest }}{{- end }}"
+        image: "{{ .Values.api.image.repository }}:{{ .Values.api.image.tag }}{{- if .Values.api.image.digest }}@{{ .Values.api.image.digest }}{{- end }}"
         imagePullPolicy: "{{ .Values.api.image.pullPolicy }}"
         command:
           - alembic
