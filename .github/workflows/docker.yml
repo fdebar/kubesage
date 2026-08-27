@@ -1,16 +1,16 @@
 name: KubeSage Docker
 permissions:
-  contents: write
+  contents: read
   packages: write
+  id-token: write
 on:
   push:
     tags:
       - 'v\d+\.\d+\.\d+'
-  workflow_dispatch:
 
 jobs:
-  docker:
-    name: Docker
+  release:
+    name: Docker release
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
@@ -25,6 +25,13 @@ jobs:
           echo "sha_short=${SHA_SHORT}" >> "$GITHUB_OUTPUT"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
+      - name: Validate release version
+        run: |
+          if [[ ! "${{ steps.vars.outputs.version }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid release version: ${{ steps.vars.outputs.version }}"
+            exit 1
+          fi
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
 
@@ -38,7 +45,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build Docker image for security scan
+      - name: Build image for security scan
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -54,7 +61,7 @@ jobs:
           image-ref: kubesage:security-scan
           trivy-config: trivy.yaml
 
-      - name: Build and push Docker image
+      - name: Build and publish release image
         uses: docker/build-push-action@v7
         id: build
         with:
@@ -69,6 +76,22 @@ jobs:
             ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.version }}
             ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.sha_short }}
 
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v4
+
+      - name: Sign Docker image
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.version }}
+        run: cosign sign --yes "${IMAGE}"
+
+      - name: Verify Docker image signature
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.version }}
+        run: |
+          cosign verify "${IMAGE}" \
+            --certificate-identity-regexp "https://github.com/${{ github.repository }}/.github/workflows/.*" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+
       - name: Install yq
         uses: mikefarah/yq@v4
 
@@ -80,7 +103,6 @@ jobs:
           path: gitops
 
       - name: Update GitOps Kubesage version
-        if: success()
         run: |
           yq -i '.api.image.tag = "${{ steps.vars.outputs.version }}"' \
             gitops/environments/dev/kubesage.yaml
