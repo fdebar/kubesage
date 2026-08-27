@@ -3,10 +3,10 @@ apiVersion: v2
 name: kubesage
 description: AI-powered Kubernetes incident assistant
 type: application
-version: 0.2.0
-appVersion: 0.2.0
+version: 0.0.0
+appVersion: 0.0.0
 icon: https://raw.githubusercontent.com/fdebar/kubesage/refs/heads/main/docs/kubesage-logo.png
 dependencies:
   - name: postgresql
-    version: 18.8.6
+    version: 18.8.13
     repository: https://charts.bitnami.com/bitnami
