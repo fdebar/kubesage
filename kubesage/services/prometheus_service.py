@@ -69,7 +69,15 @@ class PrometheusService:
                 )
                 return []
 
-            return payload["data"]["result"]  # type: ignore
+            result = payload["data"]["result"]
+
+            logger.debug(
+                "prometheus_query_result",
+                promql=promql,
+                result_count=len(result),
+            )
+
+            return result  # type: ignore
 
         except requests.exceptions.ConnectionError:
             logger.warning("prometheus_connection_error", promql=promql)
@@ -226,7 +234,7 @@ class PrometheusService:
         containers: dict[str, ContainerUsage] = {}
 
         if not cpu_result and not memory_result:
-            logger.warning("prometheus_metrics_unavailable")
+            logger.warning("prometheus_metrics_no_result")
 
         for item in cpu_result:
             name = item["metric"].get("container")
