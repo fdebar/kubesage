@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass
+from urllib.parse import quote_plus
 
 from dotenv import load_dotenv
 
@@ -13,7 +14,11 @@ class Settings:
     app_version: str = "1.0.0-beta"
 
     # Database configuration
-    database_url: str = os.getenv("DATABASE_URL", "")
+    database_host: str = os.getenv("DATABASE_HOST", "")
+    database_port: int = int(os.getenv("DATABASE_PORT", "5432"))
+    database_name: str = os.getenv("DATABASE_NAME", "")
+    database_user: str = os.getenv("DATABASE_USER", "")
+    database_password: str = os.getenv("DATABASE_PASSWORD", "")
 
     # Environment configuration
     environment: str = os.getenv("ENVIRONMENT", "production")
@@ -42,6 +47,17 @@ class Settings:
 
     # Metrics configuration
     metrics_port: int = int(os.getenv("WORKER_EXPOSED_METRICS_PORT", "9090"))
+
+    @property
+    def database_url(self) -> str:
+        return (
+            f"postgresql+psycopg://"
+            f"{quote_plus(self.database_user)}:"
+            f"{quote_plus(self.database_password)}@"
+            f"{self.database_host}:"
+            f"{self.database_port}/"
+            f"{self.database_name}"
+        )
 
 
 settings = Settings()
