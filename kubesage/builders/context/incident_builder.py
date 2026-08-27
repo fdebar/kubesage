@@ -69,6 +69,7 @@ class IncidentBuilder:
         return Incident(
             namespace=kubernetes.namespace,
             pod=kubernetes.pod,
+            pod_uid=kubernetes.pod_uid,
             phase=kubernetes.phase,
             containers=containers,
             events=kubernetes.events,

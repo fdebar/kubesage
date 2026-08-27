@@ -76,7 +76,11 @@ def make_pod(
     name: str = "my-pod", namespace: str = "default", phase: str = "Running"
 ) -> V1Pod:
     return V1Pod(
-        metadata=V1ObjectMeta(name=name, namespace=namespace),
+        metadata=V1ObjectMeta(
+            name=name,
+            namespace=namespace,
+            uid="123e4567-e89b-12d3-a456-426614174000",
+        ),
         status=V1PodStatus(phase=phase),
     )
 
@@ -98,6 +102,7 @@ def make_trigger(
         reason=reason,
         namespace=namespace,
         pod=pod,
+        pod_uid="123e4567-e89b-12d3-a456-426614174000",
         message="Container entered CrashLoopBackOff",
         occurred_at=datetime.now(UTC),
     )
@@ -223,7 +228,12 @@ def test_modified_event_builds_diff_updates_cache_and_evaluates_filter(
     state_cache.get.assert_called_once_with("default", "my-pod")
     diff_builder.build.assert_called_once_with(previous, pod)
     state_cache.update.assert_called_once_with(pod)
-    event_filter.evaluate.assert_called_once_with(pod_diff, "default", "my-pod")
+    event_filter.evaluate.assert_called_once_with(
+        pod_diff,
+        "default",
+        "my-pod",
+        "123e4567-e89b-12d3-a456-426614174000",
+    )
 
 
 def test_modified_event_returns_trigger_from_filter(
@@ -250,7 +260,12 @@ def test_modified_event_returns_trigger_from_filter(
     state_cache.get.assert_called_once_with("default", "my-pod")
     diff_builder.build.assert_called_once_with(previous, pod)
     state_cache.update.assert_called_once_with(pod)
-    event_filter.evaluate.assert_called_once_with(pod_diff, "default", "my-pod")
+    event_filter.evaluate.assert_called_once_with(
+        pod_diff,
+        "default",
+        "my-pod",
+        "123e4567-e89b-12d3-a456-426614174000",
+    )
 
 
 def test_modified_event_with_no_previous_state_is_handled_by_diff_builder(
@@ -275,7 +290,12 @@ def test_modified_event_with_no_previous_state_is_handled_by_diff_builder(
     state_cache.get.assert_called_once_with("default", "my-pod")
     diff_builder.build.assert_called_once_with(None, pod)
     state_cache.update.assert_called_once_with(pod)
-    event_filter.evaluate.assert_called_once_with(pod_diff, "default", "my-pod")
+    event_filter.evaluate.assert_called_once_with(
+        pod_diff,
+        "default",
+        "my-pod",
+        "123e4567-e89b-12d3-a456-426614174000",
+    )
 
     def test_all_initial_pods_are_loaded_without_triggering_analysis(
         watcher: KubernetesWatcher,

@@ -56,6 +56,7 @@ class KubernetesWatcher:
                     "watcher_incident_ignored_duplicate",
                     namespace=trigger.namespace,
                     pod=trigger.pod,
+                    pod_uid=trigger.pod_uid,
                     reason=trigger.reason,
                 )
                 WATCHER_INCIDENTS_IGNORED_TOTAL.labels(reason=trigger.reason).inc()
@@ -68,6 +69,7 @@ class KubernetesWatcher:
             "watcher_incident_trigger_received",
             namespace=trigger.namespace,
             pod=trigger.pod,
+            pod_uid=trigger.pod_uid,
             reason=trigger.reason,
         )
 
@@ -102,7 +104,8 @@ class KubernetesWatcher:
 
         namespace = pod.metadata.namespace
         name = pod.metadata.name
-        if namespace is None or name is None:
+        uid = pod.metadata.uid
+        if namespace is None or name is None or uid is None:
             return None
 
         previous = self.state_cache.get(namespace, name)
@@ -123,4 +126,4 @@ class KubernetesWatcher:
 
         self.state_cache.update(pod)
 
-        return self.event_filter.evaluate(diff, namespace, name)
+        return self.event_filter.evaluate(diff, namespace, name, uid)

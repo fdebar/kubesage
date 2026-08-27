@@ -39,6 +39,7 @@ def build_incident(
     return Incident(
         namespace="production",
         pod="payment-api",
+        pod_uid="123e4567-e89b-12d3-a456-426614174000",
         phase="Running",
         containers=containers if containers is not None else [build_container()],
         events=events if events is not None else [],
@@ -76,6 +77,7 @@ def build_service(
     kubernetes.collect.return_value = SimpleNamespace(
         namespace=incident.namespace,
         pod=incident.pod,
+        pod_uid=incident.pod_uid,
         phase=incident.phase,
         containers=[],
         events=incident.events,
@@ -83,9 +85,7 @@ def build_service(
         resources=[],
     )
 
-    prometheus.collect.return_value = PrometheusResourceUsage(
-        containers=[],
-    )
+    prometheus.collect.return_value = PrometheusResourceUsage(containers=[])
 
     metrics.collect.return_value = None
     loki.collect.return_value = None
@@ -114,10 +114,7 @@ def build_service(
 
 def test_analysis_with_findings_calls_ai() -> None:
     finding = Mock(spec=Finding)
-
-    service, mocks = build_service(
-        findings=[finding],
-    )
+    service, mocks = build_service(findings=[finding])
 
     mocks["ai_context_builder"].build.return_value = Mock()
     mocks["prompt_builder"].build.return_value = "prompt"
@@ -144,9 +141,7 @@ def test_analysis_with_findings_calls_ai() -> None:
 
 
 def test_analysis_without_findings_skips_ai() -> None:
-    service, mocks = build_service(
-        findings=[],
-    )
+    service, mocks = build_service(findings=[])
 
     result = service.analyze(
         namespace="production",
@@ -163,15 +158,8 @@ def test_analysis_without_findings_skips_ai() -> None:
 
 
 def test_analysis_when_kubernetes_data_is_unavailable_returns_error_report() -> None:
-    incident = build_incident(
-        containers=[],
-        events=[],
-    )
-
-    service, mocks = build_service(
-        incident=incident,
-    )
-
+    incident = build_incident(containers=[], events=[])
+    service, mocks = build_service(incident=incident)
     result = service.analyze(
         namespace="production",
         pod="payment-api",
@@ -188,9 +176,7 @@ def test_analysis_when_kubernetes_data_is_unavailable_returns_error_report() -> 
 
 
 def test_analysis_passes_trigger() -> None:
-    service, _ = build_service(
-        findings=[],
-    )
+    service, _ = build_service(findings=[])
 
     result = service.analyze(
         namespace="production",

@@ -23,7 +23,7 @@ class IncidentDeduplicator:
         return True
 
     def _build_key(self, trigger: IncidentTrigger) -> str:
-        return f"{trigger.namespace}:{trigger.pod}:{trigger.reason}"
+        return f"{trigger.namespace}:{trigger.pod_uid}:{trigger.reason}"
 
     def _cleanup(self, now: datetime) -> None:
         expired = [

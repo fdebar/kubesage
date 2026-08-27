@@ -11,9 +11,8 @@ class KubernetesSnapshot(BaseModel):
     pod: str
     phase: str
     logs: LogSnapshot
-
+    pod_uid: str
     containers: list[ContainerStatus] = Field(default_factory=list)
     events: list[Event] = Field(default_factory=list)
-
     metrics: PrometheusResourceUsage | None = None
     resources: PodResources = Field(default_factory=PodResources)

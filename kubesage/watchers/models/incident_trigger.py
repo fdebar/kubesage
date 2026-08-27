@@ -13,6 +13,7 @@ class IncidentTrigger(BaseModel):
     reason: str
     namespace: str
     pod: str
+    pod_uid: str
     message: str | None = None
     occurred_at: datetime
 

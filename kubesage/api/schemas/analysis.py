@@ -49,6 +49,7 @@ class IncidentResponse(BaseModel):
 
     namespace: str
     pod: str
+    pod_uid: str | None = None
     phase: str
 
 

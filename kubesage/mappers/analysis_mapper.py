@@ -25,6 +25,7 @@ class AnalysisMapper:
             id=str(analysis.id),
             namespace=analysis.incident.namespace,
             pod=analysis.incident.pod,
+            pod_uid=analysis.incident.pod_uid,
             duration_ms=analysis.duration_ms,
             summary=analysis.report.summary if analysis.report else None,
             highest_severity=(
@@ -60,6 +61,7 @@ class AnalysisMapper:
             incident=Incident(
                 namespace=model.namespace,
                 pod=model.pod,
+                pod_uid=model.pod_uid,
                 phase=model.phase,
             ),
             findings=[FindingMapper.to_domain(f) for f in model.findings],
@@ -87,6 +89,7 @@ class AnalysisMapper:
             incident=IncidentResponse(
                 namespace=analysis.incident.namespace,
                 pod=analysis.incident.pod,
+                pod_uid=analysis.incident.pod_uid,
                 phase=analysis.incident.phase,
             ),
             findings=[

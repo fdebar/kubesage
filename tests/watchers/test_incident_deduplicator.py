@@ -10,6 +10,7 @@ def build_trigger() -> IncidentTrigger:
     return IncidentTrigger(
         namespace="production",
         pod="payment-api",
+        pod_uid="123e4567-e89b-12d3-a456-426614174000",
         reason="CrashLoopBackOff",
         message="container crashed",
         occurred_at=datetime.now(UTC),
@@ -37,6 +38,7 @@ def test_different_reason_is_processed() -> None:
     second = IncidentTrigger(
         namespace="production",
         pod="payment-api",
+        pod_uid="123e4567-e89b-12d3-a456-426614174000",
         reason="ImagePullBackOff",
         occurred_at=datetime.now(UTC),
     )

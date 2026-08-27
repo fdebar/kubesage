@@ -111,6 +111,7 @@ def test_collect_success(
 
     mock_pod = MagicMock()
     mock_pod.status.phase = "Running"
+    mock_pod.metadata.uid = "123e4567-e89b-12d3-a456-426614174000"
 
     mock_container = MagicMock()
     mock_container.name = "web"

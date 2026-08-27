@@ -93,12 +93,19 @@ class KubernetesService(KubernetesProvider):
             containers = self._collect_containers(pod_info)
             events = self._collect_events(namespace, pod)
             resources = self._collect_resources(pod_info)
+            pod_uid = pod_info.metadata.uid
+
+            if pod_uid is None:
+                raise PodNotFoundError(
+                    f"Pod '{pod}' has no UID in namespace '{namespace}'."
+                )
 
             KUBERNETES_DURATION.observe(time.perf_counter() - start)
 
             return KubernetesSnapshot(
                 namespace=namespace,
                 pod=pod,
+                pod_uid=pod_uid,
                 phase=pod_info.status.phase,
                 logs=logs,
                 containers=containers,
@@ -287,6 +294,7 @@ class KubernetesService(KubernetesProvider):
         return KubernetesSnapshot(
             namespace=namespace,
             pod=pod,
+            pod_uid="",
             phase="Unknown",
             logs=LogSnapshot(
                 source="kubernetes",

@@ -7,6 +7,7 @@ def test_kubernetes_snapshot() -> None:
     snapshot = KubernetesSnapshot(
         namespace="default",
         pod="pod1",
+        pod_uid="123e4567-e89b-12d3-a456-426614174000",
         phase="Running",
         logs=LogSnapshot(
             source="kubernetes",

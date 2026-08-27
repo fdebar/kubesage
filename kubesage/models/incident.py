@@ -10,6 +10,7 @@ from kubesage.models.prometheus import PrometheusResourceUsage
 class Incident(BaseModel):
     namespace: str
     pod: str
+    pod_uid: str | None = None
     phase: str
     events: list[Event] = Field(default_factory=list)
     containers: list[ContainerSnapshot] = Field(default_factory=list)

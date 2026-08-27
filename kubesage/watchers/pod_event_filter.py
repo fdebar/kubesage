@@ -26,11 +26,13 @@ class PodEventFilter:
         pod_state_diff: PodStateDiff,
         namespace: str,
         pod: str,
+        pod_uid: str,
     ) -> IncidentTrigger | None:
         if pod_state_diff.oom_killed:
             return self._trigger(
                 namespace,
                 pod,
+                pod_uid,
                 "OOMKilled",
                 "Container killed because of memory limit",
             )
@@ -44,6 +46,7 @@ class PodEventFilter:
             return self._trigger(
                 namespace,
                 pod,
+                pod_uid,
                 reason,
                 f"Container entered {reason}",
             )
@@ -54,6 +57,7 @@ class PodEventFilter:
         self,
         namespace: str,
         pod: str,
+        pod_uid: str,
         reason: str,
         message: str,
     ) -> IncidentTrigger:
@@ -62,6 +66,7 @@ class PodEventFilter:
             reason=reason,
             namespace=namespace,
             pod=pod,
+            pod_uid=pod_uid,
             message=message,
             occurred_at=datetime.now(UTC),
         )
