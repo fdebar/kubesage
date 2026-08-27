@@ -71,6 +71,7 @@ application:
 # This is the AI configuration
 ai:
   apiKey: ""
+  existingSecret: ""
   endpoint: ""
   model: ""
   provider: ""
@@ -223,6 +224,7 @@ postgresql:
   # This is for enabling the postgresql.
   enabled: true
 
+  # This is for setting up common annotations for postgresql.
   commonAnnotations: {}
 
   # This is for setting the namespace.
@@ -234,7 +236,6 @@ postgresql:
   # This is for setting up the auth credentials for postgresql.
   auth:
     username: kubesage
-    # TODO: It should be not hardcoded
     password: kubesage
     database: kubesage
 
