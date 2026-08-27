@@ -49,20 +49,22 @@ jobs:
           tags: kubesage:security-scan
 
       - name: Scan Docker image
-        if: success()
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: kubesage:security-scan
           trivy-config: trivy.yaml
 
-      - name: Build Docker image
+      - name: Build and push Docker image
         uses: docker/build-push-action@v7
+        id: build
         with:
           context: .
           push: true
           platforms: linux/amd64,linux/arm64
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          sbom: true
+          provenance: true
           tags: |
             ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.version }}
             ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.sha_short }}
@@ -82,8 +84,14 @@ jobs:
         run: |
           yq -i '.api.image.tag = "${{ steps.vars.outputs.version }}"' \
             gitops/environments/dev/kubesage.yaml
+          yq -i '.api.image.digest = "${{ steps.build.outputs.digest }}"' \
+            gitops/environments/dev/kubesage.yaml
+
           yq -i '.worker.image.tag = "${{ steps.vars.outputs.version }}"' \
             gitops/environments/dev/kubesage.yaml
+          yq -i '.worker.image.digest = "${{ steps.build.outputs.digest }}"' \
+            gitops/environments/dev/kubesage.yaml
+
           yq -i '.spec.sources[0].targetRevision = "${{ steps.vars.outputs.version }}"' \
             gitops/applications/kubesage.yaml
 

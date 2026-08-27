@@ -23,7 +23,7 @@ spec:
       serviceAccountName: {{ include "kubesage.serviceAccountName" . }}
       containers:
       - name: {{ include "kubesage.fullname" . }}-worker
-        image: "{{ .Values.worker.image.repository }}:{{ .Values.worker.image.tag }}"
+        image: "{{ .Values.worker.image.repository }}:{{ .Values.worker.image.tag }}{{- if .Values.worker.image.digest }}@{{ .Values.worker.image.digest }}{{- end }}"
         imagePullPolicy: "{{ .Values.worker.image.pullPolicy }}"
         command:
           - kubesage-worker
