@@ -12,9 +12,6 @@ spec:
   backoffLimit: 3
   template:
     metadata:
-      annotations:
-        checksum/config: {{ include (print $.Template.BasePath "/config/configmap.yaml") . | sha256sum }}
-        checksum/ai-secret: {{ include (print $.Template.BasePath "/secrets/ai.yaml") . | sha256sum }}
       labels:
         {{- include "kubesage.selectorLabels" . | nindent 8 }}
     spec:
@@ -27,12 +24,17 @@ spec:
           - alembic
           - upgrade
           - head
-        envFrom:
-          - configMapRef:
-              name: {{ include "kubesage.fullname" . }}-config
-          - secretRef:
-              name: {{ include "kubesage.fullname" . }}-ai-secret
         env:
+          - name: AI_API_KEY
+            value: {{ .Values.ai.apiKey | default "" | quote }}
+          - name: DATABASE_HOST
+            value: {{ .Values.database.host | quote }}
+          - name: DATABASE_PORT
+            value: {{ .Values.database.port | quote }}
+          - name: DATABASE_NAME
+            value: {{ .Values.database.name | quote }}
+          - name: DATABASE_USER
+            value: {{ .Values.database.username | quote }}
           - name: DATABASE_PASSWORD
             valueFrom:
               secretKeyRef:
