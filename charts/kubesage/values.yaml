@@ -67,6 +67,44 @@ worker:
       cpu: 100m
       memory: 256Mi
 
+# This is the web dashboard configuration
+web:
+  # This will enable the web dashboard.
+  enabled: true
+
+  # This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
+  image:
+    repository: ghcr.io/fdebar/kubesage-web
+    # This sets the pull policy for images.
+    pullPolicy: IfNotPresent
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: ""
+    # This sets the image digest.
+    digest: ""
+
+  # This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
+  replicaCount: 1
+
+  # This is for setting up a service more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/
+  service:
+    # This sets the service type more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
+    type: ClusterIP
+    # This sets the ports more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#field-spec-ports
+    port: 80
+
+  # This is for setting up the resources for the container more information can be found here: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+  resources:
+    # We usually recommend not to specify default resources and to leave this as a conscious
+    # choice for the user. This also increases chances charts run on environments with little
+    # resources, such as Minikube. If you do want to specify resources, uncomment the following
+    # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+    limits:
+      cpu: 100m
+      memory: 512Mi
+    requests:
+      cpu: 50m
+      memory: 256Mi
+
 # Database configuration
 database:
   host: ""
@@ -142,58 +180,51 @@ securityContext: {}
 
 # This block is for setting up the ingress for more information can be found here: https://kubernetes.io/docs/concepts/services-networking/ingress/
 ingress:
-  enabled: false
-  className: ""
-  annotations: {}
-    # kubernetes.io/ingress.class: nginx
-    # kubernetes.io/tls-acme: "true"
+  enabled: true
+  className: nginx
+
+  # This is for setting up an ingress more information can be found here: https://kubernetes.io/docs/concepts/services-networking/ingress/
   hosts:
-    - host: chart-example.local
+    - host: kubesage.local
       paths:
+        - path: /api
+          pathType: Prefix
+          service:
+            name: api
+            port: 8000
         - path: /
-          pathType: ImplementationSpecific
+          pathType: Prefix
+          service:
+            name: web
+            port: 80
+
   tls: []
-    # - secretName: chart-example-tls
-    #   hosts:
-    #     - chart-example.local
 
 # -- Expose the service via gateway-api HTTPRoute
 # Requires Gateway API resources and suitable controller installed within the cluster
 # (see: https://gateway-api.sigs.k8s.io/guides/)
 httpRoute:
-  # HTTPRoute enabled.
   enabled: false
-  # HTTPRoute annotations.
-  annotations: {}
-  # Which Gateways this Route is attached to.
   parentRefs:
-  - name: gateway
-    sectionName: http
-    # namespace: default
-  # Hostnames matching HTTP header.
+    - name: gateway
   hostnames:
-  - chart-example.local
-  # List of rules and filters applied.
+    - kubesage.local
   rules:
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /headers
-  #   filters:
-  #   - type: RequestHeaderModifier
-  #     requestHeaderModifier:
-  #       set:
-  #       - name: My-Overwrite-Header
-  #         value: this-is-the-only-value
-  #       remove:
-  #       - User-Agent
-  # - matches:
-  #   - path:
-  #       type: PathPrefix
-  #       value: /echo
-  #     headers:
-  #     - name: version
-  #       value: v2
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /api
+      service:
+        name: api
+        port: 8000
+
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      service:
+        name: web
+        port: 80
 
 # This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
 livenessProbe:

@@ -1,4 +1,4 @@
-{{- if .Values.ingress.enabled -}}
+{{- if .Values.ingress.enabled }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -13,6 +13,7 @@ spec:
   {{- with .Values.ingress.className }}
   ingressClassName: {{ . }}
   {{- end }}
+
   {{- if .Values.ingress.tls }}
   tls:
     {{- range .Values.ingress.tls }}
@@ -23,6 +24,7 @@ spec:
       secretName: {{ .secretName }}
     {{- end }}
   {{- end }}
+
   rules:
     {{- range .Values.ingress.hosts }}
     - host: {{ .host | quote }}
@@ -30,14 +32,12 @@ spec:
         paths:
           {{- range .paths }}
           - path: {{ .path }}
-            {{- with .pathType }}
-            pathType: {{ . }}
-            {{- end }}
+            pathType: {{ .pathType }}
             backend:
               service:
-                name: {{ include "kubesage.fullname" $ }}
+                name: {{ include "kubesage.fullname" $ }}-{{ .service.name }}
                 port:
-                  number: {{ $.Values.api.service.port }}
+                  number: {{ .service.port }}
           {{- end }}
     {{- end }}
 {{- end }}
