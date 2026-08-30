@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from kubesage.models.ai_report import AIReport
 from kubesage.models.analysis import Analysis, AnalysisTrigger
 from kubesage.models.incident import Incident
@@ -15,6 +17,7 @@ def test_analysis_contains_report() -> None:
             namespace="default",
             pod="my-pod",
             phase="Running",
+            observed_at=datetime.now(),
             containers=[],
             events=[],
             loki_logs=None,

@@ -18,6 +18,7 @@ class TimelineEventType(StrEnum):
     TRACE_EVENT = "trace_event"
     FINDING = "finding"
     ANALYSIS = "analysis"
+    METRIC_CHANGE = "metric_change"
 
 
 class TimelineEventSource(StrEnum):

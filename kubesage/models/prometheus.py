@@ -48,8 +48,8 @@ class PrometheusTimeSeries(BaseModel):
 
     name: str
     unit: str
-    labels: dict[str, str] = {}
-    points: list[MetricPoint] = []
+    labels: dict[str, str]
+    points: list[MetricPoint]
 
 
 class RawPrometheusMetrics(BaseModel):
@@ -64,3 +64,12 @@ class RawPrometheusMetrics(BaseModel):
     network_rx: list = field(default_factory=list)
     network_tx: list = field(default_factory=list)
     filesystem: list = field(default_factory=list)
+
+
+class MetricChange(BaseModel):
+    timestamp: datetime
+    metric_name: str
+    previous_value: float
+    value: float
+    change_ratio: float
+    labels: dict[str, str]

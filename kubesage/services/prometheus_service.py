@@ -376,3 +376,74 @@ class PrometheusService:
             )
 
         return series
+
+    def collect_time_series(
+        self,
+        namespace: str,
+        pod: str,
+        start: datetime,
+        end: datetime,
+        step: str = "30s",
+    ) -> list[PrometheusTimeSeries]:
+        queries = {
+            "cpu": (build_query(CPU_QUERY, namespace=namespace, pod=pod), "cores/s"),
+            "memory": (
+                build_query(MEMORY_QUERY, namespace=namespace, pod=pod),
+                "bytes",
+            ),
+            "cpu_throttling": (
+                build_query(
+                    CPU_THROTTLING_QUERY,
+                    namespace=namespace,
+                    pod=pod,
+                ),
+                "ratio",
+            ),
+            "restarts": (
+                build_query(RESTART_QUERY, namespace=namespace, pod=pod),
+                "count",
+            ),
+            "network_rx": (
+                build_query(
+                    NETWORK_RX_QUERY,
+                    namespace=namespace,
+                    pod=pod,
+                ),
+                "bytes/s",
+            ),
+            "network_tx": (
+                build_query(
+                    NETWORK_TX_QUERY,
+                    namespace=namespace,
+                    pod=pod,
+                ),
+                "bytes/s",
+            ),
+            "filesystem": (
+                build_query(
+                    FILESYSTEM_USAGE_QUERY,
+                    namespace=namespace,
+                    pod=pod,
+                ),
+                "bytes",
+            ),
+        }
+
+        series: list[PrometheusTimeSeries] = []
+        for name, (query, unit) in queries.items():
+            result = self.query_range(
+                promql=query,
+                start=start,
+                end=end,
+                step=step,
+            )
+
+            series.extend(
+                self._time_series_from_result(
+                    name=name,
+                    unit=unit,
+                    result=result,
+                )
+            )
+
+        return series

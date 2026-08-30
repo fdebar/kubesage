@@ -56,14 +56,21 @@ class AnalysisMapper:
     def to_domain(model: AnalysisModel) -> Analysis:
         """Convert an AnalysisModel to an Analysis."""
 
+        incident_data = (
+            model.incident_snapshot.data
+            if model.incident_snapshot is not None
+            else {
+                "namespace": model.namespace,
+                "pod": model.pod,
+                "pod_uid": model.pod_uid,
+                "phase": model.phase,
+                "observed_at": model.created_at,
+            }
+        )
+
         return Analysis(
             id=UUID(model.id),
-            incident=Incident(
-                namespace=model.namespace,
-                pod=model.pod,
-                pod_uid=model.pod_uid,
-                phase=model.phase,
-            ),
+            incident=Incident.model_validate(incident_data),
             findings=[FindingMapper.to_domain(f) for f in model.findings],
             report=(AIReportMapper.to_domain(model.report) if model.report else None),
             duration_ms=model.duration_ms,

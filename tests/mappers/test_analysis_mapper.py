@@ -1,3 +1,4 @@
+from datetime import datetime
 from uuid import uuid4
 
 import pytest
@@ -12,7 +13,12 @@ from kubesage.models.incident import Incident
 @pytest.fixture
 def analysis() -> Analysis:
     return Analysis(
-        incident=Incident(namespace="default", pod="my-pod", phase="Running"),
+        incident=Incident(
+            namespace="default",
+            pod="my-pod",
+            phase="Running",
+            observed_at=datetime.now(),
+        ),
         duration_ms=1000,
         report=AIReport(summary="Test summary", root_cause="Test root cause"),
         findings=[
@@ -61,6 +67,7 @@ def test_to_model_without_report() -> None:
             namespace="default",
             pod="test-pod",
             phase="Failed",
+            observed_at=datetime.now(),
         ),
         duration_ms=500,
         findings=[],
@@ -78,6 +85,7 @@ def test_to_model_calculates_findings_count() -> None:
             namespace="default",
             pod="pod",
             phase="Running",
+            observed_at=datetime.now(),
         ),
         findings=[
             Finding(
@@ -107,6 +115,7 @@ def test_to_model_maps_highest_severity() -> None:
             namespace="default",
             pod="pod",
             phase="Running",
+            observed_at=datetime.now(),
         ),
         findings=[
             Finding(
@@ -155,6 +164,7 @@ def test_to_model_keeps_incident_phase() -> None:
             namespace="default",
             pod="test-pod",
             phase="Running",
+            observed_at=datetime.now(),
         ),
         findings=[],
         duration_ms=1000,

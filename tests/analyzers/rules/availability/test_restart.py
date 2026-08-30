@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from kubesage.analyzers.rules.availability.restart import RestartRule
 from kubesage.models.container import ContainerSnapshot
 from kubesage.models.incident import Incident
@@ -9,6 +11,7 @@ def test_restart_below_threshold_returns_no_finding() -> None:
         namespace="default",
         pod="demo",
         phase="Running",
+        observed_at=datetime.now(),
         kubernetes_logs=LogSnapshot(source="kubernetes", lines=[""]),
         containers=[
             ContainerSnapshot(
@@ -35,6 +38,7 @@ def test_restart_above_threshold_returns_finding() -> None:
         namespace="default",
         pod="demo",
         phase="Running",
+        observed_at=datetime.now(),
         kubernetes_logs=LogSnapshot(source="kubernetes", lines=[""]),
         containers=[
             ContainerSnapshot(
@@ -61,6 +65,7 @@ def test_restart_equal_threshold_returns_finding() -> None:
         namespace="default",
         pod="demo",
         phase="Running",
+        observed_at=datetime.now(),
         kubernetes_logs=LogSnapshot(source="kubernetes", lines=[""]),
         containers=[
             ContainerSnapshot(
@@ -87,6 +92,7 @@ def test_multiple_containers_return_multiple_findings() -> None:
         namespace="default",
         pod="demo",
         phase="Running",
+        observed_at=datetime.now(),
         kubernetes_logs=LogSnapshot(source="kubernetes", lines=[""]),
         containers=[
             ContainerSnapshot(
@@ -121,6 +127,7 @@ def test_restart_rule_ignores_waiting_reason() -> None:
         namespace="default",
         pod="demo",
         phase="Running",
+        observed_at=datetime.now(),
         kubernetes_logs=LogSnapshot(source="kubernetes", lines=[""]),
         containers=[
             ContainerSnapshot(

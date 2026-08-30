@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from kubesage.analyzers.rules.resources.cpu_throttling import CPUThrottlingRule
 from kubesage.models.container import ContainerSnapshot, ContainerUsage
 from kubesage.models.evidence import EvidenceType
@@ -10,6 +12,7 @@ def make_incident(throttling_ratio: float | None) -> Incident:
         namespace="default",
         pod="demo",
         phase="Running",
+        observed_at=datetime.now(),
         containers=[
             ContainerSnapshot(
                 name="app",
@@ -96,6 +99,7 @@ def test_cpu_throttling_missing_container_usage_is_ignored() -> None:
         namespace="default",
         pod="demo",
         phase="Running",
+        observed_at=datetime.now(),
         containers=[
             ContainerSnapshot(
                 name="app",
@@ -120,6 +124,7 @@ def test_multiple_throttled_containers_return_multiple_findings() -> None:
         namespace="default",
         pod="demo",
         phase="Running",
+        observed_at=datetime.now(),
         containers=[
             ContainerSnapshot(
                 name="app",

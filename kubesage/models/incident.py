@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 from kubesage.models.container import ContainerSnapshot
@@ -12,6 +14,7 @@ class Incident(BaseModel):
     pod: str
     pod_uid: str | None = None
     phase: str
+    observed_at: datetime
     events: list[Event] = Field(default_factory=list)
     containers: list[ContainerSnapshot] = Field(default_factory=list)
     metrics: PodMetrics | None = None

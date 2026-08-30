@@ -12,6 +12,7 @@ def test_memory_pressure_detected() -> None:
         namespace="test",
         pod="test",
         phase="Running",
+        observed_at=datetime.now(),
         events=[
             Event(
                 last_timestamp=datetime.fromisoformat("2026-01-01T00:00:00Z"),

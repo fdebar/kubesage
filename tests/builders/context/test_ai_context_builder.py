@@ -19,6 +19,7 @@ def make_incident() -> Incident:
         namespace="default",
         pod="nginx-123",
         phase="Running",
+        observed_at=datetime.now(),
         events=[
             Event(
                 type="Warning",

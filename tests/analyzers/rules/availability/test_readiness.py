@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pytest
 
 from kubesage.analyzers.rules.availability.readiness import ReadinessRule
@@ -18,6 +20,7 @@ def incident() -> Incident:
         namespace="test",
         pod="test",
         phase="test",
+        observed_at=datetime.now(),
         containers=[
             ContainerSnapshot(
                 name="test",
@@ -30,14 +33,16 @@ def incident() -> Incident:
 
 
 def test_ready_container_returns_no_finding(
-    rule: ReadinessRule, incident: Incident
+    rule: ReadinessRule,
+    incident: Incident,
 ) -> None:
     findings = rule.evaluate(incident)
     assert findings == []
 
 
 def test_not_ready_container_returns_finding(
-    rule: ReadinessRule, incident: Incident
+    rule: ReadinessRule,
+    incident: Incident,
 ) -> None:
     incident.containers[0].ready = False
     findings = rule.evaluate(incident)

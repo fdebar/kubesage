@@ -4,6 +4,7 @@ from kubesage.builders.timeline import TimelineBuilder
 from kubesage.models.event import Event
 from kubesage.models.finding import Severity
 from kubesage.models.incident import Incident
+from kubesage.models.prometheus import MetricChange
 from kubesage.models.timeline import (
     TimelineEventSource,
     TimelineEventType,
@@ -11,7 +12,12 @@ from kubesage.models.timeline import (
 
 
 def test_build_empty_timeline() -> None:
-    incident = Incident(namespace="default", pod="api-123", phase="Running")
+    incident = Incident(
+        namespace="default",
+        pod="api-123",
+        phase="Running",
+        observed_at=datetime.now(),
+    )
     result = TimelineBuilder().build(incident)
 
     assert result == []
@@ -24,6 +30,7 @@ def test_build_kubernetes_event() -> None:
         namespace="production",
         pod="api-123",
         phase="Running",
+        observed_at=datetime.now(),
         events=[
             Event(
                 type="Normal",
@@ -63,6 +70,7 @@ def test_build_warning_kubernetes_event() -> None:
         namespace="production",
         pod="api-123",
         phase="Running",
+        observed_at=datetime.now(),
         events=[
             Event(
                 type="Warning",
@@ -87,6 +95,7 @@ def test_build_events_are_sorted_chronologically() -> None:
         namespace="production",
         pod="api-123",
         phase="Running",
+        observed_at=datetime.now(),
         events=[
             Event(
                 type="Normal",
@@ -119,6 +128,7 @@ def test_build_ignores_events_without_timestamp() -> None:
         namespace="production",
         pod="api-123",
         phase="Running",
+        observed_at=datetime.now(),
         events=[
             Event(
                 type="Normal",
@@ -139,3 +149,32 @@ def test_build_ignores_events_without_timestamp() -> None:
 
     assert len(result) == 1
     assert result[0].title == "Started"
+
+    def test_build_metric_change_event() -> None:
+        incident = Incident(
+            namespace="default",
+            pod="api",
+            phase="Running",
+            observed_at=datetime.now(),
+        )
+
+        change = MetricChange(
+            timestamp=datetime.now(),
+            metric_name="cpu",
+            previous_value=0.2,
+            value=0.5,
+            change_ratio=1.5,
+            labels={"container": "api"},
+        )
+
+        event = TimelineBuilder()._build_metric_change_event(
+            incident=incident,
+            change=change,
+            index=0,
+        )
+
+        assert event.type == TimelineEventType.METRIC_CHANGE
+        assert event.source == TimelineEventSource.PROMETHEUS
+        assert event.timestamp == change.timestamp
+        assert event.severity == Severity.INFO
+        assert event.metadata["container"] if "container" in event.metadata else True

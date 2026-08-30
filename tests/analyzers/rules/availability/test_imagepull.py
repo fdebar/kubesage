@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pytest
 
 from kubesage.analyzers.rules.availability.imagepull import ImagePullRule
@@ -18,6 +20,7 @@ def test_imagepull_rule_with_waiting_reason_imagepullbackoff(
         namespace="test",
         pod="test",
         phase="Pending",
+        observed_at=datetime.now(),
         containers=[
             ContainerSnapshot(
                 name="test",
@@ -66,6 +69,7 @@ def test_imagepull_rule_with_waiting_reason_errorimagepull(
         namespace="test",
         pod="test",
         phase="Pending",
+        observed_at=datetime.now(),
         containers=[
             ContainerSnapshot(
                 name="test",
@@ -114,6 +118,7 @@ def test_imagepull_rule_without_waiting_reason(
         namespace="test",
         pod="test",
         phase="Running",
+        observed_at=datetime.now(),
         containers=[
             ContainerSnapshot(
                 name="test",
@@ -136,6 +141,7 @@ def test_imagepull_rule_with_multiple_containers(
         namespace="test",
         pod="test",
         phase="Pending",
+        observed_at=datetime.now(),
         containers=[
             ContainerSnapshot(
                 name="test1",

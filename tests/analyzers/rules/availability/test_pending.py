@@ -19,6 +19,7 @@ def incident_no_event() -> Incident:
         namespace="test",
         pod="test",
         phase="Running",
+        observed_at=datetime.now(),
         containers=[
             ContainerSnapshot(
                 name="test",
@@ -43,6 +44,7 @@ def incident_pending() -> Incident:
         namespace="test",
         pod="test",
         phase="Pending",
+        observed_at=datetime.now(),
         containers=[
             ContainerSnapshot(
                 name="test",
@@ -93,6 +95,7 @@ def incident_running() -> Incident:
         namespace="test",
         pod="test",
         phase="Running",
+        observed_at=datetime.now(),
         containers=[
             ContainerSnapshot(
                 name="test",

@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pytest
 
 from kubesage.analyzers.rules.availability.oom_killed import OOMKilledRule
@@ -17,6 +19,7 @@ def incident_no_oom() -> Incident:
         namespace="test",
         pod="test",
         phase="Running",
+        observed_at=datetime.now(),
         containers=[
             ContainerSnapshot(
                 name="test",
@@ -41,6 +44,7 @@ def incident_oom() -> Incident:
         namespace="test",
         pod="test",
         phase="Running",
+        observed_at=datetime.now(),
         containers=[
             ContainerSnapshot(
                 name="test",
@@ -93,6 +97,7 @@ def test_multiple_oom_killed_containers_return_multiple_findings(
         namespace="test",
         pod="test",
         phase="Running",
+        observed_at=datetime.now(),
         containers=[
             ContainerSnapshot(
                 name="app",

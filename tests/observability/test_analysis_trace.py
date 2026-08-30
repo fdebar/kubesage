@@ -1,4 +1,5 @@
 from collections.abc import Generator
+from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -390,6 +391,7 @@ def test_analysis_execute_produces_complete_trace(
         namespace="default",
         pod="my-pod",
         phase="Running",
+        observed_at=datetime.now(),
         containers=[
             ContainerSnapshot(
                 name="web",
@@ -453,6 +455,7 @@ def test_database_save_analysis_is_child_of_analysis_execute(
         namespace="default",
         pod="my-pod",
         phase="Running",
+        observed_at=datetime.now(),
         containers=[
             ContainerSnapshot(
                 name="web",
@@ -511,6 +514,7 @@ def test_deep_error_is_recorded_on_analysis_execute(
         namespace="default",
         pod="my-pod",
         phase="Running",
+        observed_at=datetime.now(),
         containers=[
             ContainerSnapshot(
                 name="web",
@@ -583,6 +587,7 @@ def test_analysis_execute_contains_complete_ai_trace(
         namespace="default",
         pod="my-pod",
         phase="Running",
+        observed_at=datetime.now(),
         containers=[
             ContainerSnapshot(
                 name="web",

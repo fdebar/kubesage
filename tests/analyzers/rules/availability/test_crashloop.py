@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from kubesage.analyzers.rules.availability.crashloop import CrashLoopRule
 from kubesage.models.container import ContainerSnapshot
 from kubesage.models.evidence import EvidenceType
@@ -10,6 +12,7 @@ def make_crashloop_incident() -> Incident:
         namespace="default",
         pod="demo",
         phase="Running",
+        observed_at=datetime.now(),
         kubernetes_logs=LogSnapshot(
             source="kubernetes",
             lines=["connection refused redis"],
@@ -77,6 +80,7 @@ def test_crashloop_without_exit_code_omits_exit_code_evidence() -> None:
         namespace="default",
         pod="demo",
         phase="Running",
+        observed_at=datetime.now(),
         kubernetes_logs=LogSnapshot(
             source="kubernetes",
             lines=["connection refused redis"],
@@ -111,6 +115,7 @@ def test_crashloop_container_returns_finding() -> None:
         namespace="default",
         pod="demo",
         phase="Running",
+        observed_at=datetime.now(),
         kubernetes_logs=LogSnapshot(
             source="kubernetes",
             lines=["connection refused redis"],
@@ -140,6 +145,7 @@ def test_crashloop_returns_one_finding() -> None:
         namespace="default",
         pod="demo",
         phase="Running",
+        observed_at=datetime.now(),
         kubernetes_logs=LogSnapshot(
             source="kubernetes",
             lines=["connection refused redis"],
@@ -169,6 +175,7 @@ def test_multiple_crashloops_return_multiple_findings() -> None:
         namespace="default",
         pod="demo",
         phase="Running",
+        observed_at=datetime.now(),
         kubernetes_logs=LogSnapshot(
             source="kubernetes",
             lines=["connection refused redis"],
@@ -206,6 +213,7 @@ def test_container_without_waiting_state() -> None:
         namespace="default",
         pod="demo",
         phase="Running",
+        observed_at=datetime.now(),
         kubernetes_logs=LogSnapshot(
             source="kubernetes",
             lines=["connection refused redis"],
@@ -235,6 +243,7 @@ def test_container_waiting_for_creation_is_ignored() -> None:
         namespace="default",
         pod="demo",
         phase="Running",
+        observed_at=datetime.now(),
         kubernetes_logs=LogSnapshot(
             source="kubernetes",
             lines=["connection refused redis"],

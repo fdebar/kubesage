@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pytest
 
 from kubesage.analyzers.rules.resources.high_memory_usage import HighMemoryUsageRule
@@ -24,6 +26,7 @@ def test_high_memory_usage_detected(
         namespace="default",
         pod="demo",
         phase="Running",
+        observed_at=datetime.now(),
         kubernetes_logs=LogSnapshot(
             source="kubernetes",
             lines=["connection refused redis"],
@@ -72,6 +75,7 @@ def test_high_memory_usage_below_threshold(
         namespace="default",
         pod="demo",
         phase="Running",
+        observed_at=datetime.now(),
         kubernetes_logs=LogSnapshot(
             source="kubernetes",
             lines=["connection refused redis"],
@@ -109,6 +113,7 @@ def test_missing_memory_limit_is_ignored(
         namespace="default",
         pod="demo",
         phase="Running",
+        observed_at=datetime.now(),
         kubernetes_logs=LogSnapshot(
             source="kubernetes",
             lines=["connection refused redis"],
@@ -144,6 +149,7 @@ def test_high_memory_usage_contains_structured_evidence(
         namespace="default",
         pod="demo",
         phase="Running",
+        observed_at=datetime.now(),
         containers=[
             ContainerSnapshot(
                 name="app",

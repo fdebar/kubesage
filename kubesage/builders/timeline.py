@@ -4,6 +4,7 @@ from kubesage.models.container import ContainerSnapshot
 from kubesage.models.event import Event
 from kubesage.models.finding import ResourceRef, Severity
 from kubesage.models.incident import Incident
+from kubesage.models.prometheus import MetricChange
 from kubesage.models.timeline import (
     TimelineEvent,
     TimelineEventSource,
@@ -39,6 +40,30 @@ class TimelineBuilder:
             )
 
         return sorted(events, key=lambda event: event.timestamp)
+
+    def _build_metric_change_event(
+        self,
+        incident: Incident,
+        change: MetricChange,
+        index: int,
+    ) -> TimelineEvent:
+        return TimelineEvent(
+            id=f"metric-change-{change.metric_name}-{index}",
+            timestamp=change.timestamp,
+            type=TimelineEventType.METRIC_CHANGE,
+            source=TimelineEventSource.PROMETHEUS,
+            title=self._metric_change_title(change),
+            description=self._metric_change_description(change),
+            severity=Severity.INFO,
+            resource=self._pod_resource(incident),
+            metadata={
+                "metric": change.metric_name,
+                "previous_value": change.previous_value,
+                "value": change.value,
+                "change_ratio": change.change_ratio,
+                "labels": change.labels,
+            },
+        )
 
     def _build_kubernetes_event(
         self,
@@ -174,3 +199,21 @@ class TimelineBuilder:
             return Severity.WARNING
 
         return Severity.INFO
+
+    @staticmethod
+    def _metric_change_title(change: MetricChange) -> str:
+        direction = "increased" if change.change_ratio > 0 else "decreased"
+
+        return f"{change.metric_name} {direction}"
+
+    @staticmethod
+    def _metric_change_description(change: MetricChange) -> str:
+        direction = "increased" if change.change_ratio > 0 else "decreased"
+        percentage = abs(change.change_ratio) * 100
+
+        return (
+            f"{change.metric_name} {direction} "
+            f"from {change.previous_value:g} "
+            f"to {change.value:g} "
+            f"({percentage:.0f}% change)."
+        )

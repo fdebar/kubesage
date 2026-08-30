@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from kubesage.analyzers.rules.availability.crashloop import CrashLoopRule
 from kubesage.analyzers.rules.resources.cpu_throttling import CPUThrottlingRule
 from kubesage.analyzers.rules.resources.high_cpu_usage import HighCPUUsageRule
@@ -21,6 +23,7 @@ def build_cpu_contention_incident() -> Incident:
         namespace="production",
         pod="checkout-api-7f8d9",
         phase="Running",
+        observed_at=datetime.now(),
         kubernetes_logs=LogSnapshot(
             source="kubernetes",
             lines=[

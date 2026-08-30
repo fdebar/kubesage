@@ -13,6 +13,7 @@ def make_incident() -> Incident:
         namespace="default",
         pod="nginx-123",
         phase="Running",
+        observed_at=datetime.now(),
         containers=[],
         events=[],
         prometheus=None,
@@ -26,6 +27,7 @@ def make_incident_with_event() -> Incident:
         pod="nginx-123",
         phase="Running",
         containers=[],
+        observed_at=datetime.now(),
         events=[
             Event(
                 type="Warning",
@@ -126,6 +128,7 @@ def test_prompt_builder_is_deterministic() -> None:
         namespace="default",
         pod="test-pod",
         phase="Running",
+        observed_at=datetime.now(),
         containers=[],
         events=[],
         kubernetes_logs=None,

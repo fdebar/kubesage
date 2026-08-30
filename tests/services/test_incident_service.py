@@ -1,3 +1,4 @@
+from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -41,6 +42,7 @@ def build_incident(
         pod="payment-api",
         pod_uid="123e4567-e89b-12d3-a456-426614174000",
         phase="Running",
+        observed_at=datetime.now(),
         containers=containers if containers is not None else [build_container()],
         events=events if events is not None else [],
         kubernetes_logs=LogSnapshot(

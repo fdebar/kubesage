@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 import structlog
 
 from kubesage.builders.context.container_snapshot_builder import (
@@ -33,6 +35,7 @@ class IncidentBuilder:
         self.container_snapshot_builder = container_snapshot_builder
 
     def collect(self, namespace: str, pod: str) -> Incident:
+        observed_at = datetime.now(UTC)
         kubernetes = self.kubernetes.collect(namespace, pod)
         metrics = self.metrics.collect(namespace, pod)
 
@@ -56,12 +59,14 @@ class IncidentBuilder:
             prometheus=prometheus,
             loki_logs=loki_logs,
             container_metrics=metrics,
+            observed_at=observed_at,
         )
 
     def build(
         self,
         kubernetes: KubernetesSnapshot,
         containers: list[ContainerSnapshot],
+        observed_at: datetime,
         prometheus: PrometheusResourceUsage | None = None,
         loki_logs: LogSnapshot | None = None,
         container_metrics: PodMetrics | None = None,
@@ -71,6 +76,7 @@ class IncidentBuilder:
             pod=kubernetes.pod,
             pod_uid=kubernetes.pod_uid,
             phase=kubernetes.phase,
+            observed_at=observed_at,
             containers=containers,
             events=kubernetes.events,
             kubernetes_logs=kubernetes.logs,

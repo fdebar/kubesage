@@ -1,4 +1,5 @@
 from collections.abc import Generator
+from datetime import datetime
 
 import pytest
 from fastapi.testclient import TestClient
@@ -27,7 +28,12 @@ class FakeIncidentService:
         context: str | None = None,
     ) -> Analysis:
         return Analysis(
-            incident=Incident(namespace=namespace, pod=pod, phase="Pending"),
+            incident=Incident(
+                namespace=namespace,
+                pod=pod,
+                phase="Pending",
+                observed_at=datetime.now(),
+            ),
             findings=[],
             report=AIReport(
                 summary="Pod is failing",

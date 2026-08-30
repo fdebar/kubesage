@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pytest
 
 from kubesage.analyzers.rules.resources.high_cpu_usage import HighCPUUsageRule
@@ -21,6 +23,7 @@ def test_high_cpu_usage_high(high_cpu_usage_rule: HighCPUUsageRule) -> None:
         namespace="default",
         pod="demo",
         phase="Running",
+        observed_at=datetime.now(),
         containers=[
             ContainerSnapshot(
                 name="app",
@@ -62,6 +65,7 @@ def test_high_cpu_usage_low(high_cpu_usage_rule: HighCPUUsageRule) -> None:
         namespace="default",
         pod="demo",
         phase="Running",
+        observed_at=datetime.now(),
         containers=[
             ContainerSnapshot(
                 name="demo",
@@ -93,6 +97,7 @@ def _test_cpu_usage_limit_missing(high_cpu_usage_rule: HighCPUUsageRule) -> None
         namespace="default",
         pod="demo",
         phase="Running",
+        observed_at=datetime.now(),
         containers=[
             ContainerSnapshot(
                 name="demo",
@@ -125,6 +130,7 @@ def test_high_cpu_usage_contains_structured_evidence(
         namespace="default",
         pod="demo",
         phase="Running",
+        observed_at=datetime.now(),
         containers=[
             ContainerSnapshot(
                 name="app",
