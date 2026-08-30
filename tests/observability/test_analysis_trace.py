@@ -14,8 +14,10 @@ from kubesage.ai.providers.openai_compatible import OpenAICompatibleProvider
 from kubesage.models.ai_report import AIReport
 from kubesage.models.analysis import AnalysisTrigger
 from kubesage.models.container import ContainerSnapshot
+from kubesage.models.finding import Finding, Severity
 from kubesage.models.incident import Incident
 from kubesage.repositories.analysis_repository import AnalysisRepository
+from kubesage.services.ai_service import AIService
 from kubesage.services.analysis_service import AnalysisService
 from kubesage.services.incident_service import IncidentService
 from kubesage.services.prometheus_service import PrometheusService
@@ -572,3 +574,118 @@ def test_deep_error_is_recorded_on_analysis_execute(
     )
 
     repository.save.assert_not_called()
+
+
+def test_analysis_execute_contains_complete_ai_trace(
+    span_exporter: InMemorySpanExporter,
+) -> None:
+    incident = Incident(
+        namespace="default",
+        pod="my-pod",
+        phase="Running",
+        containers=[
+            ContainerSnapshot(
+                name="web",
+                image="nginx:latest",
+                ready=True,
+                restart_count=1,
+            )
+        ],
+        events=[],
+    )
+
+    incident_builder = MagicMock()
+    incident_builder.collect.return_value = incident
+
+    finding = Finding(
+        rule="test.rule",
+        severity=Severity.WARNING,
+        title="Test finding",
+        description="Test finding for OpenTelemetry trace validation",
+    )
+
+    engine = MagicMock()
+    engine.analyze.return_value = [finding]
+
+    ai_context_builder = MagicMock()
+    ai_context_builder.build.return_value = MagicMock()
+
+    prompt_builder = MagicMock()
+    prompt_builder.build.return_value = "test prompt"
+
+    response = SimpleNamespace(
+        usage=SimpleNamespace(
+            prompt_tokens=10,
+            completion_tokens=5,
+            total_tokens=15,
+        ),
+        choices=[
+            SimpleNamespace(
+                message=SimpleNamespace(
+                    parsed=AIReport(
+                        summary="Analysis completed",
+                    )
+                )
+            )
+        ],
+    )
+
+    client = MagicMock()
+    client.chat.completions.parse.return_value = response
+
+    provider = OpenAICompatibleProvider(client=client, model="test-model")
+    ai = AIService(provider)
+
+    incident_service = IncidentService(
+        kubernetes=MagicMock(),
+        prometheus=MagicMock(),
+        metrics=MagicMock(),
+        loki=MagicMock(),
+        ai=ai,
+        engine=engine,
+        ai_context_builder=ai_context_builder,
+        prompt_builder=prompt_builder,
+        container_snapshot_builder=MagicMock(),
+    )
+
+    session = MagicMock()
+    repository = AnalysisRepository(session)
+    analysis_service = AnalysisService(incident_service, repository)
+
+    with patch(
+        "kubesage.services.incident_service.IncidentBuilder",
+        return_value=incident_builder,
+    ):
+        analysis_service.analyze("default", "my-pod", AnalysisTrigger.API)
+
+    execute_span = get_span(span_exporter, "analysis.execute")
+    ai_context_span = get_span(span_exporter, "analysis.ai_context.build")
+    ai_prompt_span = get_span(span_exporter, "analysis.ai_prompt.build")
+    ai_analyze_span = get_span(span_exporter, "analysis.ai.analyze")
+    llm_span = get_span(span_exporter, "llm.generate_report")
+    database_span = get_span(span_exporter, "database.save_analysis")
+
+    trace_id = execute_span.context.trace_id
+    for span in (
+        ai_context_span,
+        ai_prompt_span,
+        ai_analyze_span,
+        llm_span,
+        database_span,
+    ):
+        assert span.context.trace_id == trace_id
+
+    assert ai_context_span.parent is not None
+    assert ai_context_span.parent.span_id == execute_span.context.span_id
+
+    assert ai_prompt_span.parent is not None
+    assert ai_prompt_span.parent.span_id == execute_span.context.span_id
+
+    assert ai_analyze_span.parent is not None
+    assert ai_analyze_span.parent.span_id == execute_span.context.span_id
+
+    assert llm_span.parent is not None
+    assert llm_span.parent.span_id == ai_analyze_span.context.span_id
+
+    assert database_span.parent is not None
+    assert database_span.parent.span_id == execute_span.context.span_id
