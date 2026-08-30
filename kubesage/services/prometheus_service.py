@@ -122,6 +122,8 @@ class PrometheusService:
         end: datetime,
         step: str = "30s",
     ) -> list:
+        request_start = time.perf_counter()
+
         try:
             response = self._request(
                 "/api/v1/query_range",
@@ -146,14 +148,26 @@ class PrometheusService:
 
             return payload["data"]["result"]  # type: ignore
 
-        except requests.exceptions.RequestException as exc:
-            (
-                logger.error(
-                    "prometheus_range_query_failed", promql=promql, error=str(exc)
-                ),
+        except requests.exceptions.ConnectionError:
+            logger.warning("prometheus_range_connection_error", promql=promql)
+
+        except requests.exceptions.Timeout:
+            logger.warning("prometheus_range_query_failed_timeout", promql=promql)
+
+        except requests.exceptions.HTTPError as exc:
+            logger.error(
+                "prometheus_range_query_failed_http_error",
+                promql=promql,
+                code=response.status_code,
+                reason=str(exc),
             )
 
-            return []
+        except requests.exceptions.RequestException as exc:
+            logger.error(
+                "prometheus_range_query_request_exception",
+                promql=promql,
+                error=str(exc),
+            )
 
         except (KeyError, TypeError, ValueError) as exc:
             logger.error(
@@ -162,7 +176,10 @@ class PrometheusService:
                 error=str(exc),
             )
 
-            return []
+        finally:
+            PROMETHEUS_DURATION.observe(time.perf_counter() - request_start)
+
+        return []
 
     def collect(self, namespace: str, pod: str) -> PrometheusResourceUsage:
         with tracer.start_as_current_span("prometheus.collect") as span:
