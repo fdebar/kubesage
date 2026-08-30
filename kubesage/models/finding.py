@@ -17,6 +17,7 @@ class Severity(StrEnum):
     WARNING = "WARNING"
     HIGH = "HIGH"
     CRITICAL = "CRITICAL"
+    ERROR = "ERROR"
 
     @property
     def weight(self) -> int:
@@ -26,6 +27,7 @@ class Severity(StrEnum):
             Severity.WARNING: 2,
             Severity.HIGH: 3,
             Severity.CRITICAL: 4,
+            Severity.ERROR: 5,
         }[self]
 
 
