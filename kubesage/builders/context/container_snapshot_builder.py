@@ -39,6 +39,8 @@ class ContainerSnapshotBuilder:
                     waiting_message=status.waiting_message,
                     last_exit_code=status.last_exit_code,
                     last_exit_reason=status.last_exit_reason,
+                    started_at=status.started_at,
+                    finished_at=status.finished_at,
                     resources=container_resources.get(status.name),
                     usage=(
                         container_usages.get(status.name)

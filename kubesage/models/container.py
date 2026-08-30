@@ -53,6 +53,9 @@ class ContainerSnapshot:
     last_exit_code: int | None = None
     last_exit_reason: str | None = None
 
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+
     resources: ContainerResources | None = None
     usage: ContainerUsage | None = None
 
