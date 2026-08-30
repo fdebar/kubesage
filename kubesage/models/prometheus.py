@@ -1,4 +1,5 @@
 from dataclasses import field
+from datetime import datetime
 
 from pydantic import BaseModel
 
@@ -13,6 +14,13 @@ class Metric(BaseModel):
     unit: str
     timestamp: float
     formatted_value: str | None = None
+
+
+class MetricPoint(BaseModel):
+    """A single time-series point from Prometheus."""
+
+    timestamp: datetime
+    value: float
 
 
 class PrometheusResourceUsage(BaseModel):
@@ -33,6 +41,15 @@ class PrometheusResourceUsage(BaseModel):
     latency: Metric | None = None
 
     containers: list[ContainerUsage] = field(default_factory=list)
+
+
+class PrometheusTimeSeries(BaseModel):
+    """A Prometheus time series."""
+
+    name: str
+    unit: str
+    labels: dict[str, str] = {}
+    points: list[MetricPoint] = []
 
 
 class RawPrometheusMetrics(BaseModel):

@@ -1,5 +1,6 @@
 import time
 from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime
 from typing import Any
 
 import requests
@@ -10,7 +11,9 @@ from requests import Response
 from kubesage.models.container import ContainerUsage
 from kubesage.models.prometheus import (
     Metric,
+    MetricPoint,
     PrometheusResourceUsage,
+    PrometheusTimeSeries,
     RawPrometheusMetrics,
 )
 from kubesage.observability.metrics import PROMETHEUS_DURATION
@@ -111,6 +114,55 @@ class PrometheusService:
             PROMETHEUS_DURATION.observe(time.perf_counter() - start)
 
         return []
+
+    def query_range(
+        self,
+        promql: str,
+        start: datetime,
+        end: datetime,
+        step: str = "30s",
+    ) -> list:
+        try:
+            response = self._request(
+                "/api/v1/query_range",
+                params={
+                    "query": promql,
+                    "start": start.timestamp(),
+                    "end": end.timestamp(),
+                    "step": step,
+                },
+            )
+
+            response.raise_for_status()
+
+            payload = response.json()
+            if payload.get("status") != "success":
+                logger.warning(
+                    "prometheus_range_query_failed",
+                    promql=promql,
+                    response=payload,
+                )
+                return []
+
+            return payload["data"]["result"]  # type: ignore
+
+        except requests.exceptions.RequestException as exc:
+            (
+                logger.error(
+                    "prometheus_range_query_failed", promql=promql, error=str(exc)
+                ),
+            )
+
+            return []
+
+        except (KeyError, TypeError, ValueError) as exc:
+            logger.error(
+                "prometheus_invalid_range_response",
+                promql=promql,
+                error=str(exc),
+            )
+
+            return []
 
     def collect(self, namespace: str, pod: str) -> PrometheusResourceUsage:
         with tracer.start_as_current_span("prometheus.collect") as span:
@@ -272,3 +324,38 @@ class PrometheusService:
             unit=unit,
             timestamp=float(timestamp),
         )
+
+    def _time_series_from_result(
+        self,
+        name: str,
+        unit: str,
+        result: list,
+    ) -> list[PrometheusTimeSeries]:
+        series = []
+
+        for item in result:
+            labels = item.get("metric", {})
+            points = [
+                MetricPoint(
+                    timestamp=datetime.fromtimestamp(
+                        float(timestamp),
+                        tz=UTC,
+                    ),
+                    value=float(value),
+                )
+                for timestamp, value in item.get("values", [])
+            ]
+
+            if not points:
+                continue
+
+            series.append(
+                PrometheusTimeSeries(
+                    name=name,
+                    unit=unit,
+                    labels=labels,
+                    points=points,
+                )
+            )
+
+        return series
