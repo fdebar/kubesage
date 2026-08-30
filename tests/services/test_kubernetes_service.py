@@ -3,6 +3,7 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
+from kubernetes import client
 from kubernetes.client.exceptions import ApiException
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
@@ -557,3 +558,44 @@ def test_count_pods(mock_create_api: MagicMock) -> None:
     service = KubernetesService()
 
     assert service.count_pods() == 2
+
+
+def test_collect_containers_preserves_lifecycle_timestamps() -> None:
+    started_at = datetime(2026, 8, 30, 12, 30, 0, tzinfo=UTC)
+    finished_at = datetime(2026, 8, 30, 12, 32, 41, tzinfo=UTC)
+
+    container_status = client.V1ContainerStatus(
+        name="api",
+        image="api:1.0",
+        ready=False,
+        restart_count=1,
+        state=client.V1ContainerState(
+            running=client.V1ContainerStateRunning(
+                started_at=started_at,
+            )
+        ),
+        last_state=client.V1ContainerState(
+            terminated=client.V1ContainerStateTerminated(
+                exit_code=137,
+                reason="OOMKilled",
+                finished_at=finished_at,
+            )
+        ),
+        image_id="test-image",
+    )
+
+    pod = client.V1Pod(
+        status=client.V1PodStatus(
+            container_statuses=[container_status],
+        )
+    )
+
+    result = KubernetesService._collect_containers(
+        KubernetesService.__new__(KubernetesService),
+        pod,
+    )
+
+    assert len(result) == 1
+    assert result[0].started_at == started_at
+    assert result[0].finished_at == finished_at
+    assert result[0].last_exit_reason == "OOMKilled"

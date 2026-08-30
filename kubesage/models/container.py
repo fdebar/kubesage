@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from datetime import datetime
 
 
 @dataclass(slots=True)
@@ -9,10 +10,8 @@ class ContainerUsage:
     """
 
     name: str
-
     cpu_usage: float | None = None
     memory_usage: int | None = None
-
     cpu_throttling_ratio: float | None = None
 
 
@@ -43,10 +42,7 @@ class ContainerSnapshot:
     Complete container state.
     """
 
-    # Identity
     name: str
-
-    # Kubernetes state
     image: str
     ready: bool
     restart_count: int
@@ -57,10 +53,7 @@ class ContainerSnapshot:
     last_exit_code: int | None = None
     last_exit_reason: str | None = None
 
-    # Kubernetes configuration
     resources: ContainerResources | None = None
-
-    # Runtime observations
     usage: ContainerUsage | None = None
 
 
@@ -80,3 +73,6 @@ class ContainerStatus:
 
     last_exit_code: int | None = None
     last_exit_reason: str | None = None
+
+    started_at: datetime | None = None
+    finished_at: datetime | None = None

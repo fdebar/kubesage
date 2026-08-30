@@ -192,10 +192,16 @@ class KubernetesService(KubernetesProvider):
 
             last_exit_code = None
             last_exit_reason = None
+            finished_at = None
 
             if container.last_state and container.last_state.terminated:
                 last_exit_code = container.last_state.terminated.exit_code
                 last_exit_reason = container.last_state.terminated.reason
+                finished_at = container.last_state.terminated.finished_at
+
+            started_at = None
+            if container.state and container.state.running:
+                started_at = container.state.running.started_at
 
             containers.append(
                 ContainerStatus(
@@ -207,6 +213,8 @@ class KubernetesService(KubernetesProvider):
                     waiting_message=waiting_message,
                     last_exit_code=last_exit_code,
                     last_exit_reason=last_exit_reason,
+                    finished_at=finished_at,
+                    started_at=started_at,
                 )
             )
 
@@ -268,11 +276,7 @@ class KubernetesService(KubernetesProvider):
                         type=event_item.type,
                         reason=event_item.reason,
                         message=event_item.message,
-                        last_timestamp=(
-                            event_item.last_timestamp.timestamp()
-                            if event_item.last_timestamp
-                            else None
-                        ),
+                        last_timestamp=event_item.last_timestamp,
                     )
                 )
 
