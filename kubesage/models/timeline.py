@@ -10,6 +10,8 @@ from kubesage.models.finding import ResourceRef, Severity
 class TimelineEventType(StrEnum):
     DEPLOYMENT = "deployment"
     KUBERNETES_EVENT = "kubernetes_event"
+    CONTAINER_STARTED = "container_started"
+    CONTAINER_TERMINATED = "container_terminated"
     POD_RESTART = "pod_restart"
     METRIC_ANOMALY = "metric_anomaly"
     LOG_EVENT = "log_event"
