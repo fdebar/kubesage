@@ -13,7 +13,9 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
 from kubesage.ai.providers.openai_compatible import OpenAICompatibleProvider
 from kubesage.models.ai_report import AIReport
 from kubesage.models.analysis import AnalysisTrigger
+from kubesage.models.container import ContainerSnapshot
 from kubesage.models.incident import Incident
+from kubesage.repositories.analysis_repository import AnalysisRepository
 from kubesage.services.analysis_service import AnalysisService
 from kubesage.services.incident_service import IncidentService
 from kubesage.services.prometheus_service import PrometheusService
@@ -377,3 +379,196 @@ def test_analysis_execute_trace_id_is_shared_with_real_incident_service(
 
     assert incident_span.context.trace_id == execute_span.context.trace_id
     assert_child_of(incident_span, execute_span)
+
+
+def test_analysis_execute_produces_complete_trace(
+    span_exporter: InMemorySpanExporter,
+) -> None:
+    incident = Incident(
+        namespace="default",
+        pod="my-pod",
+        phase="Running",
+        containers=[
+            ContainerSnapshot(
+                name="web",
+                image="nginx:latest",
+                ready=True,
+                restart_count=0,
+            )
+        ],
+        events=[],
+    )
+
+    incident_builder = MagicMock()
+    incident_builder.collect.return_value = incident
+
+    engine = MagicMock()
+    engine.analyze.return_value = []
+
+    incident_service = IncidentService(
+        kubernetes=MagicMock(),
+        prometheus=MagicMock(),
+        metrics=MagicMock(),
+        loki=MagicMock(),
+        ai=MagicMock(),
+        engine=engine,
+        ai_context_builder=MagicMock(),
+        prompt_builder=MagicMock(),
+        container_snapshot_builder=MagicMock(),
+    )
+
+    session = MagicMock()
+    repository = AnalysisRepository(session)
+    analysis_service = AnalysisService(incident_service, repository)
+
+    with patch(
+        "kubesage.services.incident_service.IncidentBuilder",
+        return_value=incident_builder,
+    ):
+        analysis_service.analyze("default", "my-pod", AnalysisTrigger.API)
+
+    spans = span_exporter.get_finished_spans()
+
+    expected_names = {
+        "analysis.execute",
+        "analysis.incident.build",
+        "analysis.rules.engine.analyze",
+        "database.save_analysis",
+    }
+
+    actual_names = {span.name for span in spans}
+    assert expected_names.issubset(actual_names)
+
+    execute_span = get_span(span_exporter, "analysis.execute")
+    for span in spans:
+        assert span.context.trace_id == execute_span.context.trace_id
+
+
+def test_database_save_analysis_is_child_of_analysis_execute(
+    span_exporter: InMemorySpanExporter,
+) -> None:
+    incident = Incident(
+        namespace="default",
+        pod="my-pod",
+        phase="Running",
+        containers=[
+            ContainerSnapshot(
+                name="web",
+                image="nginx:latest",
+                ready=True,
+                restart_count=0,
+            )
+        ],
+        events=[],
+    )
+
+    incident_builder = MagicMock()
+    incident_builder.collect.return_value = incident
+
+    engine = MagicMock()
+    engine.analyze.return_value = []
+
+    incident_service = IncidentService(
+        kubernetes=MagicMock(),
+        prometheus=MagicMock(),
+        metrics=MagicMock(),
+        loki=MagicMock(),
+        ai=MagicMock(),
+        engine=engine,
+        ai_context_builder=MagicMock(),
+        prompt_builder=MagicMock(),
+        container_snapshot_builder=MagicMock(),
+    )
+
+    session = MagicMock()
+    repository = AnalysisRepository(session)
+    analysis_service = AnalysisService(incident_service, repository)
+
+    with patch(
+        "kubesage.services.incident_service.IncidentBuilder",
+        return_value=incident_builder,
+    ):
+        analysis_service.analyze("default", "my-pod", AnalysisTrigger.API)
+
+    execute_span = get_span(span_exporter, "analysis.execute")
+    database_span = get_span(span_exporter, "database.save_analysis")
+
+    assert database_span.parent is not None
+    assert database_span.parent.span_id == execute_span.context.span_id
+    assert database_span.context.trace_id == execute_span.context.trace_id
+
+    assert database_span.attributes is not None
+    assert database_span.attributes["analysis.findings.count"] == 0
+    assert database_span.attributes["analysis.has_report"] is False
+
+
+def test_deep_error_is_recorded_on_analysis_execute(
+    span_exporter: InMemorySpanExporter,
+) -> None:
+    incident = Incident(
+        namespace="default",
+        pod="my-pod",
+        phase="Running",
+        containers=[
+            ContainerSnapshot(
+                name="web",
+                image="nginx:latest",
+                ready=True,
+                restart_count=0,
+            )
+        ],
+        events=[],
+    )
+
+    incident_builder = MagicMock()
+    incident_builder.collect.return_value = incident
+
+    engine = MagicMock()
+    engine.analyze.side_effect = RuntimeError("Rules engine failed")
+
+    incident_service = IncidentService(
+        kubernetes=MagicMock(),
+        prometheus=MagicMock(),
+        metrics=MagicMock(),
+        loki=MagicMock(),
+        ai=MagicMock(),
+        engine=engine,
+        ai_context_builder=MagicMock(),
+        prompt_builder=MagicMock(),
+        container_snapshot_builder=MagicMock(),
+    )
+
+    repository = MagicMock()
+    analysis_service = AnalysisService(incident_service, repository)
+
+    with (
+        patch(
+            "kubesage.services.incident_service.IncidentBuilder",
+            return_value=incident_builder,
+        ),
+        pytest.raises(RuntimeError, match="Rules engine failed"),
+    ):
+        analysis_service.analyze("default", "my-pod", AnalysisTrigger.API)
+
+    execute_span = get_span(span_exporter, "analysis.execute")
+    rules_span = get_span(span_exporter, "analysis.rules.engine.analyze")
+
+    assert execute_span.status.status_code == trace.StatusCode.ERROR
+    assert rules_span.status.status_code == trace.StatusCode.ERROR
+
+    assert rules_span.parent is not None
+    assert rules_span.parent.span_id == execute_span.context.span_id
+    assert rules_span.context.trace_id == execute_span.context.trace_id
+
+    exception_events = [
+        event for event in execute_span.events if event.name == "exception"
+    ]
+
+    assert any(
+        event.attributes is not None
+        and event.attributes.get("exception.type") == "RuntimeError"
+        and event.attributes.get("exception.message") == "Rules engine failed"
+        for event in exception_events
+    )
+
+    repository.save.assert_not_called()
