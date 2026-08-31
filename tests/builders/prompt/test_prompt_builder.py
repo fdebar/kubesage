@@ -213,5 +213,5 @@ def test_build_includes_incident_timeline() -> None:
 
     assert "# Incident Timeline" in prompt
     assert "[2026-08-31T10:42:12+00:00]" in prompt
-    assert "kubernetes | Container terminated" in prompt
+    assert "[INFO] kubernetes | Container terminated" in prompt
     assert "Container 'api' terminated: OOMKilled." in prompt
