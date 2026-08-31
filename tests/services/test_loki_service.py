@@ -1,3 +1,4 @@
+from datetime import UTC
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -171,7 +172,10 @@ def test_collect_errors_returns_log_snapshot(
 
     assert result is not None
     assert result.source == LogSource.LOKI.value
-    assert result.lines == ["ERROR first", "ERROR second"]
+    assert [entry.message for entry in result.entries] == [
+        "ERROR first",
+        "ERROR second",
+    ]
 
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
@@ -208,7 +212,9 @@ def test_collect_warnings_uses_warning_query(
         )
 
     assert result is not None
-    assert result.lines == ["WARNING something happened"]
+    assert [entry.message for entry in result.entries] == [
+        "WARNING something happened",
+    ]
 
     mock_query.assert_called_once()
 
@@ -249,7 +255,10 @@ def test_collect_all_uses_all_logs_query(
         )
 
     assert result is not None
-    assert result.lines == ["INFO application started", "ERROR application failed"]
+    assert [entry.message for entry in result.entries] == [
+        "INFO application started",
+        "ERROR application failed",
+    ]
 
     mock_query.assert_called_once()
 
@@ -307,24 +316,29 @@ def test_collect_returns_none_when_no_logs_found(
         assert span.attributes["loki.query.type"] == LogQueryType.ERRORS.value
 
 
-def test_extract_logs_returns_all_log_lines(service: LokiService) -> None:
+def test_extract_logs_returns_all_log_entries(service: LokiService) -> None:
     payload = {
         "data": {
             "result": [
                 {
                     "stream": {},
-                    "values": [["123", "line one"], ["456", "line two"]],
+                    "values": [
+                        ["1756635600000000000", "line one"],
+                        ["1756635660000000000", "line two"],
+                    ],
                 },
                 {
                     "stream": {},
-                    "values": [["789", "line three"]],
+                    "values": [["1756635720000000000", "line three"]],
                 },
             ]
         }
     }
 
     result = service._extract_logs(payload)
-    assert result == ["line one", "line two", "line three"]
+    assert [entry.message for entry in result] == ["line one", "line two", "line three"]
+    assert result[0].timestamp < result[1].timestamp
+    assert result[1].timestamp < result[2].timestamp
 
 
 def test_extract_logs_returns_empty_list_when_no_results(service: LokiService) -> None:
@@ -332,3 +346,37 @@ def test_extract_logs_returns_empty_list_when_no_results(service: LokiService) -
 
     result = service._extract_logs(payload)
     assert result == []
+
+
+def test_extract_logs_preserves_timestamp_and_labels(service: LokiService) -> None:
+    payload = {
+        "data": {
+            "result": [
+                {
+                    "stream": {
+                        "namespace": "default",
+                        "pod": "api",
+                        "container": "web",
+                    },
+                    "values": [
+                        (
+                            "1756635663000000000",
+                            "ERROR database connection refused",
+                        ),
+                    ],
+                }
+            ]
+        }
+    }
+
+    entries = service._extract_logs(payload)
+    assert len(entries) == 1
+
+    entry = entries[0]
+    assert entry.message == "ERROR database connection refused"
+    assert entry.timestamp.tzinfo == UTC
+    assert entry.labels == {
+        "namespace": "default",
+        "pod": "api",
+        "container": "web",
+    }

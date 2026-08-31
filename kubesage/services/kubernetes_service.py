@@ -1,4 +1,5 @@
 import time
+from datetime import UTC, datetime
 
 import structlog
 from kubernetes import client
@@ -14,7 +15,7 @@ from kubesage.models.container import (
 )
 from kubesage.models.event import Event
 from kubesage.models.kubernetes_snapshot import KubernetesSnapshot
-from kubesage.models.log import LogSnapshot
+from kubesage.models.log import LogEntry, LogSnapshot, LogSource
 from kubesage.observability.metrics import KUBERNETES_DURATION, KUBERNETES_ERRORS
 from kubesage.providers.kubernetes_provider import KubernetesProvider
 from kubesage.utils.config import settings
@@ -123,7 +124,9 @@ class KubernetesService(KubernetesProvider):
             span.set_attribute("k8s.namespace", namespace)
             span.set_attribute("k8s.pod.name", pod)
 
-            lines: list[str] = []
+            collected_at = datetime.now(UTC)
+            entries: list[LogEntry] = []
+
             for container in containers:
                 try:
                     logs = self.v1.read_namespaced_pod_log(
@@ -137,11 +140,13 @@ class KubernetesService(KubernetesProvider):
                         logs = logs.decode("utf-8")
 
                     if logs:
-                        lines.extend(
-                            [
-                                f"=== Container: {container.name} ===",
-                                *logs.split("\n"),
-                            ]
+                        entries.extend(
+                            LogEntry(
+                                timestamp=collected_at,
+                                message=line,
+                                labels={"container": container.name},
+                            )
+                            for line in logs.splitlines()
                         )
 
                 except ApiException as exc:
@@ -177,7 +182,11 @@ class KubernetesService(KubernetesProvider):
                         reason=str(exc),
                     )
 
-            return LogSnapshot(source="kubernetes", lines=lines)
+            return LogSnapshot(
+                source=LogSource.KUBERNETES,
+                entries=entries,
+                collected_at=collected_at,
+            )
 
     def _collect_containers(self, pod_info: V1Pod) -> list[ContainerStatus]:
         containers = []
@@ -309,10 +318,7 @@ class KubernetesService(KubernetesProvider):
             pod=pod,
             pod_uid="",
             phase="Unknown",
-            logs=LogSnapshot(
-                source="kubernetes",
-                lines=[],
-            ),
+            logs=LogSnapshot(source="kubernetes"),
             containers=[],
             events=[],
             resources=PodResources(containers=[]),

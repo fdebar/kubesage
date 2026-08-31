@@ -11,7 +11,7 @@ from kubesage.models.finding import (
     Severity,
 )
 from kubesage.models.incident import Incident
-from kubesage.models.log import LogSnapshot
+from kubesage.models.log import LogEntry, LogSnapshot
 
 
 def make_incident() -> Incident:
@@ -29,7 +29,10 @@ def make_incident() -> Incident:
             )
         ],
         kubernetes_logs=LogSnapshot(
-            lines=["CrashLoopBackOff detected"], source="kubernetes"
+            source="kubernetes",
+            entries=[
+                LogEntry(timestamp=datetime.now(), message="CrashLoopBackOff detected")
+            ],
         ),
     )
 

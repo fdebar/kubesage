@@ -9,6 +9,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanE
 
 from kubesage.models.container import ContainerResources
 from kubesage.models.kubernetes_snapshot import KubernetesSnapshot
+from kubesage.models.log import LogSource
 from kubesage.services.kubernetes_service import KubernetesService
 from kubesage.utils.exceptions import PodNotFoundError
 
@@ -67,11 +68,9 @@ def test_collect_returns_empty_snapshot_on_api_failure(
     service = KubernetesService()
 
     snapshot = service.collect("default", "my-pod")
-
     assert snapshot.phase == "Unknown"
 
     span = _get_span(span_exporter, "kubernetes.get_pod")
-
     assert span.status.status_code.name == "ERROR"
     assert any(event.name == "exception" for event in span.events)
 
@@ -90,11 +89,9 @@ def test_collect_returns_empty_snapshot_on_unexpected_error(
     service = KubernetesService()
 
     snapshot = service.collect("default", "my-pod")
-
     assert snapshot.phase == "Unknown"
 
     span = _get_span(span_exporter, "kubernetes.get_pod")
-
     assert span.status.status_code.name == "ERROR"
     assert len(span.events) == 1
     assert span.events[0].name == "exception"
@@ -126,14 +123,8 @@ def test_collect_success(
     mock_pod.status.container_statuses = [mock_container]
 
     mock_container_resources = MagicMock()
-    mock_container_resources.limits = {
-        "cpu": "500m",
-        "memory": "256Mi",
-    }
-    mock_container_resources.requests = {
-        "cpu": "100m",
-        "memory": "128Mi",
-    }
+    mock_container_resources.limits = {"cpu": "500m", "memory": "256Mi"}
+    mock_container_resources.requests = {"cpu": "100m", "memory": "128Mi"}
 
     mock_pod.spec.containers = [
         MagicMock(
@@ -169,7 +160,7 @@ def test_collect_success(
     assert snapshot.containers[0].last_exit_code == 137
     assert snapshot.containers[0].last_exit_reason == "OOMKilled"
 
-    assert snapshot.logs.lines == ["=== Container: web ===", "Hello Logs"]
+    assert [entry.message for entry in snapshot.logs.entries] == ["Hello Logs"]
 
     assert len(snapshot.events) == 1
     assert snapshot.events[0].reason == "FailedScheduling"
@@ -203,7 +194,8 @@ def test_collect_logs_returns_snapshot(
 
     result = service._collect_logs("default", "my-pod", [container])
 
-    assert result.lines == ["=== Container: web ===", "line one", "line two"]
+    assert [entry.message for entry in result.entries] == ["line one", "line two"]
+    assert all(entry.labels == {"container": "web"} for entry in result.entries)
     assert result.source == "kubernetes"
 
     span = _get_span(span_exporter, "kubernetes.get_logs")
@@ -228,8 +220,8 @@ def test_collect_logs_returns_empty_snapshot_on_error(
 
     result = service._collect_logs("default", "my-pod", [MagicMock(name="web")])
 
-    assert result.lines == []
-    assert result.source == "kubernetes"
+    assert result.entries == []
+    assert result.source == LogSource.KUBERNETES
 
     span = _get_span(span_exporter, "kubernetes.get_logs")
 
@@ -293,10 +285,7 @@ def test_collect_events_returns_warning_events(
 
     service = KubernetesService()
 
-    result = service._collect_events(
-        namespace="default",
-        pod="my-pod",
-    )
+    result = service._collect_events(namespace="default", pod="my-pod")
 
     assert len(result) == 1
     assert result[0].type == "Warning"
@@ -323,11 +312,7 @@ def test_collect_events_ignores_normal_events(
     mock_create_api.return_value = mock_v1
 
     service = KubernetesService()
-
-    result = service._collect_events(
-        namespace="default",
-        pod="my-pod",
-    )
+    result = service._collect_events(namespace="default", pod="my-pod")
 
     assert result == []
 
@@ -374,15 +359,11 @@ def test_collect_events_returns_empty_list_on_unexpected_error(
 
     service = KubernetesService()
 
-    result = service._collect_events(
-        namespace="default",
-        pod="my-pod",
-    )
+    result = service._collect_events(namespace="default", pod="my-pod")
 
     assert result == []
 
     span = _get_span(span_exporter, "kubernetes.get_events")
-
     assert span.status.status_code.name == "ERROR"
     assert any(event.name == "exception" for event in span.events)
 
@@ -491,7 +472,7 @@ def test_empty_snapshot_contains_expected_defaults() -> None:
     assert snapshot.phase == "Unknown"
     assert snapshot.containers == []
     assert snapshot.events == []
-    assert snapshot.logs.lines == []
+    assert snapshot.logs.entries == []
     assert snapshot.logs.source == "kubernetes"
     assert snapshot.resources.containers == []
 

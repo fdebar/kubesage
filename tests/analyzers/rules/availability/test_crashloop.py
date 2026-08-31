@@ -1,10 +1,12 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from kubesage.analyzers.rules.availability.crashloop import CrashLoopRule
 from kubesage.models.container import ContainerSnapshot
 from kubesage.models.evidence import EvidenceType
 from kubesage.models.incident import Incident
-from kubesage.models.log import LogSnapshot
+from kubesage.models.log import LogEntry, LogSnapshot
+
+LOG_TIMESTAMP = datetime(2026, 8, 31, 10, 0, tzinfo=UTC)
 
 
 def make_crashloop_incident() -> Incident:
@@ -15,7 +17,7 @@ def make_crashloop_incident() -> Incident:
         observed_at=datetime.now(),
         kubernetes_logs=LogSnapshot(
             source="kubernetes",
-            lines=["connection refused redis"],
+            entries=[LogEntry(LOG_TIMESTAMP, message="connection refused redis")],
         ),
         containers=[
             ContainerSnapshot(
@@ -83,7 +85,7 @@ def test_crashloop_without_exit_code_omits_exit_code_evidence() -> None:
         observed_at=datetime.now(),
         kubernetes_logs=LogSnapshot(
             source="kubernetes",
-            lines=["connection refused redis"],
+            entries=[LogEntry(LOG_TIMESTAMP, message="connection refused redis")],
         ),
         containers=[
             ContainerSnapshot(
@@ -118,7 +120,7 @@ def test_crashloop_container_returns_finding() -> None:
         observed_at=datetime.now(),
         kubernetes_logs=LogSnapshot(
             source="kubernetes",
-            lines=["connection refused redis"],
+            entries=[LogEntry(LOG_TIMESTAMP, message="connection refused redis")],
         ),
         containers=[
             ContainerSnapshot(
@@ -148,7 +150,7 @@ def test_crashloop_returns_one_finding() -> None:
         observed_at=datetime.now(),
         kubernetes_logs=LogSnapshot(
             source="kubernetes",
-            lines=["connection refused redis"],
+            entries=[LogEntry(LOG_TIMESTAMP, message="connection refused redis")],
         ),
         containers=[
             ContainerSnapshot(
@@ -178,7 +180,7 @@ def test_multiple_crashloops_return_multiple_findings() -> None:
         observed_at=datetime.now(),
         kubernetes_logs=LogSnapshot(
             source="kubernetes",
-            lines=["connection refused redis"],
+            entries=[LogEntry(LOG_TIMESTAMP, message="connection refused redis")],
         ),
         containers=[
             ContainerSnapshot(
@@ -216,7 +218,7 @@ def test_container_without_waiting_state() -> None:
         observed_at=datetime.now(),
         kubernetes_logs=LogSnapshot(
             source="kubernetes",
-            lines=["connection refused redis"],
+            entries=[LogEntry(LOG_TIMESTAMP, message="connection refused redis")],
         ),
         containers=[
             ContainerSnapshot(
@@ -246,7 +248,7 @@ def test_container_waiting_for_creation_is_ignored() -> None:
         observed_at=datetime.now(),
         kubernetes_logs=LogSnapshot(
             source="kubernetes",
-            lines=["connection refused redis"],
+            entries=[LogEntry(LOG_TIMESTAMP, message="connection refused redis")],
         ),
         containers=[
             ContainerSnapshot(

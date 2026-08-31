@@ -12,7 +12,7 @@ from kubesage.models.container import (
 )
 from kubesage.models.finding import FindingKind, Severity
 from kubesage.models.incident import Incident
-from kubesage.models.log import LogSnapshot
+from kubesage.models.log import LogEntry, LogSnapshot
 from kubesage.services.findings_correlator import (
     FindingsCorrelator,
 )
@@ -26,10 +26,13 @@ def build_cpu_contention_incident() -> Incident:
         observed_at=datetime.now(),
         kubernetes_logs=LogSnapshot(
             source="kubernetes",
-            lines=[
-                "request processing latency increased",
-                "worker CPU usage is high",
-                "container restarted",
+            entries=[
+                LogEntry(
+                    timestamp=datetime.now(),
+                    message="request processing latency increased",
+                ),
+                LogEntry(timestamp=datetime.now(), message="worker CPU usage is high"),
+                LogEntry(timestamp=datetime.now(), message="container restarted"),
             ],
         ),
         loki_logs=None,

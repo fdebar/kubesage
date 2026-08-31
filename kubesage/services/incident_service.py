@@ -70,7 +70,9 @@ class IncidentService:
             if incident.pod_uid:
                 span.set_attribute("k8s.pod.uid", incident.pod_uid)
 
-            loki_logs_count = len(incident.loki_logs.lines) if incident.loki_logs else 0
+            loki_logs_count = (
+                len(incident.loki_logs.entries) if incident.loki_logs else 0
+            )
             span.set_attribute("loki.logs.count", loki_logs_count)
 
             if not incident.containers and not incident.events:

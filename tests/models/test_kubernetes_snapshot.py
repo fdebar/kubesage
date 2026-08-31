@@ -1,6 +1,8 @@
+from datetime import datetime
+
 from kubesage.models.container import ContainerResources, PodResources
 from kubesage.models.kubernetes_snapshot import KubernetesSnapshot
-from kubesage.models.log import LogSnapshot
+from kubesage.models.log import LogEntry, LogSnapshot
 
 
 def test_kubernetes_snapshot() -> None:
@@ -11,7 +13,11 @@ def test_kubernetes_snapshot() -> None:
         phase="Running",
         logs=LogSnapshot(
             source="kubernetes",
-            lines=["log1", "log2", "log3"],
+            entries=[
+                LogEntry(timestamp=datetime.now(), message="log1"),
+                LogEntry(timestamp=datetime.now(), message="log2"),
+                LogEntry(timestamp=datetime.now(), message="log3"),
+            ],
         ),
         resources=PodResources(
             containers=[

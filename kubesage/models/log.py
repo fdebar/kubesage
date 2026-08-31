@@ -9,18 +9,25 @@ class LogSource(StrEnum):
 
 
 @dataclass(slots=True)
+class LogEntry:
+    timestamp: datetime
+    message: str
+    labels: dict[str, str] = field(default_factory=dict)
+
+
+@dataclass(slots=True)
 class LogSnapshot:
     source: str
-    lines: list[str] = field(default_factory=list)
+    entries: list[LogEntry] = field(default_factory=list)
     collected_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     @property
     def line_count(self) -> int:
-        return len(self.lines)
+        return len(self.entries)
 
     @property
     def content(self) -> str:
-        return "\n".join(self.lines)
+        return "\n".join(entry.message for entry in self.entries)
 
     def tail(self, limit: int = 100) -> str:
-        return "\n".join(self.lines[-limit:])
+        return "\n".join(entry.message for entry in self.entries[-limit:])

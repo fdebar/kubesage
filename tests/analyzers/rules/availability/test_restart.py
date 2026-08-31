@@ -1,9 +1,11 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from kubesage.analyzers.rules.availability.restart import RestartRule
 from kubesage.models.container import ContainerSnapshot
 from kubesage.models.incident import Incident
-from kubesage.models.log import LogSnapshot
+from kubesage.models.log import LogEntry, LogSnapshot
+
+LOG_TIMESTAMP = datetime(2026, 8, 31, 10, 0, tzinfo=UTC)
 
 
 def test_restart_below_threshold_returns_no_finding() -> None:
@@ -12,7 +14,7 @@ def test_restart_below_threshold_returns_no_finding() -> None:
         pod="demo",
         phase="Running",
         observed_at=datetime.now(),
-        kubernetes_logs=LogSnapshot(source="kubernetes", lines=[""]),
+        kubernetes_logs=LogSnapshot(source="kubernetes"),
         containers=[
             ContainerSnapshot(
                 name="app",
@@ -39,7 +41,10 @@ def test_restart_above_threshold_returns_finding() -> None:
         pod="demo",
         phase="Running",
         observed_at=datetime.now(),
-        kubernetes_logs=LogSnapshot(source="kubernetes", lines=[""]),
+        kubernetes_logs=LogSnapshot(
+            source="kubernetes",
+            entries=[LogEntry(LOG_TIMESTAMP, message="connection refused redis")],
+        ),
         containers=[
             ContainerSnapshot(
                 name="app",
@@ -66,7 +71,7 @@ def test_restart_equal_threshold_returns_finding() -> None:
         pod="demo",
         phase="Running",
         observed_at=datetime.now(),
-        kubernetes_logs=LogSnapshot(source="kubernetes", lines=[""]),
+        kubernetes_logs=LogSnapshot(source="kubernetes"),
         containers=[
             ContainerSnapshot(
                 name="app",
@@ -93,7 +98,7 @@ def test_multiple_containers_return_multiple_findings() -> None:
         pod="demo",
         phase="Running",
         observed_at=datetime.now(),
-        kubernetes_logs=LogSnapshot(source="kubernetes", lines=[""]),
+        kubernetes_logs=LogSnapshot(source="kubernetes"),
         containers=[
             ContainerSnapshot(
                 name="app",
@@ -128,7 +133,7 @@ def test_restart_rule_ignores_waiting_reason() -> None:
         pod="demo",
         phase="Running",
         observed_at=datetime.now(),
-        kubernetes_logs=LogSnapshot(source="kubernetes", lines=[""]),
+        kubernetes_logs=LogSnapshot(source="kubernetes"),
         containers=[
             ContainerSnapshot(
                 name="app",

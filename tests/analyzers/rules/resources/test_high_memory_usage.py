@@ -11,7 +11,7 @@ from kubesage.models.container import (
 from kubesage.models.evidence import EvidenceType
 from kubesage.models.finding import Severity
 from kubesage.models.incident import Incident
-from kubesage.models.log import LogSnapshot
+from kubesage.models.log import LogEntry, LogSnapshot
 
 
 @pytest.fixture
@@ -29,7 +29,9 @@ def test_high_memory_usage_detected(
         observed_at=datetime.now(),
         kubernetes_logs=LogSnapshot(
             source="kubernetes",
-            lines=["connection refused redis"],
+            entries=[
+                LogEntry(timestamp=datetime.now(), message="connection refused redis")
+            ],
         ),
         containers=[
             ContainerSnapshot(
@@ -78,7 +80,9 @@ def test_high_memory_usage_below_threshold(
         observed_at=datetime.now(),
         kubernetes_logs=LogSnapshot(
             source="kubernetes",
-            lines=["connection refused redis"],
+            entries=[
+                LogEntry(timestamp=datetime.now(), message="connection refused redis")
+            ],
         ),
         containers=[
             ContainerSnapshot(
@@ -116,7 +120,9 @@ def test_missing_memory_limit_is_ignored(
         observed_at=datetime.now(),
         kubernetes_logs=LogSnapshot(
             source="kubernetes",
-            lines=["connection refused redis"],
+            entries=[
+                LogEntry(timestamp=datetime.now(), message="connection refused redis")
+            ],
         ),
         containers=[
             ContainerSnapshot(

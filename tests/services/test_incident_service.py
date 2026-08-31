@@ -45,10 +45,7 @@ def build_incident(
         observed_at=datetime.now(),
         containers=containers if containers is not None else [build_container()],
         events=events if events is not None else [],
-        kubernetes_logs=LogSnapshot(
-            source="kubernetes",
-            lines=[],
-        ),
+        kubernetes_logs=LogSnapshot(source="kubernetes"),
         loki_logs=None,
         prometheus=None,
         metrics=None,

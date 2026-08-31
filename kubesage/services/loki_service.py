@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
@@ -6,7 +7,11 @@ import structlog
 from opentelemetry import trace
 from opentelemetry.trace import Status, StatusCode
 
-from kubesage.models.log import LogSnapshot, LogSource
+from kubesage.models.log import (
+    LogEntry,
+    LogSnapshot,
+    LogSource,
+)
 from kubesage.providers.log_provider import LogProvider
 from kubesage.services.loki import queries
 from kubesage.utils.config import settings
@@ -102,8 +107,8 @@ class LokiService(LogProvider):
             if not payload:
                 return None
 
-            lines = self._extract_logs(payload)
-            if not lines:
+            entries = self._extract_logs(payload)
+            if not entries:
                 logger.warning("loki_no_logs_found", namespace=namespace, pod=pod)
 
                 return None
@@ -112,22 +117,37 @@ class LokiService(LogProvider):
                 "loki_logs_collected",
                 namespace=namespace,
                 pod=pod,
-                line_count=len(lines),
+                line_count=len(entries),
             )
 
-            span.set_attribute("loki.logs.count", len(lines))
+            span.set_attribute("loki.logs.count", len(entries))
 
-            return LogSnapshot(source=LogSource.LOKI.value, lines=lines)
+            return LogSnapshot(source=LogSource.LOKI.value, entries=entries)
 
-    def _extract_logs(self, payload: dict) -> list[str]:
-        lines: list[str] = []
+    def _extract_logs(self, payload: dict) -> list[LogEntry]:
+        entries: list[LogEntry] = []
 
         results = payload.get("data", {}).get("result", [])
         for stream in results:
-            for _, line in stream.get("values", []):
-                lines.append(line)
+            labels = {
+                str(key): str(value) for key, value in stream.get("stream", {}).items()
+            }
 
-        return lines
+            for timestamp, line in stream.get("values", []):
+                entries.append(
+                    LogEntry(
+                        timestamp=datetime.fromtimestamp(
+                            int(timestamp) / 1_000_000_000,
+                            tz=UTC,
+                        ),
+                        message=line,
+                        labels=labels,
+                    )
+                )
+
+        entries.sort(key=lambda entry: entry.timestamp)
+
+        return entries
 
     def is_available(self) -> bool:
         try:
