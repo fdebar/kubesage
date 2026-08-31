@@ -16,8 +16,6 @@ class PromptBuilder:
         self._append_instructions(lines)
         self._append_summary(lines, ai)
 
-        print("\n".join(lines))
-
         return "\n".join(lines)
 
     def _append_incident(self, lines: list[str], ai: AIContext) -> None:
