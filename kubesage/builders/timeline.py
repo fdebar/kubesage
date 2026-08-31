@@ -15,7 +15,11 @@ from kubesage.models.timeline import (
 class TimelineBuilder:
     """Builds a chronological timeline from incident data."""
 
-    def build(self, incident: Incident) -> list[TimelineEvent]:
+    def build(
+        self,
+        incident: Incident,
+        metric_changes: list[MetricChange] | None = None,
+    ) -> list[TimelineEvent]:
         events: list[TimelineEvent] = []
 
         for index, event in enumerate(incident.events):
@@ -33,9 +37,13 @@ class TimelineBuilder:
 
         for container in incident.containers:
             events.extend(
-                self._build_container_events(
-                    incident=incident,
-                    container=container,
+                self._build_container_events(incident=incident, container=container)
+            )
+
+        for index, change in enumerate(metric_changes or []):
+            events.append(
+                self._build_metric_change_event(
+                    incident=incident, change=change, index=index
                 )
             )
 
@@ -48,19 +56,18 @@ class TimelineBuilder:
         index: int,
     ) -> TimelineEvent:
         return TimelineEvent(
-            id=f"metric-change-{change.metric_name}-{index}",
+            id=f"metric-change-{index}",
             timestamp=change.timestamp,
             type=TimelineEventType.METRIC_CHANGE,
             source=TimelineEventSource.PROMETHEUS,
             title=self._metric_change_title(change),
             description=self._metric_change_description(change),
             severity=Severity.INFO,
-            resource=self._pod_resource(incident),
+            resource=self._pod_resource(incident=incident),
             metadata={
                 "metric": change.metric_name,
                 "previous_value": change.previous_value,
                 "value": change.value,
-                "change_ratio": change.change_ratio,
                 "labels": change.labels,
             },
         )
@@ -202,18 +209,16 @@ class TimelineBuilder:
 
     @staticmethod
     def _metric_change_title(change: MetricChange) -> str:
-        direction = "increased" if change.change_ratio > 0 else "decreased"
+        direction = "increased" if change.value > change.previous_value else "decreased"
 
         return f"{change.metric_name} {direction}"
 
     @staticmethod
     def _metric_change_description(change: MetricChange) -> str:
-        direction = "increased" if change.change_ratio > 0 else "decreased"
-        percentage = abs(change.change_ratio) * 100
+        direction = "increased" if change.value > change.previous_value else "decreased"
 
         return (
             f"{change.metric_name} {direction} "
             f"from {change.previous_value:g} "
-            f"to {change.value:g} "
-            f"({percentage:.0f}% change)."
+            f"to {change.value:g}."
         )

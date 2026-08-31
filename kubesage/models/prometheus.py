@@ -71,5 +71,4 @@ class MetricChange(BaseModel):
     metric_name: str
     previous_value: float
     value: float
-    change_ratio: float
     labels: dict[str, str]

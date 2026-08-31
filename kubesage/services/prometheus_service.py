@@ -447,3 +447,58 @@ class PrometheusService:
             )
 
         return series
+
+    def collect_container_time_series(
+        self,
+        namespace: str,
+        pod: str,
+        start: datetime,
+        end: datetime,
+        step: str = "30s",
+    ) -> list[PrometheusTimeSeries]:
+        queries = {
+            "container_cpu": (
+                build_query(
+                    CONTAINER_CPU_QUERY,
+                    namespace=namespace,
+                    pod=pod,
+                ),
+                "cores",
+            ),
+            "container_memory": (
+                build_query(
+                    CONTAINER_MEMORY_QUERY,
+                    namespace=namespace,
+                    pod=pod,
+                ),
+                "bytes",
+            ),
+            "cpu_throttling": (
+                build_query(
+                    CPU_THROTTLING_QUERY,
+                    namespace=namespace,
+                    pod=pod,
+                ),
+                "ratio",
+            ),
+        }
+
+        series: list[PrometheusTimeSeries] = []
+
+        for name, (query, unit) in queries.items():
+            result = self.query_range(
+                promql=query,
+                start=start,
+                end=end,
+                step=step,
+            )
+
+            series.extend(
+                self._time_series_from_result(
+                    name=name,
+                    unit=unit,
+                    result=result,
+                )
+            )
+
+        return series

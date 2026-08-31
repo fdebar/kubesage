@@ -163,7 +163,6 @@ def test_build_ignores_events_without_timestamp() -> None:
             metric_name="cpu",
             previous_value=0.2,
             value=0.5,
-            change_ratio=1.5,
             labels={"container": "api"},
         )
 
@@ -178,3 +177,46 @@ def test_build_ignores_events_without_timestamp() -> None:
         assert event.timestamp == change.timestamp
         assert event.severity == Severity.INFO
         assert event.metadata["container"] if "container" in event.metadata else True
+
+    def test_build_includes_metric_changes() -> None:
+        incident = Incident(
+            namespace="default",
+            pod="api",
+            phase="Running",
+            observed_at=datetime.now(),
+        )
+
+        change = MetricChange(
+            timestamp=datetime.now(),
+            metric_name="container_cpu",
+            previous_value=0.79,
+            value=0.82,
+            labels={"container": "web"},
+        )
+
+        events = TimelineBuilder().build(incident=incident, metric_changes=[change])
+        metric_events = [
+            event for event in events if event.type == TimelineEventType.METRIC_CHANGE
+        ]
+
+        assert len(metric_events) == 1
+
+        event = metric_events[0]
+        assert event.source == TimelineEventSource.PROMETHEUS
+        assert event.timestamp == change.timestamp
+        assert event.severity == Severity.INFO
+        assert event.metadata["metric"] == "container_cpu"
+        assert event.metadata["previous_value"] == 0.79
+        assert event.metadata["value"] == 0.82
+        assert event.metadata["labels"] == {"container": "web"}
+
+    def test_build_without_metric_changes_is_unchanged() -> None:
+        incident = Incident(
+            namespace="default",
+            pod="api",
+            phase="Running",
+            observed_at=datetime.now(),
+        )
+        events = TimelineBuilder().build(incident=incident, metric_changes=[])
+
+        assert all(event.type != TimelineEventType.METRIC_CHANGE for event in events)

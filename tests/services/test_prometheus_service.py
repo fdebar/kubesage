@@ -190,3 +190,28 @@ def test_metric_from_result_returns_none_when_empty(service: PrometheusService) 
     result = service._metric_from_result("cpu", "cores/s", [])
 
     assert result is None
+
+
+def test_time_series_preserves_container_labels(service: PrometheusService) -> None:
+    result = [
+        {
+            "metric": {
+                "namespace": "default",
+                "pod": "api",
+                "container": "web",
+            },
+            "values": [
+                [1756556400, "0.2"],
+                [1756556430, "0.4"],
+            ],
+        }
+    ]
+
+    series = service._time_series_from_result(
+        name="container_cpu",
+        unit="cores",
+        result=result,
+    )
+
+    assert series[0].labels["container"] == "web"
+    assert len(series[0].points) == 2
