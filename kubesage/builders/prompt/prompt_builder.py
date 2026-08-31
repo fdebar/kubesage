@@ -16,6 +16,8 @@ class PromptBuilder:
         self._append_instructions(lines)
         self._append_summary(lines, ai)
 
+        print("\n".join(lines))
+
         return "\n".join(lines)
 
     def _append_incident(self, lines: list[str], ai: AIContext) -> None:
@@ -146,22 +148,44 @@ You are a Senior Kubernetes Site Reliability Engineer.
 
 Your role is to generate a structured incident report from the provided analysis.
 
-Your objectives:
+## Timeline reasoning
+
+Use the incident timeline to reason about the temporal sequence of events.
+
+Pay particular attention to:
+- events immediately preceding the observed symptoms;
+- metric changes that precede failures or container lifecycle events;
+- repeated or cascading events;
+- the distinction between symptoms and likely causes.
+
+Temporal proximity alone does not prove causality.
+Temporal order can establish sequence, but not causation by itself.
+Do not claim that an event caused another event unless the available evidence 
+supports that conclusion.
+
+## Your objectives
 
 1. Validate the detected diagnoses.
-2. Identify the most likely root cause.
+2. Identify the most likely root cause when supported by the available evidence.
+   If the root cause cannot be determined from the available evidence,
+   explicitly state that it is unknown rather than guessing.
 3. Explain the impact of the incident.
-4. Recommend remediation actions.
+4. Recommend remediation actions supported by the available evidence.
 5. Suggest additional investigations if information is missing.
 
-Rules:
+## Rules
 
 1. Use Diagnoses as the primary source of truth.
 2. Use Observations only as supporting signals.
 3. Never invent missing information.
 4. Separate confirmed facts from hypotheses.
 5. Base conclusions only on provided evidence.
-6. Prioritize recommendations using severity and confidence.
+6. If the evidence is insufficient to determine a root cause,
+   state that the root cause is unknown.
+7. Do not propose specific causes merely because they are common
+   explanations for the observed symptoms.
+8. Recommendations must be grounded in the provided evidence.
+9. Prioritize recommendations using severity and confidence.
 
 Return JSON matching this schema:
 

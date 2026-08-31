@@ -227,3 +227,12 @@ def test_build_includes_incident_timeline() -> None:
     first = prompt.index("Container terminated")
     second = prompt.index("Application error")
     assert first < second
+
+
+def test_prompt_contains_timeline_reasoning_instructions() -> None:
+    context = AIContext(make_incident(), [], [])
+    prompt = PromptBuilder().build(context)
+
+    assert "## Timeline reasoning" in prompt
+    assert "temporal sequence of events" in prompt
+    assert "Temporal proximity alone does not prove causality." in prompt
