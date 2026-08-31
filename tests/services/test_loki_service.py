@@ -9,8 +9,8 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
 
-from kubesage.models.log import LogSource
-from kubesage.services.loki_service import LogQueryType, LokiService
+from kubesage.models.log import LogQueryType, LogSource
+from kubesage.services.loki_service import LokiService
 
 
 @pytest.fixture

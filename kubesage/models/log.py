@@ -8,6 +8,12 @@ class LogSource(StrEnum):
     LOKI = "loki"
 
 
+class LogQueryType(StrEnum):
+    ALL = "all"
+    ERRORS = "errors"
+    WARNINGS = "warnings"
+
+
 @dataclass(slots=True)
 class LogEntry:
     timestamp: datetime

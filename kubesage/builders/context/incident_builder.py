@@ -8,7 +8,7 @@ from kubesage.builders.context.container_snapshot_builder import (
 from kubesage.models.container import ContainerSnapshot
 from kubesage.models.incident import Incident
 from kubesage.models.kubernetes_snapshot import KubernetesSnapshot
-from kubesage.models.log import LogSnapshot
+from kubesage.models.log import LogQueryType, LogSnapshot
 from kubesage.models.metrics import PodMetrics
 from kubesage.models.prometheus import PrometheusResourceUsage
 from kubesage.providers.kubernetes_provider import KubernetesProvider
@@ -51,7 +51,7 @@ class IncidentBuilder:
 
         loki_logs: LogSnapshot | None = None
         if self.logs is not None:
-            loki_logs = self.logs.collect(namespace, pod)
+            loki_logs = self.logs.collect(namespace, pod, query_type=LogQueryType.ALL)
 
         return self.build(
             kubernetes=kubernetes,

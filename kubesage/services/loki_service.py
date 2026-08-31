@@ -1,5 +1,4 @@
 from datetime import UTC, datetime
-from enum import StrEnum
 from typing import Any
 
 import requests
@@ -9,6 +8,7 @@ from opentelemetry.trace import Status, StatusCode
 
 from kubesage.models.log import (
     LogEntry,
+    LogQueryType,
     LogSnapshot,
     LogSource,
 )
@@ -19,12 +19,6 @@ from kubesage.utils.config import settings
 logger = structlog.get_logger()
 
 tracer = trace.get_tracer(__name__)
-
-
-class LogQueryType(StrEnum):
-    ALL = "all"
-    ERRORS = "errors"
-    WARNINGS = "warnings"
 
 
 class LokiService(LogProvider):
