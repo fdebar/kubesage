@@ -8,7 +8,7 @@ class LogProvider(Protocol):
         self,
         namespace: str,
         pod: str,
-        query_type: LogQueryType,
+        query_type: LogQueryType = LogQueryType.ALL,
     ) -> LogSnapshot | None:
         """Collect logs for a pod."""
         ...
