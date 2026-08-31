@@ -123,3 +123,121 @@ def test_ignores_missing_loki_logs() -> None:
     )
 
     assert findings == []
+
+
+def test_classifies_database_error() -> None:
+    findings = ApplicationErrorRule().evaluate(
+        _incident_with_logs(
+            "ERROR Database connection refused",
+        )
+    )
+
+    assert len(findings) == 1
+    assert findings[0].metadata["error_kind"] == "database_error"
+
+
+def test_classifies_connection_error() -> None:
+    findings = ApplicationErrorRule().evaluate(
+        _incident_with_logs(
+            "ERROR connection refused",
+        )
+    )
+
+    assert len(findings) == 1
+    assert findings[0].metadata["error_kind"] == "connection_error"
+
+
+def test_classifies_timeout() -> None:
+    findings = ApplicationErrorRule().evaluate(
+        _incident_with_logs(
+            "request timed out after 30s",
+        )
+    )
+
+    assert len(findings) == 1
+    assert findings[0].metadata["error_kind"] == "timeout"
+
+
+def test_classifies_http_5xx() -> None:
+    findings = ApplicationErrorRule().evaluate(
+        _incident_with_logs(
+            "request failed with HTTP 503",
+        )
+    )
+
+    assert len(findings) == 1
+    assert findings[0].metadata["error_kind"] == "http_5xx"
+
+
+def test_classifies_exception() -> None:
+    findings = ApplicationErrorRule().evaluate(
+        _incident_with_logs(
+            "RuntimeException: invalid configuration",
+        )
+    )
+
+    assert len(findings) == 1
+    assert findings[0].metadata["error_kind"] == "exception"
+
+
+def test_classifies_generic_error() -> None:
+    findings = ApplicationErrorRule().evaluate(
+        _incident_with_logs(
+            "ERROR failed to process request",
+        )
+    )
+
+    assert len(findings) == 1
+    assert findings[0].metadata["error_kind"] == "generic_error"
+
+
+def test_database_error_takes_precedence_over_connection_and_timeout() -> None:
+    findings = ApplicationErrorRule().evaluate(
+        _incident_with_logs(
+            "ERROR Database connection timeout",
+        )
+    )
+
+    assert len(findings) == 1
+    assert findings[0].metadata["error_kind"] == "database_error"
+
+
+def test_database_error_has_semantic_finding() -> None:
+    findings = ApplicationErrorRule().evaluate(
+        _incident_with_logs(
+            "ERROR Database connection refused",
+        )
+    )
+
+    finding = findings[0]
+
+    assert finding.title == "Database connection failure"
+    assert finding.metadata["error_kind"] == "database_error"
+    assert "database error" in finding.description.lower()
+    assert "Database connection refused" in finding.description
+
+
+def test_http_5xx_has_semantic_finding() -> None:
+    findings = ApplicationErrorRule().evaluate(
+        _incident_with_logs(
+            "HTTP 503 Service Unavailable",
+        )
+    )
+
+    finding = findings[0]
+
+    assert finding.title == "HTTP 5xx error"
+    assert finding.metadata["error_kind"] == "http_5xx"
+
+
+def test_exception_has_semantic_finding() -> None:
+    findings = ApplicationErrorRule().evaluate(
+        _incident_with_logs(
+            "RuntimeException: invalid configuration",
+        )
+    )
+
+    finding = findings[0]
+
+    assert finding.title == "Application exception"
+    assert finding.metadata["error_kind"] == "exception"
