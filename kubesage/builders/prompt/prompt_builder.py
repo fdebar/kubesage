@@ -33,6 +33,7 @@ class PromptBuilder:
         for event in ai.ctx.timeline:
             line = (
                 f"- [{event.timestamp.isoformat()}] "
+                f"[{event.severity.value}] "
                 f"{event.source.value} | "
                 f"{event.title}"
             )
