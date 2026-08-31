@@ -205,7 +205,15 @@ def test_build_includes_incident_timeline() -> None:
             source=TimelineEventSource.KUBERNETES,
             title="Container terminated",
             description="Container 'api' terminated: OOMKilled.",
-        )
+        ),
+        TimelineEvent(
+            id="event-2",
+            timestamp=datetime(2026, 9, 1, 10, 42, 12, tzinfo=UTC),
+            type=TimelineEventType.METRIC_ANOMALY,
+            source=TimelineEventSource.LOKI,
+            title="Application error",
+            description="Error: Memory allocation failed",
+        ),
     ]
 
     context = AIContext(make_incident(), [finding], timeline)
@@ -215,3 +223,7 @@ def test_build_includes_incident_timeline() -> None:
     assert "[2026-08-31T10:42:12+00:00]" in prompt
     assert "[INFO] kubernetes | Container terminated" in prompt
     assert "Container 'api' terminated: OOMKilled." in prompt
+
+    first = prompt.index("Container terminated")
+    second = prompt.index("Application error")
+    assert first < second
