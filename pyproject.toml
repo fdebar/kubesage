@@ -77,3 +77,8 @@ exclude_dirs = [
 skips = [
     "B101",
 ]
+
+[tool.pytest.ini_options]
+markers = [
+    "ai_quality: tests requiring a live AI provider",
+]

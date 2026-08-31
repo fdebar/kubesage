@@ -1,0 +1,178 @@
+import os
+
+import pytest
+from openai import Client
+
+from kubesage.ai.providers.openai_compatible import OpenAICompatibleProvider
+from kubesage.builders.prompt.prompt_builder import PromptBuilder
+from kubesage.models.ai_context import AIContext
+from kubesage.models.ai_report import AIReport
+from kubesage.utils.config import settings
+from tests.ai.scenarios import ReportQualityScenario
+from tests.ai.scenarios.application_error import application_error_scenario
+from tests.ai.scenarios.correlated_oom import correlated_oom_scenario
+from tests.ai.scenarios.cpu_throttling import cpu_throttling_scenario
+from tests.ai.scenarios.crashloop_unknown import crashloop_unknown_scenario
+from tests.ai.scenarios.oomkilled import oomkilled_scenario
+from tests.ai.scenarios.readiness_failure import readiness_failure_scenario
+
+
+def build_prompt(scenario: ReportQualityScenario) -> str:
+    context = AIContext(
+        incident=scenario.incident,
+        findings=scenario.findings,
+        timeline=scenario.timeline,
+    )
+
+    return PromptBuilder().build(context)
+
+
+def assert_report_quality(
+    report: AIReport,
+    scenario: ReportQualityScenario,
+) -> None:
+    assert report.summary
+    assert report.summary != "AI analysis could not be completed.", (
+        f"{scenario.name}: AI provider did not return a report"
+    )
+
+    root_cause = (report.root_cause or "").strip().lower()
+    evidence = " ".join(report.evidence).lower()
+    recommendations = " ".join(report.recommendations).lower()
+
+    if scenario.require_root_cause:
+        assert root_cause, f"{scenario.name}: expected a root cause"
+
+        uncertainty_keywords = (
+            "unknown",
+            "uncertain",
+            "cannot determine",
+            "insufficient",
+            "not enough evidence",
+            "undetermined",
+        )
+
+        assert not any(keyword in root_cause for keyword in uncertainty_keywords), (
+            f"{scenario.name}: expected a concrete root cause, "
+            f"got uncertain root cause={report.root_cause!r}"
+        )
+
+    if scenario.require_uncertainty:
+        assert report.root_cause is None or any(
+            keyword in root_cause
+            for keyword in (
+                "unknown",
+                "uncertain",
+                "cannot determine",
+                "insufficient",
+                "not enough evidence",
+                "undetermined",
+            )
+        ), (
+            f"{scenario.name}: expected uncertainty, "
+            f"got root cause={report.root_cause!r}"
+        )
+
+    for keyword in scenario.expected_root_cause_keywords:
+        assert keyword.lower() in root_cause, (
+            f"{scenario.name}: expected {keyword!r} "
+            f"in root cause, got {report.root_cause!r}"
+        )
+
+    for keyword in scenario.forbidden_root_cause_keywords:
+        assert keyword.lower() not in root_cause, (
+            f"{scenario.name}: forbidden {keyword!r} "
+            f"in root cause, got {report.root_cause!r}"
+        )
+
+    for keyword in scenario.required_evidence_keywords:
+        assert keyword.lower() in evidence, (
+            f"{scenario.name}: expected {keyword!r} "
+            f"in evidence, got {report.evidence!r}"
+        )
+
+    for keyword in scenario.required_recommendation_keywords:
+        assert keyword.lower() in recommendations, (
+            f"{scenario.name}: expected {keyword!r} "
+            f"in recommendations, got {report.recommendations!r}"
+        )
+
+
+@pytest.mark.parametrize(
+    "scenario",
+    [
+        crashloop_unknown_scenario(),
+        oomkilled_scenario(),
+        cpu_throttling_scenario(),
+        readiness_failure_scenario(),
+        application_error_scenario(),
+        correlated_oom_scenario(),
+    ],
+    ids=lambda scenario: scenario.name,
+)
+def test_report_quality_scenario_builds_valid_context(
+    scenario: ReportQualityScenario,
+) -> None:
+    context = AIContext(
+        incident=scenario.incident,
+        findings=scenario.findings,
+        timeline=scenario.timeline,
+    )
+
+    assert context.finding_count == len(scenario.findings)
+    assert context.has_findings
+
+    prompt = PromptBuilder().build(context)
+    assert scenario.incident.pod in prompt
+
+    for evidence in scenario.required_evidence_keywords:
+        assert evidence.lower() in prompt.lower()
+
+
+@pytest.mark.ai_quality
+@pytest.mark.skipif(
+    os.getenv("KUBESAGE_RUN_AI_QUALITY") != "1",
+    reason="AI quality tests require an explicit live AI provider",
+)
+@pytest.mark.parametrize(
+    "scenario",
+    [
+        crashloop_unknown_scenario(),
+        oomkilled_scenario(),
+        cpu_throttling_scenario(),
+        readiness_failure_scenario(),
+        application_error_scenario(),
+        correlated_oom_scenario(),
+    ],
+    ids=lambda scenario: scenario.name,
+)
+def test_ai_report_quality(scenario: ReportQualityScenario) -> None:
+    client = Client(base_url=settings.ai_url, api_key=settings.ai_api_key)
+    provider = OpenAICompatibleProvider(client=client, model=settings.ai_model)
+    report = provider.analyze(build_prompt(scenario))
+
+    print(f"\n{'=' * 80}")
+    print(f"SCENARIO: {scenario.name}")
+    print(f"{'=' * 80}")
+    print(report.model_dump_json(indent=2))
+
+    assert_report_quality(report, scenario)
+
+
+@pytest.mark.ai_quality
+@pytest.mark.skipif(
+    os.getenv("KUBESAGE_RUN_AI_QUALITY") != "1",
+    reason="AI quality tests require an explicit live AI provider",
+)
+def test_oomkilled_ai_report_quality() -> None:
+    scenario = oomkilled_scenario()
+    client = Client(base_url=settings.ai_url, api_key=settings.ai_api_key)
+    provider = OpenAICompatibleProvider(client=client, model=settings.ai_model)
+    report: AIReport = provider.analyze(build_prompt(scenario))
+
+    print(f"\n{'=' * 80}")
+    print("SCENARIO: oomkilled")
+    print(f"{'=' * 80}")
+    print(report.model_dump_json(indent=2))
+
+    assert_report_quality(report, scenario)

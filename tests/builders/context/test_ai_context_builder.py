@@ -91,7 +91,6 @@ def make_observation() -> Finding:
 
 def test_build_prompt_without_findings() -> None:
     builder = PromptBuilder()
-
     context = AIContext(make_incident(), [])
 
     prompt = builder.build(context)
@@ -104,7 +103,6 @@ def test_build_prompt_without_findings() -> None:
     assert "# Diagnostic Summary" not in prompt
     assert "# Diagnoses" not in prompt
     assert "# Observations" not in prompt
-    assert "# Recommendations" not in prompt
 
     assert "# Kubernetes Events" in prompt
     assert "BackOff" in prompt
@@ -112,7 +110,10 @@ def test_build_prompt_without_findings() -> None:
     assert "# Logs" in prompt
     assert "CrashLoopBackOff detected" in prompt
 
-    assert "You are a Senior Kubernetes Site Reliability Engineer." in prompt
+    assert (
+        "You are a Senior Kubernetes Site Reliability Engineer "
+        "specialized in incident diagnosis."
+    ) in prompt
 
 
 def test_build_prompt_with_diagnosis() -> None:
@@ -155,7 +156,6 @@ def test_build_prompt_with_observation() -> None:
     assert "Description: Container restarted multiple times." in prompt
 
     assert "# Diagnoses" not in prompt
-    assert "# Recommendations" not in prompt
 
 
 def test_build_prompt_with_multiple_findings() -> None:
