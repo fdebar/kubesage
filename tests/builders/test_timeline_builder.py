@@ -1,8 +1,11 @@
 from datetime import UTC, datetime
 
 from kubesage.builders.timeline import TimelineBuilder
+from kubesage.models.container import ContainerSnapshot
+from kubesage.models.event import Event
 from kubesage.models.incident import Incident
 from kubesage.models.log import LogEntry, LogSnapshot, LogSource
+from kubesage.models.prometheus import MetricChange
 from kubesage.models.timeline import (
     Severity,
     TimelineEventSource,
@@ -312,3 +315,143 @@ def test_build_handles_multiple_loki_events() -> None:
 
     assert events[1].timestamp == third
     assert events[1].severity == Severity.ERROR
+
+
+def test_build_merges_all_event_sources_chronologically() -> None:
+    kubernetes_timestamp = datetime(2026, 8, 31, 10, 2, tzinfo=UTC)
+    container_timestamp = datetime(2026, 8, 31, 10, 4, tzinfo=UTC)
+    metric_timestamp = datetime(2026, 8, 31, 10, 6, tzinfo=UTC)
+    log_timestamp = datetime(2026, 8, 31, 10, 8, tzinfo=UTC)
+
+    incident = Incident(
+        namespace="default",
+        pod="kubesage-api",
+        pod_uid="pod-uid",
+        phase="Running",
+        observed_at=datetime(2026, 8, 31, 10, 10, tzinfo=UTC),
+        events=[
+            Event(
+                type="Normal",
+                reason="Started",
+                message="Pod started",
+                last_timestamp=kubernetes_timestamp,
+            ),
+        ],
+        containers=[
+            ContainerSnapshot(
+                name="api",
+                image="api:latest",
+                ready=True,
+                restart_count=0,
+                started_at=container_timestamp,
+            ),
+        ],
+        loki_logs=LogSnapshot(
+            source=LogSource.LOKI.value,
+            entries=[
+                LogEntry(
+                    timestamp=log_timestamp,
+                    message="ERROR database unavailable",
+                ),
+            ],
+        ),
+    )
+
+    metric_change = MetricChange(
+        metric_name="cpu",
+        previous_value=0.2,
+        value=0.8,
+        timestamp=metric_timestamp,
+        labels={},
+    )
+    events = TimelineBuilder().build(incident, metric_changes=[metric_change])
+
+    assert len(events) == 4
+    assert [event.timestamp for event in events] == [
+        kubernetes_timestamp,
+        container_timestamp,
+        metric_timestamp,
+        log_timestamp,
+    ]
+    assert [event.source for event in events] == [
+        TimelineEventSource.KUBERNETES,
+        TimelineEventSource.KUBERNETES,
+        TimelineEventSource.PROMETHEUS,
+        TimelineEventSource.LOKI,
+    ]
+
+
+def test_build_sorts_events_across_sources() -> None:
+    early = datetime(2026, 8, 31, 10, 0, tzinfo=UTC)
+    middle = datetime(2026, 8, 31, 10, 5, tzinfo=UTC)
+    late = datetime(2026, 8, 31, 10, 10, tzinfo=UTC)
+
+    incident = Incident(
+        namespace="default",
+        pod="kubesage-api",
+        pod_uid="pod-uid",
+        phase="Running",
+        observed_at=middle,
+        events=[
+            Event(
+                type="Normal",
+                reason="Late",
+                message="Late event",
+                last_timestamp=late,
+            ),
+        ],
+        loki_logs=LogSnapshot(
+            source=LogSource.LOKI.value,
+            entries=[
+                LogEntry(
+                    timestamp=early,
+                    message="ERROR early error",
+                ),
+            ],
+        ),
+    )
+
+    metric_change = MetricChange(
+        metric_name="cpu",
+        previous_value=0.2,
+        value=0.8,
+        timestamp=middle,
+        labels={},
+    )
+
+    events = TimelineBuilder().build(incident, metric_changes=[metric_change])
+    assert [event.timestamp for event in events] == [early, middle, late]
+
+
+def test_build_handles_incident_without_optional_sources() -> None:
+    incident = Incident(
+        namespace="default",
+        pod="kubesage-api",
+        pod_uid="pod-uid",
+        phase="Running",
+        observed_at=datetime(2026, 8, 31, 10, 0, tzinfo=UTC),
+    )
+
+    events = TimelineBuilder().build(incident)
+    assert events == []
+
+
+def test_build_without_metric_changes_still_builds_loki_events() -> None:
+    timestamp = datetime(2026, 8, 31, 10, 5, tzinfo=UTC)
+    incident = _incident(
+        loki_logs=LogSnapshot(
+            source=LogSource.LOKI.value,
+            entries=[
+                LogEntry(
+                    timestamp=timestamp,
+                    message="ERROR database unavailable",
+                ),
+            ],
+        ),
+    )
+
+    events = TimelineBuilder().build(incident)
+
+    assert len(events) == 1
+    assert events[0].timestamp == timestamp
+    assert events[0].source == TimelineEventSource.LOKI
