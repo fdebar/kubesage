@@ -7,6 +7,7 @@ class PromptBuilder:
         lines: list[str] = []
 
         self._append_incident(lines, ai)
+        self._append_timeline(lines, ai)
         self._append_diagnostics(lines, ai)
         self._append_observations(lines, ai)
         self._append_events(lines, ai)
@@ -22,6 +23,24 @@ class PromptBuilder:
         lines.append(f"Namespace: {ai.ctx.namespace}")
         lines.append(f"Pod: {ai.ctx.pod}")
         lines.append(f"Phase: {ai.ctx.phase}")
+        lines.append("")
+
+    def _append_timeline(self, lines: list[str], ai: AIContext) -> None:
+        if not ai.ctx.timeline:
+            return
+
+        lines.append("# Incident Timeline")
+        for event in ai.ctx.timeline:
+            line = (
+                f"- [{event.timestamp.isoformat()}] "
+                f"{event.source.value} | "
+                f"{event.title}"
+            )
+
+            lines.append(line)
+            if event.description:
+                lines.append(f"  {event.description}")
+
         lines.append("")
 
     def _append_diagnostics(self, lines: list[str], ai: AIContext) -> None:

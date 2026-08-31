@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from kubesage.builders.prompt.prompt_builder import PromptBuilder
 from kubesage.models.ai_context import AIContext
@@ -12,6 +12,11 @@ from kubesage.models.finding import (
 )
 from kubesage.models.incident import Incident
 from kubesage.models.log import LogEntry, LogSnapshot
+from kubesage.models.timeline import (
+    TimelineEvent,
+    TimelineEventSource,
+    TimelineEventType,
+)
 
 
 def make_incident() -> Incident:
@@ -243,3 +248,27 @@ def test_root_causes_ignores_observations() -> None:
     context = AIContext(make_incident(), [observation])
 
     assert context.root_causes == []
+
+
+def test_build_includes_timeline() -> None:
+    observation = Finding(
+        rule="oom_killed",
+        kind=FindingKind.OBSERVATION,
+        severity=Severity.HIGH,
+        title="OOMKilled",
+        description="Container was killed",
+    )
+
+    timeline = [
+        TimelineEvent(
+            id="container-terminated-api",
+            timestamp=datetime(2026, 8, 31, 10, 42, 12, tzinfo=UTC),
+            type=TimelineEventType.CONTAINER_TERMINATED,
+            source=TimelineEventSource.KUBERNETES,
+            title="Container terminated",
+            description="Container 'api' terminated: OOMKilled.",
+        )
+    ]
+
+    context = AIContext(make_incident(), [observation], timeline)
+    assert context.ctx.timeline == timeline

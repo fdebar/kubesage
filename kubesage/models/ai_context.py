@@ -1,10 +1,16 @@
 from kubesage.models.finding import Finding, FindingKind, Severity
 from kubesage.models.incident import Incident
 from kubesage.models.prompt_context import PromptContext
+from kubesage.models.timeline import TimelineEvent
 
 
 class AIContext:
-    def __init__(self, incident: Incident, findings: list[Finding]):
+    def __init__(
+        self,
+        incident: Incident,
+        findings: list[Finding],
+        timeline: list[TimelineEvent] | None = None,
+    ) -> None:
         self.ctx = PromptContext(
             namespace=incident.namespace,
             pod=incident.pod,
@@ -12,6 +18,7 @@ class AIContext:
             logs=incident.logs,
             events=incident.events,
             findings=findings,
+            timeline=timeline or [],
         )
 
     @property
@@ -53,7 +60,6 @@ class AIContext:
     @property
     def root_causes(self) -> list[Finding]:
         diagnoses = self.diagnoses
-
         caused_diagnoses = {
             cause for diagnosis in diagnoses for cause in diagnosis.caused_by
         }

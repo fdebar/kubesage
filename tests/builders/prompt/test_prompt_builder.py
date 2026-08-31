@@ -6,6 +6,11 @@ from kubesage.models.event import Event
 from kubesage.models.evidence import Evidence, EvidenceType
 from kubesage.models.finding import Finding, FindingKind, Severity
 from kubesage.models.incident import Incident
+from kubesage.models.timeline import (
+    TimelineEvent,
+    TimelineEventSource,
+    TimelineEventType,
+)
 
 
 def make_incident() -> Incident:
@@ -171,3 +176,42 @@ def test_prompt_omits_missing_evidence_description() -> None:
 
     evidence_section = prompt.split("Evidence:", maxsplit=1)[1]
     assert "Description:" not in evidence_section
+
+
+def test_build_includes_incident_timeline() -> None:
+    finding = Finding(
+        rule="memory_pressure",
+        kind=FindingKind.DIAGNOSIS,
+        severity=Severity.HIGH,
+        title="Container memory limit exceeded",
+        description="Container reached its configured memory limit.",
+        confidence=0.95,
+        structured_evidences=[
+            Evidence(
+                name="memory_usage",
+                value="512",
+                unit="Mi",
+                source="prometheus",
+                type=EvidenceType.METRIC,
+            )
+        ],
+    )
+
+    timeline = [
+        TimelineEvent(
+            id="event-1",
+            timestamp=datetime(2026, 8, 31, 10, 42, 12, tzinfo=UTC),
+            type=TimelineEventType.CONTAINER_TERMINATED,
+            source=TimelineEventSource.KUBERNETES,
+            title="Container terminated",
+            description="Container 'api' terminated: OOMKilled.",
+        )
+    ]
+
+    context = AIContext(make_incident(), [finding], timeline)
+    prompt = PromptBuilder().build(context)
+
+    assert "# Incident Timeline" in prompt
+    assert "[2026-08-31T10:42:12+00:00]" in prompt
+    assert "kubernetes | Container terminated" in prompt
+    assert "Container 'api' terminated: OOMKilled." in prompt
