@@ -4,6 +4,7 @@ from kubesage.models.container import ContainerSnapshot
 from kubesage.models.event import Event
 from kubesage.models.finding import ResourceRef, Severity
 from kubesage.models.incident import Incident
+from kubesage.models.log import LogEntry
 from kubesage.models.prometheus import MetricChange
 from kubesage.models.timeline import (
     TimelineEvent,
@@ -28,24 +29,20 @@ class TimelineBuilder:
 
             events.append(
                 self._build_kubernetes_event(
-                    incident=incident,
-                    event=event,
-                    index=index,
-                    timestamp=event.last_timestamp,
+                    incident,
+                    event,
+                    index,
+                    event.last_timestamp,
                 )
             )
 
         for container in incident.containers:
-            events.extend(
-                self._build_container_events(incident=incident, container=container)
-            )
+            events.extend(self._build_container_events(incident, container))
 
         for index, change in enumerate(metric_changes or []):
-            events.append(
-                self._build_metric_change_event(
-                    incident=incident, change=change, index=index
-                )
-            )
+            events.append(self._build_metric_change_event(incident, change, index))
+
+        events.extend(self._build_log_events(incident))
 
         return sorted(events, key=lambda event: event.timestamp)
 
@@ -165,6 +162,57 @@ class TimelineBuilder:
                 "reason": container.last_exit_reason,
             },
         )
+
+    def _build_log_events(self, incident: Incident) -> list[TimelineEvent]:
+        if incident.loki_logs is None:
+            return []
+
+        events: list[TimelineEvent] = []
+        for index, entry in enumerate(incident.loki_logs.entries):
+            severity = self._log_severity(entry)
+
+            if severity is None:
+                continue
+
+            events.append(
+                TimelineEvent(
+                    id=f"loki-log-{index}",
+                    timestamp=entry.timestamp,
+                    type=TimelineEventType.LOG_EVENT,
+                    source=TimelineEventSource.LOKI,
+                    title=self._log_title(severity),
+                    description=entry.message,
+                    severity=severity,
+                    resource=self._pod_resource(incident),
+                    metadata={
+                        "labels": entry.labels,
+                    },
+                )
+            )
+
+        return events
+
+    @staticmethod
+    def _log_severity(entry: LogEntry) -> Severity | None:
+        message = entry.message.lstrip().upper()
+        if (
+            message.startswith("FATAL")
+            or message.startswith("CRITICAL")
+            or message.startswith("ERROR")
+        ):
+            return Severity.ERROR
+
+        if message.startswith("WARN") or message.startswith("WARNING"):
+            return Severity.WARNING
+
+        return None
+
+    @staticmethod
+    def _log_title(severity: Severity) -> str:
+        if severity == Severity.ERROR:
+            return "Application error"
+
+        return "Application warning"
 
     @staticmethod
     def _pod_resource(incident: Incident) -> ResourceRef:
