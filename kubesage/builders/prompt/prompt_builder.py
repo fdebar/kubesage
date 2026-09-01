@@ -389,6 +389,29 @@ Do not treat a TimelineEvent source as an Evidence source.
 In particular, do not change an Evidence source from `kubernetes` to `event`
 because a related timeline entry represents a Kubernetes event.
 
+## Finding attribution
+
+The `findings` field must contain references to findings that directly
+support the analysis.
+
+The `rule` value MUST exactly match a finding rule provided in the
+incident data.
+
+Never invent a finding rule.
+
+Use findings to explain which structured diagnoses or observations
+support the reported root cause.
+
+When a root cause candidate is provided, prefer its supporting findings
+when they are relevant to the final diagnosis.
+
+The `findings` array must contain only findings present in the incident
+data.
+
+Do not use a finding reference as a substitute for evidence.
+Findings explain the analytical reasoning; evidence provides the
+underlying technical facts.
+
 ## Causality
 
 Correlation must not be presented as causation.

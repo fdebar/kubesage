@@ -23,6 +23,10 @@ class AIReport(BaseModel):
         default=None,
         description="User or system impact caused by the incident.",
     )
+    findings: list[FindingReference] = Field(
+        default_factory=list,
+        description="Findings supporting the analysis.",
+    )
     evidence: list[EvidenceReference] = Field(
         default_factory=list,
         description="Evidence references supporting the analysis.",
@@ -35,6 +39,15 @@ class AIReport(BaseModel):
         default_factory=list,
         description="Additional checks suggested by the AI.",
     )
+
+
+class FindingReference(BaseModel):
+    """
+    Stable reference to a Finding used by the AI analysis.
+    """
+
+    rule: str
+    description: str | None = None
 
 
 class EvidenceReference(BaseModel):
