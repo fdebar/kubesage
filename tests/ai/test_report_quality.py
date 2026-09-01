@@ -1,4 +1,5 @@
 import os
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import pytest
@@ -8,6 +9,9 @@ from kubesage.ai.providers.openai_compatible import OpenAICompatibleProvider
 from kubesage.builders.prompt.prompt_builder import PromptBuilder
 from kubesage.models.ai_context import AIContext
 from kubesage.models.ai_report import AIReport
+from kubesage.models.evidence import Evidence
+from kubesage.models.finding import Finding
+from kubesage.models.timeline import TimelineEvent, TimelineEventSource
 from kubesage.utils.config import settings
 from tests.ai.scenarios import ReportQualityScenario
 from tests.ai.scenarios.application_error import application_error_scenario
@@ -16,6 +20,16 @@ from tests.ai.scenarios.cpu_throttling import cpu_throttling_scenario
 from tests.ai.scenarios.crashloop_unknown import crashloop_unknown_scenario
 from tests.ai.scenarios.oomkilled import oomkilled_scenario
 from tests.ai.scenarios.readiness_failure import readiness_failure_scenario
+
+SCENARIOS = (
+    crashloop_unknown_scenario,
+    oomkilled_scenario,
+    cpu_throttling_scenario,
+    readiness_failure_scenario,
+    application_error_scenario,
+    correlated_oom_scenario,
+)
+
 
 UNCERTAINTY_KEYWORDS = (
     "unknown",
@@ -67,7 +81,10 @@ def _keyword_coverage(text: str, keywords: tuple[str, ...]) -> float:
     return matched / len(keywords)
 
 
-def _confidence_score(report: AIReport, scenario: ReportQualityScenario) -> float:
+def _confidence_score(
+    report: AIReport,
+    scenario: ReportQualityScenario,
+) -> float:
     if report.confidence is None:
         return 0.0
 
@@ -77,12 +94,19 @@ def _confidence_score(report: AIReport, scenario: ReportQualityScenario) -> floa
     return min(1.0, report.confidence)
 
 
+def _normalize_evidence_source(source: str | None) -> str:
+    if source is None:
+        return ""
+
+    return source.strip().lower()
+
+
 def score_report_quality(
     report: AIReport,
     scenario: ReportQualityScenario,
 ) -> AIQualityScore:
     root_cause = (report.root_cause or "").strip()
-    evidences_ids = " ".join(r.description or "" for r in report.evidence)
+    evidences_ids = " ".join(evidence.description or "" for evidence in report.evidence)
     recommendations = " ".join(report.recommendations)
 
     completeness_fields = (
@@ -95,11 +119,20 @@ def score_report_quality(
 
     return AIQualityScore(
         root_cause=30.0
-        * _keyword_coverage(root_cause, scenario.expected_root_cause_keywords),
+        * _keyword_coverage(
+            root_cause,
+            scenario.expected_root_cause_keywords,
+        ),
         evidence=25.0
-        * _keyword_coverage(evidences_ids, scenario.required_evidence_keywords),
+        * _keyword_coverage(
+            evidences_ids,
+            scenario.required_evidence_keywords,
+        ),
         recommendations=20.0
-        * _keyword_coverage(recommendations, scenario.required_recommendation_keywords),
+        * _keyword_coverage(
+            recommendations,
+            scenario.required_recommendation_keywords,
+        ),
         confidence=10.0 * _confidence_score(report, scenario),
         completeness=15.0 * (sum(completeness_fields) / len(completeness_fields)),
     )
@@ -113,6 +146,144 @@ def build_prompt(scenario: ReportQualityScenario) -> str:
     )
 
     return PromptBuilder().build(context)
+
+
+def _scenario_evidence_by_id(
+    scenario: ReportQualityScenario,
+) -> dict[str, tuple[Finding, Evidence]]:
+    return {
+        evidence.id: (finding, evidence)
+        for finding in scenario.findings
+        for evidence in finding.structured_evidences
+    }
+
+
+def _timeline_event_matches_evidence(
+    evidence: Evidence,
+    event: TimelineEvent,
+) -> bool:
+    if evidence.source == "prometheus":
+        return event.source == TimelineEventSource.PROMETHEUS
+
+    if evidence.source == "kubernetes":
+        return event.source == TimelineEventSource.KUBERNETES
+
+    if evidence.source in {"loki", "log"}:
+        return event.source == TimelineEventSource.LOKI
+
+    if evidence.source == "event":
+        return event.source == TimelineEventSource.KUBERNETES
+
+    return False
+
+
+def _assert_report_evidence_attribution(
+    report: AIReport,
+    scenario: ReportQualityScenario,
+) -> None:
+    evidence_by_id = _scenario_evidence_by_id(scenario)
+
+    assert evidence_by_id, f"{scenario.name}: expected canonical evidence"
+
+    assert report.evidence, (
+        f"{scenario.name}: AI report must contain at least one evidence reference"
+    )
+
+    referenced_ids = [evidence.id for evidence in report.evidence]
+
+    assert len(referenced_ids) == len(set(referenced_ids)), (
+        f"{scenario.name}: AI report contains duplicate evidence IDs: "
+        f"{referenced_ids!r}"
+    )
+
+    for evidence in report.evidence:
+        assert evidence.id in evidence_by_id, (
+            f"{scenario.name}: LLM referenced unknown evidence ID {evidence.id!r}"
+        )
+
+        finding, canonical_evidence = evidence_by_id[evidence.id]
+
+        assert canonical_evidence.id == evidence.id
+        assert evidence.source == canonical_evidence.source, (
+            f"{scenario.name}: evidence {evidence.id!r} has incorrect "
+            f"source {evidence.source!r}; expected "
+            f"{canonical_evidence.source!r}"
+        )
+        assert evidence.description, (
+            f"{scenario.name}: evidence {evidence.id!r} must have a description"
+        )
+        assert _normalize_evidence_source(
+            evidence.source
+        ) == _normalize_evidence_source(canonical_evidence.source), (
+            f"{scenario.name}: evidence {evidence.id!r} has incorrect source "
+            f"{evidence.source!r}; expected {canonical_evidence.source!r}"
+        )
+        assert finding.structured_evidences, (
+            f"{scenario.name}: finding {finding.title!r} has no structured evidence"
+        )
+
+
+def _assert_report_evidence_ids_are_known(
+    report: AIReport,
+    scenario: ReportQualityScenario,
+) -> None:
+    valid_evidence_ids = set(_scenario_evidence_by_id(scenario))
+
+    for evidence in report.evidence:
+        assert evidence.id in valid_evidence_ids, (
+            f"{scenario.name}: unknown evidence ID {evidence.id!r}"
+        )
+
+
+def _assert_report_evidence_sources_match_scenario(
+    report: AIReport,
+    scenario: ReportQualityScenario,
+) -> None:
+    evidence_by_id = _scenario_evidence_by_id(scenario)
+
+    for evidence in report.evidence:
+        assert evidence.id in evidence_by_id
+
+        _, canonical_evidence = evidence_by_id[evidence.id]
+
+        assert evidence.source == canonical_evidence.source, (
+            f"{scenario.name}: evidence {evidence.id!r} source mismatch: "
+            f"got {evidence.source!r}, "
+            f"expected {canonical_evidence.source!r}"
+        )
+
+
+def _assert_report_evidence_ids_are_unique(
+    report: AIReport,
+    scenario: ReportQualityScenario,
+) -> None:
+    evidence_ids = [evidence.id for evidence in report.evidence]
+
+    assert len(evidence_ids) == len(set(evidence_ids)), (
+        f"{scenario.name}: duplicate evidence IDs in AI report: {evidence_ids!r}"
+    )
+
+
+def _assert_report_evidence_timeline_consistency(
+    report: AIReport,
+    scenario: ReportQualityScenario,
+) -> None:
+    if not scenario.timeline:
+        return
+
+    evidence_by_id = _scenario_evidence_by_id(scenario)
+    for evidence in report.evidence:
+        canonical_evidence = evidence_by_id[evidence.id][1]
+
+        matching_events = [
+            event
+            for event in scenario.timeline
+            if _timeline_event_matches_evidence(canonical_evidence, event)
+        ]
+
+        assert matching_events, (
+            f"{scenario.name}: evidence {evidence.id!r} has no matching timeline source"
+        )
 
 
 def assert_report_quality(
@@ -129,6 +300,7 @@ def assert_report_quality(
 
     if scenario.require_root_cause:
         assert root_cause, f"{scenario.name}: expected a root cause"
+
         assert not any(keyword in root_cause for keyword in UNCERTAINTY_KEYWORDS), (
             f"{scenario.name}: expected a concrete root cause, "
             f"got uncertain root cause={report.root_cause!r}"
@@ -165,33 +337,25 @@ def assert_report_quality(
             f"in recommendations, got {report.recommendations!r}"
         )
 
-    valid_evidence_ids = {
-        evidence.id
-        for finding in scenario.findings
-        for evidence in finding.structured_evidences
-    }
-
-    for evidence in report.evidence:
-        assert evidence.id in valid_evidence_ids
+    _assert_report_evidence_attribution(report, scenario)
+    _assert_report_evidence_ids_are_known(report, scenario)
+    _assert_report_evidence_sources_match_scenario(report, scenario)
+    _assert_report_evidence_ids_are_unique(report, scenario)
+    _assert_report_evidence_timeline_consistency(report, scenario)
 
     return score_report_quality(report, scenario)
 
 
 @pytest.mark.parametrize(
-    "scenario",
-    [
-        crashloop_unknown_scenario(),
-        oomkilled_scenario(),
-        cpu_throttling_scenario(),
-        readiness_failure_scenario(),
-        application_error_scenario(),
-        correlated_oom_scenario(),
-    ],
-    ids=lambda scenario: scenario.name,
+    "scenario_factory",
+    [*SCENARIOS],
+    ids=lambda factory: factory().name,
 )
 def test_report_quality_scenario_builds_valid_context(
-    scenario: ReportQualityScenario,
+    scenario_factory: Callable[[], ReportQualityScenario],
 ) -> None:
+    scenario = scenario_factory()
+
     context = AIContext(
         incident=scenario.incident,
         findings=scenario.findings,
@@ -211,23 +375,20 @@ def test_report_quality_scenario_builds_valid_context(
 @pytest.mark.ai_quality
 @pytest.mark.skipif(
     os.getenv("KUBESAGE_RUN_AI_QUALITY") != "1",
-    reason="AI quality tests require an explicit live AI provider",
+    reason=("AI quality tests require an explicit live AI provider"),
 )
 @pytest.mark.parametrize(
-    "scenario",
-    [
-        crashloop_unknown_scenario(),
-        oomkilled_scenario(),
-        cpu_throttling_scenario(),
-        readiness_failure_scenario(),
-        application_error_scenario(),
-        correlated_oom_scenario(),
-    ],
-    ids=lambda scenario: scenario.name,
+    "scenario_factory",
+    [*SCENARIOS],
+    ids=lambda factory: factory().name,
 )
-def test_ai_report_quality(scenario: ReportQualityScenario) -> None:
+def test_ai_report_quality(
+    scenario_factory: Callable[[], ReportQualityScenario],
+) -> None:
+    scenario = scenario_factory()
     client = Client(base_url=settings.ai_url, api_key=settings.ai_api_key)
     provider = OpenAICompatibleProvider(client=client, model=settings.ai_model)
+
     report = provider.analyze(build_prompt(scenario))
 
     print(f"\n{'=' * 80}")
@@ -251,12 +412,13 @@ def test_ai_report_quality(scenario: ReportQualityScenario) -> None:
 @pytest.mark.ai_quality
 @pytest.mark.skipif(
     os.getenv("KUBESAGE_RUN_AI_QUALITY") != "1",
-    reason="AI quality tests require an explicit live AI provider",
+    reason=("AI quality tests require an explicit live AI provider"),
 )
 def test_oomkilled_ai_report_quality() -> None:
     scenario = oomkilled_scenario()
     client = Client(base_url=settings.ai_url, api_key=settings.ai_api_key)
     provider = OpenAICompatibleProvider(client=client, model=settings.ai_model)
+
     report: AIReport = provider.analyze(build_prompt(scenario))
 
     print(f"\n{'=' * 80}")
@@ -270,14 +432,9 @@ def test_oomkilled_ai_report_quality() -> None:
 
 
 def test_evidence_ids_are_unique_in_scenario() -> None:
-    for scenario in (
-        crashloop_unknown_scenario(),
-        oomkilled_scenario(),
-        cpu_throttling_scenario(),
-        readiness_failure_scenario(),
-        application_error_scenario(),
-        correlated_oom_scenario(),
-    ):
+    for scenario_factory in SCENARIOS:
+        scenario = scenario_factory()
+
         evidence_ids = [
             evidence.id
             for finding in scenario.findings
@@ -285,11 +442,33 @@ def test_evidence_ids_are_unique_in_scenario() -> None:
         ]
 
         assert evidence_ids, f"{scenario.name}: expected evidence"
+
         assert len(evidence_ids) == len(set(evidence_ids)), (
             f"{scenario.name}: evidence IDs must be unique"
         )
 
 
+def test_evidence_ids_are_attributable_to_findings() -> None:
+    for scenario_factory in SCENARIOS:
+        scenario = scenario_factory()
+
+        evidence_by_id = _scenario_evidence_by_id(scenario)
+
+        assert evidence_by_id, f"{scenario.name}: expected evidence"
+
+        for evidence_id, (
+            finding,
+            evidence,
+        ) in evidence_by_id.items():
+            assert evidence.id == evidence_id
+            assert evidence in finding.structured_evidences
+
+
+@pytest.mark.ai_quality
+@pytest.mark.skipif(
+    os.getenv("KUBESAGE_RUN_AI_QUALITY") != "1",
+    reason=("AI quality tests require an explicit live AI provider"),
+)
 def test_ai_report_evidence_ids_match_scenario() -> None:
     scenario = oomkilled_scenario()
     client = Client(base_url=settings.ai_url, api_key=settings.ai_api_key)
@@ -297,15 +476,85 @@ def test_ai_report_evidence_ids_match_scenario() -> None:
 
     report = provider.analyze(build_prompt(scenario))
 
-    valid_evidence_ids = {
-        evidence.id
-        for finding in scenario.findings
-        for evidence in finding.structured_evidences
-    }
+    _assert_report_evidence_ids_are_known(report, scenario)
 
-    assert report.evidence
 
-    for evidence in report.evidence:
-        assert evidence.id in valid_evidence_ids, (
-            f"{scenario.name}: unknown evidence ID {evidence.id!r}"
-        )
+@pytest.mark.ai_quality
+@pytest.mark.skipif(
+    os.getenv("KUBESAGE_RUN_AI_QUALITY") != "1",
+    reason=("AI quality tests require an explicit live AI provider"),
+)
+def test_ai_report_evidence_sources_match_scenario() -> None:
+    scenario = oomkilled_scenario()
+    client = Client(base_url=settings.ai_url, api_key=settings.ai_api_key)
+    provider = OpenAICompatibleProvider(client=client, model=settings.ai_model)
+
+    report = provider.analyze(build_prompt(scenario))
+
+    _assert_report_evidence_sources_match_scenario(report, scenario)
+
+
+@pytest.mark.ai_quality
+@pytest.mark.skipif(
+    os.getenv("KUBESAGE_RUN_AI_QUALITY") != "1",
+    reason=("AI quality tests require an explicit live AI provider"),
+)
+def test_ai_report_evidence_ids_are_unique() -> None:
+    scenario = crashloop_unknown_scenario()
+    client = Client(base_url=settings.ai_url, api_key=settings.ai_api_key)
+    provider = OpenAICompatibleProvider(client=client, model=settings.ai_model)
+
+    report = provider.analyze(build_prompt(scenario))
+
+    _assert_report_evidence_ids_are_unique(report, scenario)
+
+
+def test_evidence_attribution_is_consistent() -> None:
+    for scenario_factory in SCENARIOS:
+        scenario = scenario_factory()
+
+        evidence_by_id = _scenario_evidence_by_id(scenario)
+
+        assert evidence_by_id, f"{scenario.name}: expected evidence"
+
+        for evidence_id, (_finding, evidence) in evidence_by_id.items():
+            assert evidence.id == evidence_id
+            assert evidence.source
+
+            if scenario.timeline:
+                matching_events = [
+                    event
+                    for event in scenario.timeline
+                    if _timeline_event_matches_evidence(
+                        evidence,
+                        event,
+                    )
+                ]
+
+                assert matching_events, (
+                    f"{scenario.name}: evidence "
+                    f"{evidence.id!r} has no matching "
+                    "timeline source"
+                )
+
+
+def test_evidence_timeline_consistency() -> None:
+    for scenario_factory in SCENARIOS:
+        scenario = scenario_factory()
+
+        if not scenario.timeline:
+            continue
+
+        evidence_by_id = _scenario_evidence_by_id(scenario)
+        for evidence_id, (_finding, evidence) in evidence_by_id.items():
+            matching_events = [
+                event
+                for event in scenario.timeline
+                if _timeline_event_matches_evidence(evidence, event)
+            ]
+
+            assert matching_events, (
+                f"{scenario.name}: evidence "
+                f"{evidence_id!r} has no matching "
+                "timeline event"
+            )

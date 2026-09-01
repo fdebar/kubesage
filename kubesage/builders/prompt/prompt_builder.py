@@ -112,6 +112,7 @@ class PromptBuilder:
 
             if error_domain:
                 lines.append(f"- Domain: {error_domain}")
+
             lines.append("")
 
         if finding.caused_by:
@@ -124,6 +125,7 @@ class PromptBuilder:
 
             for evidence in finding.structured_evidences:
                 value = evidence.value or ""
+
                 if evidence.unit:
                     value = f"{value}{evidence.unit}"
 
@@ -176,6 +178,13 @@ Use the exact evidence `id`.
 
 Never invent an evidence ID.
 
+The evidence IDs are canonical identifiers.
+
+If the same evidence is useful for multiple claims, reference it only ONCE
+in the `evidence` array.
+
+The `evidence` array MUST NOT contain duplicate IDs.
+
 Each evidence reference must:
 - use an existing evidence ID;
 - describe the evidence accurately;
@@ -186,6 +195,50 @@ Do not create evidence that is not present in the incident data.
 
 The `evidence` field must contain only evidence references, not free-form
 unsupported claims.
+
+## Evidence source attribution
+
+The `source` field of an AI report evidence item MUST be copied exactly
+from the canonical evidence item identified by its `id`.
+
+Do NOT infer, reinterpret, normalize, or replace the canonical evidence source.
+
+For example:
+
+- if the canonical evidence says `Source: kubernetes`, the AI report MUST use
+  `"source": "kubernetes"`;
+- if the canonical evidence says `Source: prometheus`, the AI report MUST use
+  `"source": "prometheus"`;
+- if the canonical evidence says `Source: loki`, the AI report MUST use
+  `"source": "loki"`.
+
+The source of a TimelineEvent is NOT the source of an Evidence item.
+
+For example, a Kubernetes-related timeline event may have a timeline source
+such as `event` or `kubernetes`, but this MUST NOT change the canonical source
+of an Evidence item.
+
+Never use `event` as the evidence source unless the canonical Evidence item
+itself explicitly has `Source: event`.
+
+The `source` value in the final report must therefore be copied from the
+specific Evidence item referenced by the ID.
+
+## Evidence uniqueness
+
+Each evidence ID may appear at most once in the final `evidence` array.
+
+Before returning the JSON:
+1. collect all evidence IDs you intend to reference;
+2. remove any duplicate IDs;
+3. verify that every remaining ID exists in the incident data;
+4. verify that every `source` exactly matches the canonical Evidence item.
+
+If one evidence item supports multiple statements, keep one evidence entry
+and make its description cover the relevant technical fact.
+
+Do not emit multiple entries with the same ID merely because the evidence
+appears in multiple sections of the incident context.
 
 ## Diagnostic reasoning
 
@@ -221,6 +274,13 @@ Temporal proximity alone does not prove causality.
 Temporal order can establish sequence, but not causation by itself.
 Only claim causation when the available evidence supports it.
 
+The timeline is contextual information.
+
+Do not treat a TimelineEvent source as an Evidence source.
+
+In particular, do not change an Evidence source from `kubernetes` to `event`
+because a related timeline entry represents a Kubernetes event.
+
 ## Root cause requirements
 
 The `root_cause` field must contain the most specific cause that is actually supported
@@ -242,7 +302,7 @@ preserve that reason in the root cause.
 Do not replace a specific technical diagnosis with a vague paraphrase.
 
 For example, prefer:
-"Memory usage reached the configured limit and the container 
+"Memory usage reached the configured limit and the container
 was terminated with OOMKilled."
 
 over:
@@ -308,8 +368,8 @@ the report.
 
 Prefer concrete technical evidence over generic descriptions.
 
-When evidence comes from a diagnosis, preserve the diagnostic context that makes
-the evidence technically meaningful.
+When evidence comes from a diagnosis, preserve the diagnostic context that makes the
+evidence technically meaningful.
 
 For example, if the diagnosis is "Readiness probe failing" and an evidence item
 indicates an HTTP 404 probe failure, the evidence should preserve the fact that
@@ -379,6 +439,19 @@ Examples:
 
 Do not use `1.0` confidence for an uncertain or unknown root cause.
 
+## Final evidence validation
+
+Before returning the JSON, perform this validation internally:
+
+- every evidence ID exists in the provided incident data;
+- every evidence ID appears at most once;
+- every evidence description accurately represents the canonical evidence;
+- every evidence source exactly matches the canonical evidence source;
+- no timeline source has been substituted for an evidence source;
+- no evidence has been invented.
+
+If an evidence item is already referenced, do not reference it again.
+
 ## Rules
 
 1. Use Diagnoses as the primary source of truth.
@@ -393,6 +466,9 @@ Do not use `1.0` confidence for an uncertain or unknown root cause.
 10. Do not claim impact that is not supported by the evidence.
 11. Calibrate confidence to the certainty of the root cause.
 12. Keep the report concise and technically precise.
+13. Never duplicate an evidence ID in the `evidence` array.
+14. Preserve the exact canonical `source` of every evidence item.
+15. Never substitute a TimelineEvent source for an Evidence source.
 
 ## Reasoning rules
 
@@ -414,7 +490,13 @@ Return JSON matching this schema:
 "root_cause": "...",
 "confidence": 0.0,
 "impact": "...",
-"evidence": [],
+"evidence": [
+  {
+    "id": "...",
+    "description": "...",
+    "source": "..."
+  }
+],
 "recommendations": [],
 "additional_investigations": []
 }
