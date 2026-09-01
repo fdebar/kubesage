@@ -1,34 +1,20 @@
-import re
-from enum import StrEnum
-
+from kubesage.analyzers.application_error import (
+    ApplicationErrorClassification,
+    ApplicationErrorClassifier,
+    ApplicationErrorDomain,
+    ApplicationErrorKind,
+)
 from kubesage.analyzers.rules.base import BaseRule
 from kubesage.models.evidence import Evidence, EvidenceType
 from kubesage.models.finding import Finding, FindingKind, Severity
 from kubesage.models.incident import Incident
 
 
-class ApplicationErrorKind(StrEnum):
-    DATABASE_ERROR = "database_error"
-    CONNECTION_ERROR = "connection_error"
-    TIMEOUT = "timeout"
-    HTTP_5XX = "http_5xx"
-    EXCEPTION = "exception"
-    GENERIC_ERROR = "generic_error"
-
-
 class ApplicationErrorRule(BaseRule):
     rule_id = "application_error"
     title = "Detect application errors"
     description = "Detect application errors reported in application logs."
-
-    _PATTERNS = (
-        re.compile(r"\berror\b", re.IGNORECASE),
-        re.compile(r"\b(?:\w+)?exception\b", re.IGNORECASE),
-        re.compile(r"\btraceback\b", re.IGNORECASE),
-        re.compile(r"\bHTTP\s+5\d{2}\b", re.IGNORECASE),
-        re.compile(r"\bconnection\s+refused\b", re.IGNORECASE),
-        re.compile(r"\btimeout\b", re.IGNORECASE),
-    )
+    classifier = ApplicationErrorClassifier()
 
     def evaluate(self, incident: Incident) -> list[Finding]:
         findings: list[Finding] = []
@@ -37,21 +23,31 @@ class ApplicationErrorRule(BaseRule):
             return []
 
         for entry in incident.loki_logs.entries:
-            error_kind = self._classify(entry.message)
-            if error_kind is None:
+            classification = self.classifier.classify(entry.message)
+            if classification is None:
                 continue
+
+            evidence_metadata = {
+                "error_kind": classification.kind.value,
+                "timestamp": entry.timestamp.isoformat(),
+                "labels": entry.labels,
+            }
+            finding_metadata = {
+                "error_kind": classification.kind.value,
+                "log_timestamp": entry.timestamp.isoformat(),
+            }
+            if classification.domain:
+                evidence_metadata["error_domain"] = classification.domain.value
+                finding_metadata["error_domain"] = classification.domain.value
 
             findings.append(
                 Finding(
                     rule=self.rule_id,
                     severity=Severity.ERROR,
                     kind=FindingKind.OBSERVATION,
-                    title=self._title(error_kind),
-                    description=self._description(error_kind, entry.message),
-                    metadata={
-                        "error_kind": error_kind.value,
-                        "log_timestamp": entry.timestamp.isoformat(),
-                    },
+                    title=self._title(classification),
+                    description=self._description(classification, entry.message),
+                    metadata=finding_metadata,
                     resource=self._pod_resource(incident),
                     structured_evidences=[
                         Evidence(
@@ -60,10 +56,7 @@ class ApplicationErrorRule(BaseRule):
                             value=entry.message,
                             source="loki",
                             description="Application error detected in Loki logs.",
-                            metadata={
-                                "timestamp": entry.timestamp.isoformat(),
-                                "labels": entry.labels,
-                            },
+                            metadata=evidence_metadata,
                         )
                     ],
                     confidence=0.90,
@@ -73,50 +66,19 @@ class ApplicationErrorRule(BaseRule):
 
         return findings
 
-    def _classify(self, message: str) -> ApplicationErrorKind | None:
-        if re.search(
-            r"\b(?:database|db|sql)\b.*\b(?:error|failure|failed|refused|timeout)\b",
-            message,
-            re.IGNORECASE,
-        ):
-            return ApplicationErrorKind.DATABASE_ERROR
+    def _title(self, classification: ApplicationErrorClassification) -> str:
+        if classification.domain == ApplicationErrorDomain.DATABASE:
+            database_titles = {
+                ApplicationErrorKind.CONNECTION_ERROR: "Database connection failure",
+                ApplicationErrorKind.TIMEOUT: "Database timeout",
+                ApplicationErrorKind.HTTP_5XX: "Database HTTP 5xx error",
+                ApplicationErrorKind.EXCEPTION: "Database exception",
+                ApplicationErrorKind.GENERIC_ERROR: "Database error",
+            }
 
-        if re.search(
-            r"\bconnection\s+(?:refused|reset|failed|failure|error)\b",
-            message,
-            re.IGNORECASE,
-        ):
-            return ApplicationErrorKind.CONNECTION_ERROR
+            return database_titles[classification.kind]
 
-        if re.search(
-            r"\b(?:timeout|timed out)\b",
-            message,
-            re.IGNORECASE,
-        ):
-            return ApplicationErrorKind.TIMEOUT
-
-        if re.search(
-            r"\bHTTP\s+5\d{2}\b",
-            message,
-            re.IGNORECASE,
-        ):
-            return ApplicationErrorKind.HTTP_5XX
-
-        if re.search(
-            r"(?:\bexception\b|\b\w+exception\b|\btraceback\b)",
-            message,
-            re.IGNORECASE,
-        ):
-            return ApplicationErrorKind.EXCEPTION
-
-        if re.search(r"\berror\b", message, re.IGNORECASE):
-            return ApplicationErrorKind.GENERIC_ERROR
-
-        return None
-
-    def _title(self, error_kind: ApplicationErrorKind) -> str:
         titles = {
-            ApplicationErrorKind.DATABASE_ERROR: "Database connection failure",
             ApplicationErrorKind.CONNECTION_ERROR: "Application connection failure",
             ApplicationErrorKind.TIMEOUT: "Application timeout",
             ApplicationErrorKind.HTTP_5XX: "HTTP 5xx error",
@@ -124,26 +86,46 @@ class ApplicationErrorRule(BaseRule):
             ApplicationErrorKind.GENERIC_ERROR: "Application error",
         }
 
-        return titles[error_kind]
+        return titles[classification.kind]
 
-    def _description(self, error_kind: ApplicationErrorKind, message: str) -> str:
-        descriptions = {
-            ApplicationErrorKind.DATABASE_ERROR: (
-                "Application logs report a database error."
-            ),
-            ApplicationErrorKind.CONNECTION_ERROR: (
-                "Application logs report a connection failure."
-            ),
-            ApplicationErrorKind.TIMEOUT: ("Application logs report a timeout."),
-            ApplicationErrorKind.HTTP_5XX: (
-                "Application logs report an HTTP 5xx server error."
-            ),
-            ApplicationErrorKind.EXCEPTION: (
-                "Application logs report an exception or traceback."
-            ),
-            ApplicationErrorKind.GENERIC_ERROR: (
-                "Application logs report an application error."
-            ),
-        }
+    def _description(
+        self,
+        classification: ApplicationErrorClassification,
+        message: str,
+    ) -> str:
+        if classification.domain == ApplicationErrorDomain.DATABASE:
+            descriptions = {
+                ApplicationErrorKind.CONNECTION_ERROR: (
+                    "Application logs report a database connection failure."
+                ),
+                ApplicationErrorKind.TIMEOUT: (
+                    "Application logs report a database timeout."
+                ),
+                ApplicationErrorKind.HTTP_5XX: (
+                    "Application logs report a database-related HTTP 5xx error."
+                ),
+                ApplicationErrorKind.EXCEPTION: (
+                    "Application logs report a database-related exception."
+                ),
+                ApplicationErrorKind.GENERIC_ERROR: (
+                    "Application logs report a database error."
+                ),
+            }
+        else:
+            descriptions = {
+                ApplicationErrorKind.CONNECTION_ERROR: (
+                    "Application logs report a connection failure."
+                ),
+                ApplicationErrorKind.TIMEOUT: ("Application logs report a timeout."),
+                ApplicationErrorKind.HTTP_5XX: (
+                    "Application logs report an HTTP 5xx server error."
+                ),
+                ApplicationErrorKind.EXCEPTION: (
+                    "Application logs report an exception or traceback."
+                ),
+                ApplicationErrorKind.GENERIC_ERROR: (
+                    "Application logs report an application error."
+                ),
+            }
 
-        return f"{descriptions[error_kind]} Log message: {message}"
+        return f"{descriptions[classification.kind]} Log message: {message}"

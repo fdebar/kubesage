@@ -133,7 +133,7 @@ def test_classifies_database_error() -> None:
     )
 
     assert len(findings) == 1
-    assert findings[0].metadata["error_kind"] == "database_error"
+    assert findings[0].metadata["error_kind"] == "connection_error"
 
 
 def test_classifies_connection_error() -> None:
@@ -199,7 +199,7 @@ def test_database_error_takes_precedence_over_connection_and_timeout() -> None:
     )
 
     assert len(findings) == 1
-    assert findings[0].metadata["error_kind"] == "database_error"
+    assert findings[0].metadata["error_kind"] == "timeout"
 
 
 def test_database_error_has_semantic_finding() -> None:
@@ -212,8 +212,9 @@ def test_database_error_has_semantic_finding() -> None:
     finding = findings[0]
 
     assert finding.title == "Database connection failure"
-    assert finding.metadata["error_kind"] == "database_error"
-    assert "database error" in finding.description.lower()
+    assert finding.metadata["error_kind"] == "connection_error"
+    assert finding.metadata["error_domain"] == "database"
+    assert "database connection failure" in finding.description.lower()
     assert "Database connection refused" in finding.description
 
 
