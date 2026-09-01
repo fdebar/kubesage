@@ -1,4 +1,5 @@
 import os
+from dataclasses import dataclass
 
 import pytest
 from openai import Client
@@ -16,6 +17,89 @@ from tests.ai.scenarios.crashloop_unknown import crashloop_unknown_scenario
 from tests.ai.scenarios.oomkilled import oomkilled_scenario
 from tests.ai.scenarios.readiness_failure import readiness_failure_scenario
 
+UNCERTAINTY_KEYWORDS = (
+    "unknown",
+    "uncertain",
+    "cannot determine",
+    "cannot be determined",
+    "insufficient",
+    "not enough evidence",
+    "undetermined",
+    "no clear",
+    "no specific",
+    "not provided",
+    "unable to determine",
+)
+
+
+@dataclass(frozen=True)
+class AIQualityScore:
+    root_cause: float
+    evidence: float
+    recommendations: float
+    confidence: float
+    completeness: float
+
+    @property
+    def overall(self) -> float:
+        return sum(
+            (
+                self.root_cause,
+                self.evidence,
+                self.recommendations,
+                self.confidence,
+                self.completeness,
+            )
+        )
+
+
+def _keyword_coverage(text: str, keywords: tuple[str, ...]) -> float:
+    if not keywords:
+        return 1.0
+
+    normalized = text.lower()
+    matched = sum(keyword.lower() in normalized for keyword in keywords)
+
+    return matched / len(keywords)
+
+
+def _confidence_score(report: AIReport, scenario: ReportQualityScenario) -> float:
+    if report.confidence is None:
+        return 0.0
+
+    if scenario.require_uncertainty:
+        return max(0.0, 1.0 - report.confidence)
+
+    return min(1.0, report.confidence)
+
+
+def score_report_quality(
+    report: AIReport,
+    scenario: ReportQualityScenario,
+) -> AIQualityScore:
+    root_cause = (report.root_cause or "").strip()
+    evidence = " ".join(report.evidence)
+    recommendations = " ".join(report.recommendations)
+
+    completeness_fields = (
+        bool(report.summary),
+        bool(root_cause) if scenario.require_root_cause else True,
+        bool(report.evidence),
+        bool(report.recommendations),
+        bool(report.impact),
+    )
+
+    return AIQualityScore(
+        root_cause=30.0
+        * _keyword_coverage(root_cause, scenario.expected_root_cause_keywords),
+        evidence=25.0
+        * _keyword_coverage(evidence, scenario.required_evidence_keywords),
+        recommendations=20.0
+        * _keyword_coverage(recommendations, scenario.required_recommendation_keywords),
+        confidence=10.0 * _confidence_score(report, scenario),
+        completeness=15.0 * (sum(completeness_fields) / len(completeness_fields)),
+    )
+
 
 def build_prompt(scenario: ReportQualityScenario) -> str:
     context = AIContext(
@@ -30,7 +114,7 @@ def build_prompt(scenario: ReportQualityScenario) -> str:
 def assert_report_quality(
     report: AIReport,
     scenario: ReportQualityScenario,
-) -> None:
+) -> AIQualityScore:
     assert report.summary
     assert report.summary != "AI analysis could not be completed.", (
         f"{scenario.name}: AI provider did not return a report"
@@ -42,32 +126,14 @@ def assert_report_quality(
 
     if scenario.require_root_cause:
         assert root_cause, f"{scenario.name}: expected a root cause"
-
-        uncertainty_keywords = (
-            "unknown",
-            "uncertain",
-            "cannot determine",
-            "insufficient",
-            "not enough evidence",
-            "undetermined",
-        )
-
-        assert not any(keyword in root_cause for keyword in uncertainty_keywords), (
+        assert not any(keyword in root_cause for keyword in UNCERTAINTY_KEYWORDS), (
             f"{scenario.name}: expected a concrete root cause, "
             f"got uncertain root cause={report.root_cause!r}"
         )
 
     if scenario.require_uncertainty:
         assert report.root_cause is None or any(
-            keyword in root_cause
-            for keyword in (
-                "unknown",
-                "uncertain",
-                "cannot determine",
-                "insufficient",
-                "not enough evidence",
-                "undetermined",
-            )
+            keyword in root_cause for keyword in UNCERTAINTY_KEYWORDS
         ), (
             f"{scenario.name}: expected uncertainty, "
             f"got root cause={report.root_cause!r}"
@@ -96,6 +162,8 @@ def assert_report_quality(
             f"{scenario.name}: expected {keyword!r} "
             f"in recommendations, got {report.recommendations!r}"
         )
+
+    return score_report_quality(report, scenario)
 
 
 @pytest.mark.parametrize(
@@ -156,7 +224,17 @@ def test_ai_report_quality(scenario: ReportQualityScenario) -> None:
     print(f"{'=' * 80}")
     print(report.model_dump_json(indent=2))
 
-    assert_report_quality(report, scenario)
+    score = assert_report_quality(report, scenario)
+
+    print(
+        "QUALITY SCORE: "
+        f"{score.overall:.1f}/100 "
+        f"(root={score.root_cause:.1f}, "
+        f"evidence={score.evidence:.1f}, "
+        f"recommendations={score.recommendations:.1f}, "
+        f"confidence={score.confidence:.1f}, "
+        f"completeness={score.completeness:.1f})"
+    )
 
 
 @pytest.mark.ai_quality
@@ -175,4 +253,6 @@ def test_oomkilled_ai_report_quality() -> None:
     print(f"{'=' * 80}")
     print(report.model_dump_json(indent=2))
 
-    assert_report_quality(report, scenario)
+    score = assert_report_quality(report, scenario)
+
+    print(f"QUALITY SCORE: {score.overall:.1f}/100")
