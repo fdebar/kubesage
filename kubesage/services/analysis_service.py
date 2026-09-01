@@ -31,7 +31,7 @@ class AnalysisService:
 
             try:
                 analysis = self.incident_service.analyze(namespace, pod, trigger)
-                print(analysis.model_dump_json(indent=4))
+
                 self.repository.save(analysis)
 
                 ANALYSIS_TOTAL.labels(status="success").inc()
