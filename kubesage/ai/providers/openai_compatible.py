@@ -63,11 +63,9 @@ class OpenAICompatibleProvider:
             finally:
                 LLM_DURATION.observe(time.perf_counter() - start)
 
-        logger.debug("llm_response_raw", response=response)
-
         report: AIReport | None = response.choices[0].message.parsed
         if report is None:
-            logger.error("llm_response_empty")
+            logger.error("llm_response_empty", response=response)
 
             return AIReport(summary="AI analysis could not be completed.")
 
