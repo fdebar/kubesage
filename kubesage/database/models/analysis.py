@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from sqlalchemy import JSON, DateTime, Index, Integer, String
+from sqlalchemy import DateTime, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from kubesage.database.base import Base
@@ -29,7 +29,6 @@ class AnalysisModel(Base):
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
     findings_count: Mapped[int] = mapped_column(Integer, nullable=False)
-    intelligence: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     findings = relationship(
         "FindingModel",
         back_populates="analysis",

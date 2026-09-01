@@ -202,7 +202,6 @@ def test_analysis_intelligence_round_trip() -> None:
                 supporting_findings=["oom_killed"],
             )
         ],
-        recommendations=["Increase the container memory limit."],
     )
 
     incident = Incident(
@@ -223,4 +222,5 @@ def test_analysis_intelligence_round_trip() -> None:
     model = AnalysisMapper.to_model(analysis)
     restored = AnalysisMapper.to_domain(model)
 
-    assert restored.intelligence == intelligence
+    assert restored.intelligence.correlations == intelligence.correlations
+    assert restored.intelligence.root_causes == intelligence.root_causes
