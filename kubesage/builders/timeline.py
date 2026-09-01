@@ -1,5 +1,7 @@
 from datetime import datetime
+from typing import Any
 
+from kubesage.analyzers.application_error import ApplicationErrorClassifier
 from kubesage.models.container import ContainerSnapshot
 from kubesage.models.event import Event
 from kubesage.models.finding import ResourceRef, Severity
@@ -15,6 +17,9 @@ from kubesage.models.timeline import (
 
 class TimelineBuilder:
     """Builds a chronological timeline from incident data."""
+
+    def __init__(self) -> None:
+        self.application_error_classifier = ApplicationErrorClassifier()
 
     def build(
         self,
@@ -164,15 +169,22 @@ class TimelineBuilder:
         )
 
     def _build_log_events(self, incident: Incident) -> list[TimelineEvent]:
+        events: list[TimelineEvent] = []
+
         if incident.loki_logs is None:
             return []
 
-        events: list[TimelineEvent] = []
         for index, entry in enumerate(incident.loki_logs.entries):
-            severity = self._log_severity(entry)
+            severity = self._log_severity(entry) or Severity.INFO
 
-            if severity is None:
-                continue
+            metadata: dict[str, Any] = {"labels": entry.labels}
+
+            classification = self.application_error_classifier.classify(entry.message)
+            if classification:
+                metadata["error_kind"] = classification.kind.value
+
+                if classification.domain:
+                    metadata["error_domain"] = classification.domain.value
 
             events.append(
                 TimelineEvent(
@@ -184,9 +196,7 @@ class TimelineBuilder:
                     description=entry.message,
                     severity=severity,
                     resource=self._pod_resource(incident),
-                    metadata={
-                        "labels": entry.labels,
-                    },
+                    metadata=metadata,
                 )
             )
 
@@ -195,6 +205,7 @@ class TimelineBuilder:
     @staticmethod
     def _log_severity(entry: LogEntry) -> Severity | None:
         message = entry.message.lstrip().upper()
+
         if (
             message.startswith("FATAL")
             or message.startswith("CRITICAL")
@@ -212,7 +223,10 @@ class TimelineBuilder:
         if severity == Severity.ERROR:
             return "Application error"
 
-        return "Application warning"
+        if severity == Severity.WARNING:
+            return "Application warning"
+
+        return "Application log"
 
     @staticmethod
     def _pod_resource(incident: Incident) -> ResourceRef:
