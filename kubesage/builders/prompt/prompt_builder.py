@@ -39,6 +39,7 @@ class PromptBuilder:
             )
 
             lines.append(line)
+
             if event.description:
                 lines.append(f"  {event.description}")
 
@@ -180,6 +181,31 @@ Never invent an evidence ID.
 
 The evidence IDs are canonical identifiers.
 
+Do not prefix an evidence ID with punctuation, Markdown markers,
+colons, bullets, quotes, or any other character.
+
+For example, if the incident data contains:
+
+`ID: 0f05819add8d`
+
+the final JSON MUST contain:
+
+`"id": "0f05819add8d"`
+
+and NEVER:
+
+`"id": ":0f05819add8d"`
+
+or:
+
+`"id": "-0f05819add8d"`
+
+or:
+
+`"id": "`0f05819add8d`"`
+
+The evidence ID must be copied from the incident data.
+
 If the same evidence is useful for multiple claims, reference it only ONCE
 in the `evidence` array.
 
@@ -232,7 +258,7 @@ Before returning the JSON:
 1. collect all evidence IDs you intend to reference;
 2. remove any duplicate IDs;
 3. verify that every remaining ID exists in the incident data;
-4. verify that every `source` exactly matches the canonical Evidence item.
+4. verify that every source exactly matches the canonical Evidence item.
 
 If one evidence item supports multiple statements, keep one evidence entry
 and make its description cover the relevant technical fact.
@@ -272,6 +298,7 @@ Pay particular attention to:
 Temporal proximity alone does not prove causality.
 
 Temporal order can establish sequence, but not causation by itself.
+
 Only claim causation when the available evidence supports it.
 
 The timeline is contextual information.
@@ -280,6 +307,41 @@ Do not treat a TimelineEvent source as an Evidence source.
 
 In particular, do not change an Evidence source from `kubernetes` to `event`
 because a related timeline entry represents a Kubernetes event.
+
+## Causality
+
+Correlation must not be presented as causation.
+
+If the incident contains:
+- a metric increase;
+- an application error;
+- a restart;
+
+and the data does not explicitly establish that the metric caused the error
+or that the error caused the restart, report those facts as correlated observations.
+
+Do not promote a temporally preceding metric into the root cause merely because
+it occurred before the failure.
+
+For example, if CPU usage increased before an HTTP 500 error, but no evidence
+establishes that CPU caused the HTTP 500:
+
+CORRECT:
+"The application returned HTTP 500. CPU usage increased shortly beforehand,
+but the available evidence does not establish that CPU usage caused the error."
+
+INCORRECT:
+"CPU saturation caused the HTTP 500 error."
+
+The same rule applies to:
+- memory usage;
+- CPU usage;
+- network activity;
+- log messages;
+- Kubernetes events;
+- container restarts;
+- probe failures;
+- dependency failures.
 
 ## Root cause requirements
 
@@ -291,29 +353,46 @@ technical identifiers in the root cause.
 
 Examples:
 - If the evidence identifies `OOMKilled`, the root cause should explicitly mention
-`OOMKilled` or `OOM`.
+  `OOMKilled` or `OOM`.
 - If the evidence identifies an HTTP status such as `404`, the root cause should
-explicitly mention `404`.
+  explicitly mention `404`.
 - If the evidence identifies CPU throttling, the root cause should explicitly mention
-CPU throttling.
+  CPU throttling.
 - If the evidence identifies a specific Kubernetes reason or termination reason,
-preserve that reason in the root cause.
+  preserve that reason in the root cause.
 
 Do not replace a specific technical diagnosis with a vague paraphrase.
 
-For example, prefer:
-"Memory usage reached the configured limit and the container
-was terminated with OOMKilled."
+## Ambiguous incidents
 
-over:
-"Memory consumption exceeded the configured memory limit."
+When multiple plausible explanations exist and no diagnosis establishes which one
+is responsible, DO NOT select one explanation as the root cause.
 
-Likewise, prefer:
-"The readiness probe is returning HTTP 404 because the configured endpoint is not
-available or does not match the application's exposed endpoint."
+This is especially important when resource metrics are close to configured limits.
 
-over:
-"The readiness probe is misconfigured."
+For example, if:
+- memory usage is high but below the memory limit;
+- CPU usage is high but below the CPU limit;
+- a restart occurred;
+- no termination reason is available;
+
+then you MUST NOT conclude that the container was OOMKilled.
+
+The correct interpretation is that resource pressure is observed, but the reason
+for the restart remains unconfirmed.
+
+For an ambiguous incident:
+
+- use an uncertainty-aware `root_cause`;
+- explicitly state that the cause is not confirmed;
+- use a confidence of 0.7 or lower;
+- recommend collecting the missing evidence;
+- do not assert a specific termination reason that is not present in the data.
+
+If there is no concrete diagnosed cause, confidence MUST NOT exceed 0.7.
+
+Do not use a high confidence score merely because one hypothesis is common
+in Kubernetes incidents.
 
 ## Unknown root causes
 
@@ -326,9 +405,7 @@ reason why that condition occurred remains unknown.
 For example:
 - "Database connection refused" establishes that the application cannot
   establish its database connection.
-- The deeper reason for the refusal may still be unknown: the database may be
-  unavailable, unreachable, misconfigured, rejecting credentials, or affected
-  by another condition.
+- The deeper reason for the refusal may still be unknown.
 
 In this situation:
 - report the most specific concrete technical condition established by the
@@ -359,6 +436,7 @@ then these concrete technical conditions should be reported as the root cause,
 even if the deeper reason behind the condition is not known.
 
 Do NOT invent or infer a deeper cause from common Kubernetes failure patterns.
+
 Only report causes that are directly supported by the provided evidence.
 
 ## Evidence preservation
@@ -371,18 +449,6 @@ Prefer concrete technical evidence over generic descriptions.
 When evidence comes from a diagnosis, preserve the diagnostic context that makes the
 evidence technically meaningful.
 
-For example, if the diagnosis is "Readiness probe failing" and an evidence item
-indicates an HTTP 404 probe failure, the evidence should preserve the fact that
-this is a readiness probe failure.
-
-Prefer:
-"Readiness probe failure: HTTP 404"
-
-over:
-"Probe failure: HTTP 404"
-
-Do not unnecessarily strip technical context from evidence items.
-
 Preserve important identifiers when present, including:
 - Kubernetes event reasons;
 - termination reasons;
@@ -391,7 +457,7 @@ Preserve important identifiers when present, including:
 - resource limits;
 - container names;
 - error messages;
-- timestamps when they are relevant to causality.
+- timestamps when relevant to causality.
 
 Do not invent evidence.
 
@@ -416,15 +482,34 @@ Prioritize actions that address the identified cause.
 Do not provide generic Kubernetes troubleshooting advice merely because it is commonly
 useful.
 
-Do not recommend restarting a pod, changing resource limits, checking dependencies,
-or modifying probes unless the available evidence makes that investigation relevant.
-
 Distinguish between:
 - remediation actions for the confirmed problem;
 - investigations needed to determine an unknown root cause.
 
-When the root cause is unknown, recommendations should focus on collecting the missing
-evidence rather than pretending the cause is known.
+When the root cause is unknown or ambiguous, recommendations MUST explicitly focus
+on collecting or reviewing additional evidence.
+
+For ambiguous or contradictory incidents, recommendations should use investigation
+language such as:
+- investigate;
+- analyze;
+- examine;
+- check;
+- verify;
+- review;
+- collect evidence.
+
+When recommending additional investigation, explicitly refer to the evidence that
+is missing or insufficient.
+
+For example:
+
+"Investigate the container logs and Kubernetes events to collect additional evidence
+about the restart."
+
+This is preferable to a generic recommendation such as:
+
+"Check the logs."
 
 ## Confidence
 
@@ -437,6 +522,11 @@ Examples:
 - container repeatedly exits but the reason is unknown: low confidence;
 - symptoms suggest a possible cause but do not prove it: moderate or low confidence.
 
+For ambiguous or contradictory evidence:
+- confidence MUST be <= 0.7;
+- do not choose a specific root cause merely because it is plausible;
+- explicitly communicate the uncertainty.
+
 Do not use `1.0` confidence for an uncertain or unknown root cause.
 
 ## Final evidence validation
@@ -448,9 +538,20 @@ Before returning the JSON, perform this validation internally:
 - every evidence description accurately represents the canonical evidence;
 - every evidence source exactly matches the canonical evidence source;
 - no timeline source has been substituted for an evidence source;
-- no evidence has been invented.
+- no evidence has been invented;
+- every evidence ID is copied exactly, without punctuation before or after it.
 
 If an evidence item is already referenced, do not reference it again.
+
+## Output discipline
+
+Return only the structured JSON object requested by the schema.
+
+Do not wrap the JSON in Markdown fences.
+
+Do not prefix evidence IDs with punctuation.
+
+Do not add commentary before or after the JSON.
 
 ## Rules
 
@@ -460,7 +561,8 @@ If an evidence item is already referenced, do not reference it again.
 4. Never convert a symptom into a root cause.
 5. Separate confirmed facts from hypotheses.
 6. Preserve concrete technical identifiers in the root cause.
-7. If the root cause cannot be determined, explicitly state that it is unknown.
+7. If the root cause cannot be determined, explicitly state that it 
+is unknown or unconfirmed.
 8. Do not infer causes merely because they are common Kubernetes explanations.
 9. Recommendations must be grounded in the provided evidence.
 10. Do not claim impact that is not supported by the evidence.
@@ -469,6 +571,11 @@ If an evidence item is already referenced, do not reference it again.
 13. Never duplicate an evidence ID in the `evidence` array.
 14. Preserve the exact canonical `source` of every evidence item.
 15. Never substitute a TimelineEvent source for an Evidence source.
+16. Do not claim causality from temporal proximity alone.
+17. For ambiguous incidents, confidence MUST be <= 0.7.
+18. For ambiguous incidents, do not assert a specific termination 
+reason without evidence.
+19. Evidence IDs must be copied exactly from the incident context.
 
 ## Reasoning rules
 
@@ -482,23 +589,24 @@ If an evidence item is already referenced, do not reference it again.
 - Do not invent missing technical details such as database type, endpoint,
   network topology, application framework, or configuration.
 - Confidence should reflect the strength of the available evidence.
+- When evidence is contradictory or incomplete, prefer uncertainty over speculation.
 
 Return JSON matching this schema:
 
 {
-"summary": "...",
-"root_cause": "...",
-"confidence": 0.0,
-"impact": "...",
-"evidence": [
-  {
-    "id": "...",
-    "description": "...",
-    "source": "..."
-  }
-],
-"recommendations": [],
-"additional_investigations": []
+  "summary": "...",
+  "root_cause": "...",
+  "confidence": 0.0,
+  "impact": "...",
+  "evidence": [
+    {
+      "id": "...",
+      "description": "...",
+      "source": "..."
+    }
+  ],
+  "recommendations": [],
+  "additional_investigations": []
 }
 """
         )

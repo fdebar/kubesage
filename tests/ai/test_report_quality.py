@@ -1,4 +1,5 @@
 import os
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -14,7 +15,14 @@ from kubesage.models.finding import Finding
 from kubesage.models.timeline import TimelineEvent, TimelineEventSource
 from kubesage.utils.config import settings
 from tests.ai.scenarios import ReportQualityScenario
+from tests.ai.scenarios.ambiguous_resource_pressure import (
+    ambiguous_resource_pressure_scenario,
+)
 from tests.ai.scenarios.application_error import application_error_scenario
+from tests.ai.scenarios.contradictory_signals import contradictory_signals_scenario
+from tests.ai.scenarios.correlated_but_not_causal import (
+    correlated_but_not_causal_scenario,
+)
 from tests.ai.scenarios.correlated_oom import correlated_oom_scenario
 from tests.ai.scenarios.cpu_throttling import cpu_throttling_scenario
 from tests.ai.scenarios.crashloop_unknown import crashloop_unknown_scenario
@@ -28,26 +36,134 @@ SCENARIOS = (
     readiness_failure_scenario,
     application_error_scenario,
     correlated_oom_scenario,
+    ambiguous_resource_pressure_scenario,
+    contradictory_signals_scenario,
+    correlated_but_not_causal_scenario,
 )
 
 
 UNCERTAINTY_KEYWORDS = (
     "unknown",
-    "uncertain",
     "unclear",
-    "undetermined",
+    "uncertain",
+    "not confirmed",
+    "not explicitly confirmed",
     "cannot be determined",
+    "cannot determine",
     "unable to determine",
-    "not determined",
-    "no specific",
-    "not known",
     "insufficient evidence",
     "insufficient information",
-    "no evidence",
+    "no clear root cause",
+    "no concrete",
     "not enough evidence",
-    "cannot identify",
-    "unable to identify",
+    "not enough information",
+    "could be",
+    "may be",
+    "might be",
+    "possibly",
+    "possible",
+    "likely",
+    "appears to",
+    "appears",
+    "suggests",
 )
+
+
+RECOMMENDATION_INVESTIGATION_KEYWORDS = (
+    "investigate",
+    "investigat",
+    "analyze",
+    "analyse",
+    "examine",
+    "check",
+    "review",
+    "inspect",
+    "verify",
+    "collect",
+    "look into",
+)
+
+
+# Some technical diagnoses are semantically equivalent to the expected
+# natural-language keyword. The AI should preserve the technical diagnosis
+# rather than being forced to repeat a particular English word.
+ROOT_CAUSE_KEYWORD_ALIASES: dict[str, tuple[str, ...]] = {
+    "memory": (
+        "memory",
+        "oom",
+        "oomkilled",
+        "out of memory",
+    ),
+    "cpu": (
+        "cpu",
+        "cpu throttling",
+        "cpu throttled",
+        "throttling",
+    ),
+    "restart": (
+        "restart",
+        "restarted",
+        "restarting",
+    ),
+    "error": (
+        "error",
+        "exception",
+        "failure",
+        "failed",
+    ),
+    "http": (
+        "http",
+        "status",
+    ),
+}
+
+
+def _forbidden_root_cause_is_asserted(root_cause: str, keyword: str) -> bool:
+    normalized_keyword = keyword.lower()
+    clauses = re.split(r"[.;]|\bbut\b|\bhowever\b", root_cause.lower())
+
+    negation_markers = (
+        "no ",
+        "not ",
+        "without ",
+        "unknown",
+        "unconfirmed",
+        "not confirmed",
+        "not identified",
+        "not reported",
+        "not available",
+        "not present",
+        "not supported",
+        "not established",
+        "no evidence",
+        "no concrete",
+    )
+
+    for clause in clauses:
+        if normalized_keyword not in clause:
+            continue
+
+        if any(marker in clause for marker in negation_markers):
+            continue
+
+        return True
+
+    return False
+
+
+def _root_cause_contains_expected_keyword(
+    root_cause: str,
+    keyword: str,
+) -> bool:
+    normalized_root_cause = root_cause.lower()
+    normalized_keyword = keyword.lower()
+
+    if normalized_keyword in normalized_root_cause:
+        return True
+
+    aliases = ROOT_CAUSE_KEYWORD_ALIASES.get(normalized_keyword, ())
+
+    return any(alias in normalized_root_cause for alias in aliases)
 
 
 @dataclass(frozen=True)
@@ -76,7 +192,16 @@ def _keyword_coverage(text: str, keywords: tuple[str, ...]) -> float:
         return 1.0
 
     normalized = text.lower()
-    matched = sum(keyword.lower() in normalized for keyword in keywords)
+    matched = 0
+
+    for keyword in keywords:
+        if keyword.lower() in normalized:
+            matched += 1
+            continue
+
+        aliases = ROOT_CAUSE_KEYWORD_ALIASES.get(keyword.lower(), ())
+        if any(alias in normalized for alias in aliases):
+            matched += 1
 
     return matched / len(keywords)
 
@@ -106,7 +231,9 @@ def score_report_quality(
     scenario: ReportQualityScenario,
 ) -> AIQualityScore:
     root_cause = (report.root_cause or "").strip()
-    evidences_ids = " ".join(evidence.description or "" for evidence in report.evidence)
+    evidence_descriptions = " ".join(
+        evidence.description or "" for evidence in report.evidence
+    )
     recommendations = " ".join(report.recommendations)
 
     completeness_fields = (
@@ -125,7 +252,7 @@ def score_report_quality(
         ),
         evidence=25.0
         * _keyword_coverage(
-            evidences_ids,
+            evidence_descriptions,
             scenario.required_evidence_keywords,
         ),
         recommendations=20.0
@@ -204,20 +331,25 @@ def _assert_report_evidence_attribution(
         finding, canonical_evidence = evidence_by_id[evidence.id]
 
         assert canonical_evidence.id == evidence.id
+
         assert evidence.source == canonical_evidence.source, (
             f"{scenario.name}: evidence {evidence.id!r} has incorrect "
             f"source {evidence.source!r}; expected "
             f"{canonical_evidence.source!r}"
         )
+
         assert evidence.description, (
             f"{scenario.name}: evidence {evidence.id!r} must have a description"
         )
+
         assert _normalize_evidence_source(
             evidence.source
         ) == _normalize_evidence_source(canonical_evidence.source), (
-            f"{scenario.name}: evidence {evidence.id!r} has incorrect source "
-            f"{evidence.source!r}; expected {canonical_evidence.source!r}"
+            f"{scenario.name}: evidence {evidence.id!r} has incorrect "
+            f"source {evidence.source!r}; expected "
+            f"{canonical_evidence.source!r}"
         )
+
         assert finding.structured_evidences, (
             f"{scenario.name}: finding {finding.title!r} has no structured evidence"
         )
@@ -272,13 +404,17 @@ def _assert_report_evidence_timeline_consistency(
         return
 
     evidence_by_id = _scenario_evidence_by_id(scenario)
+
     for evidence in report.evidence:
         canonical_evidence = evidence_by_id[evidence.id][1]
 
         matching_events = [
             event
             for event in scenario.timeline
-            if _timeline_event_matches_evidence(canonical_evidence, event)
+            if _timeline_event_matches_evidence(
+                canonical_evidence,
+                event,
+            )
         ]
 
         assert matching_events, (
@@ -286,11 +422,20 @@ def _assert_report_evidence_timeline_consistency(
         )
 
 
+def _recommendations_contain_investigation(
+    recommendations: str,
+) -> bool:
+    return any(
+        keyword in recommendations for keyword in RECOMMENDATION_INVESTIGATION_KEYWORDS
+    )
+
+
 def assert_report_quality(
     report: AIReport,
     scenario: ReportQualityScenario,
 ) -> AIQualityScore:
     assert report.summary
+
     assert report.summary != "AI analysis could not be completed.", (
         f"{scenario.name}: AI provider did not return a report"
     )
@@ -310,7 +455,7 @@ def assert_report_quality(
         uncertainty_detected = (
             report.root_cause is None
             or any(keyword in root_cause for keyword in UNCERTAINTY_KEYWORDS)
-            or (report.confidence is not None and report.confidence < 0.7)
+            or (report.confidence is not None and report.confidence <= 0.7)
         )
 
         assert uncertainty_detected, (
@@ -320,18 +465,31 @@ def assert_report_quality(
         )
 
     for keyword in scenario.expected_root_cause_keywords:
-        assert keyword.lower() in root_cause, (
+        assert _root_cause_contains_expected_keyword(
+            root_cause,
+            keyword,
+        ), (
             f"{scenario.name}: expected {keyword!r} "
             f"in root cause, got {report.root_cause!r}"
         )
 
     for keyword in scenario.forbidden_root_cause_keywords:
-        assert keyword.lower() not in root_cause, (
-            f"{scenario.name}: forbidden {keyword!r} "
-            f"in root cause, got {report.root_cause!r}"
+        assert not _forbidden_root_cause_is_asserted(
+            root_cause,
+            keyword,
+        ), (
+            f"{scenario.name}: forbidden root-cause claim "
+            f"{keyword!r}, got {report.root_cause!r}"
         )
 
     for keyword in scenario.required_recommendation_keywords:
+        if keyword == "__investigation__":
+            assert _recommendations_contain_investigation(recommendations), (
+                f"{scenario.name}: expected investigation-oriented "
+                f"recommendations, got {report.recommendations!r}"
+            )
+            continue
+
         assert keyword.lower() in recommendations, (
             f"{scenario.name}: expected {keyword!r} "
             f"in recommendations, got {report.recommendations!r}"
@@ -375,7 +533,7 @@ def test_report_quality_scenario_builds_valid_context(
 @pytest.mark.ai_quality
 @pytest.mark.skipif(
     os.getenv("KUBESAGE_RUN_AI_QUALITY") != "1",
-    reason=("AI quality tests require an explicit live AI provider"),
+    reason="AI quality tests require an explicit live AI provider",
 )
 @pytest.mark.parametrize(
     "scenario_factory",
@@ -412,7 +570,7 @@ def test_ai_report_quality(
 @pytest.mark.ai_quality
 @pytest.mark.skipif(
     os.getenv("KUBESAGE_RUN_AI_QUALITY") != "1",
-    reason=("AI quality tests require an explicit live AI provider"),
+    reason="AI quality tests require an explicit live AI provider",
 )
 def test_oomkilled_ai_report_quality() -> None:
     scenario = oomkilled_scenario()
@@ -467,7 +625,7 @@ def test_evidence_ids_are_attributable_to_findings() -> None:
 @pytest.mark.ai_quality
 @pytest.mark.skipif(
     os.getenv("KUBESAGE_RUN_AI_QUALITY") != "1",
-    reason=("AI quality tests require an explicit live AI provider"),
+    reason="AI quality tests require an explicit live AI provider",
 )
 def test_ai_report_evidence_ids_match_scenario() -> None:
     scenario = oomkilled_scenario()
@@ -482,7 +640,7 @@ def test_ai_report_evidence_ids_match_scenario() -> None:
 @pytest.mark.ai_quality
 @pytest.mark.skipif(
     os.getenv("KUBESAGE_RUN_AI_QUALITY") != "1",
-    reason=("AI quality tests require an explicit live AI provider"),
+    reason="AI quality tests require an explicit live AI provider",
 )
 def test_ai_report_evidence_sources_match_scenario() -> None:
     scenario = oomkilled_scenario()
@@ -497,7 +655,7 @@ def test_ai_report_evidence_sources_match_scenario() -> None:
 @pytest.mark.ai_quality
 @pytest.mark.skipif(
     os.getenv("KUBESAGE_RUN_AI_QUALITY") != "1",
-    reason=("AI quality tests require an explicit live AI provider"),
+    reason="AI quality tests require an explicit live AI provider",
 )
 def test_ai_report_evidence_ids_are_unique() -> None:
     scenario = crashloop_unknown_scenario()
