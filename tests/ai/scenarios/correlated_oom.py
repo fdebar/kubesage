@@ -31,22 +31,7 @@ def correlated_oom_scenario() -> ReportQualityScenario:
         title="High memory usage",
         description="Memory usage reached the configured container limit.",
         resource=resource,
-        structured_evidences=[
-            Evidence(
-                name="memory_usage",
-                value="256Mi",
-                unit="Mi",
-                source="prometheus",
-                type=EvidenceType.METRIC,
-            ),
-            Evidence(
-                name="memory_limit",
-                value="256Mi",
-                unit="Mi",
-                source="kubernetes",
-                type=EvidenceType.THRESHOLD,
-            ),
-        ],
+        structured_evidences=[],
     )
 
     oom = Finding(
@@ -57,14 +42,7 @@ def correlated_oom_scenario() -> ReportQualityScenario:
         title="Container OOMKilled",
         description="The container was terminated with reason OOMKilled.",
         resource=resource,
-        structured_evidences=[
-            Evidence(
-                name="termination_reason",
-                value="OOMKilled",
-                source="kubernetes",
-                type=EvidenceType.CONTAINER_STATE,
-            ),
-        ],
+        structured_evidences=[],
     )
 
     restart = Finding(
@@ -105,21 +83,7 @@ def correlated_oom_scenario() -> ReportQualityScenario:
             "Review the configured memory limit.",
             "Investigate the application's memory consumption.",
         ],
-        structured_evidences=[
-            Evidence(
-                name="termination_reason",
-                value="OOMKilled",
-                source="kubernetes",
-                type=EvidenceType.CONTAINER_STATE,
-            ),
-            Evidence(
-                name="memory_limit",
-                value="256Mi",
-                unit="Mi",
-                source="kubernetes",
-                type=EvidenceType.THRESHOLD,
-            ),
-        ],
+        structured_evidences=[],
     )
 
     return ReportQualityScenario(

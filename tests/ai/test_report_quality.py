@@ -267,3 +267,45 @@ def test_oomkilled_ai_report_quality() -> None:
     score = assert_report_quality(report, scenario)
 
     print(f"QUALITY SCORE: {score.overall:.1f}/100")
+
+
+def test_evidence_ids_are_unique_in_scenario() -> None:
+    for scenario in (
+        crashloop_unknown_scenario(),
+        oomkilled_scenario(),
+        cpu_throttling_scenario(),
+        readiness_failure_scenario(),
+        application_error_scenario(),
+        correlated_oom_scenario(),
+    ):
+        evidence_ids = [
+            evidence.id
+            for finding in scenario.findings
+            for evidence in finding.structured_evidences
+        ]
+
+        assert evidence_ids, f"{scenario.name}: expected evidence"
+        assert len(evidence_ids) == len(set(evidence_ids)), (
+            f"{scenario.name}: evidence IDs must be unique"
+        )
+
+
+def test_ai_report_evidence_ids_match_scenario() -> None:
+    scenario = oomkilled_scenario()
+    client = Client(base_url=settings.ai_url, api_key=settings.ai_api_key)
+    provider = OpenAICompatibleProvider(client=client, model=settings.ai_model)
+
+    report = provider.analyze(build_prompt(scenario))
+
+    valid_evidence_ids = {
+        evidence.id
+        for finding in scenario.findings
+        for evidence in finding.structured_evidences
+    }
+
+    assert report.evidence
+
+    for evidence in report.evidence:
+        assert evidence.id in valid_evidence_ids, (
+            f"{scenario.name}: unknown evidence ID {evidence.id!r}"
+        )

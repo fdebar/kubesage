@@ -103,21 +103,7 @@ def make_memory_exhaustion_diagnosis() -> Finding:
                 "than the configured limit."
             ),
         ],
-        structured_evidences=[
-            Evidence(
-                name="termination_reason",
-                value="OOMKilled",
-                source="kubernetes",
-                type=EvidenceType.CONTAINER_STATE,
-            ),
-            Evidence(
-                name="memory_limit",
-                value="64",
-                unit="Mi",
-                source="kubernetes",
-                type=EvidenceType.THRESHOLD,
-            ),
-        ],
+        structured_evidences=[],
     )
 
 
