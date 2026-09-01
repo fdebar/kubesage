@@ -4,7 +4,7 @@ from kubesage.builders.prompt.prompt_builder import PromptBuilder
 from kubesage.models.ai_context import AIContext
 from kubesage.models.event import Event
 from kubesage.models.evidence import Evidence, EvidenceType
-from kubesage.models.finding import Finding, FindingKind, Severity
+from kubesage.models.finding import Finding, FindingKind, ResourceRef, Severity
 from kubesage.models.incident import Incident
 from kubesage.models.timeline import (
     TimelineEvent,
@@ -236,3 +236,76 @@ def test_prompt_contains_timeline_reasoning_instructions() -> None:
     assert "## Timeline reasoning" in prompt
     assert "temporal sequence of events" in prompt
     assert "Temporal proximity alone does not prove causality." in prompt
+
+
+def test_build_includes_application_error_classification() -> None:
+    finding = Finding(
+        rule="application_error",
+        severity=Severity.ERROR,
+        kind=FindingKind.OBSERVATION,
+        title="Database connection failure",
+        description="Application logs report a database error.",
+        metadata={
+            "error_kind": "connection_error",
+            "error_domain": "database",
+        },
+        confidence=0.90,
+        priority=30,
+        resource=ResourceRef(
+            api_version="v1",
+            kind="Pod",
+            namespace="default",
+            name="my-api",
+        ),
+        structured_evidences=[
+            Evidence(
+                type=EvidenceType.LOG,
+                name="application_error",
+                value="ERROR database connection refused",
+                source="loki",
+                description="Application error detected in Loki logs.",
+            )
+        ],
+    )
+
+    context = AIContext(incident=make_incident(), findings=[finding])
+    prompt = PromptBuilder().build(context)
+
+    assert "Classification:" in prompt
+    assert "- Kind: connection_error" in prompt
+    assert "- Domain: database" in prompt
+
+
+def test_build_includes_error_kind_without_domain() -> None:
+    finding = Finding(
+        rule="application_error",
+        severity=Severity.ERROR,
+        kind=FindingKind.OBSERVATION,
+        title="Application timeout",
+        description="Application logs report a timeout.",
+        metadata={
+            "error_kind": "timeout",
+            "error_domain": None,
+        },
+        confidence=0.90,
+        priority=30,
+        resource=ResourceRef(
+            api_version="v1",
+            kind="Pod",
+            namespace="default",
+            name="my-api",
+        ),
+    )
+
+    context = AIContext(incident=make_incident(), findings=[finding])
+    prompt = PromptBuilder().build(context)
+
+    assert "Classification:" in prompt
+    assert "- Kind: timeout" in prompt
+    assert "- Domain:" not in prompt
+    assert (
+        "Distinguish clearly between observed facts and inferred conclusions." in prompt
+    )
+    assert "Do not assume that temporal proximity implies causality." in prompt
+    assert "Do not invent missing technical details" in prompt
+    assert "Confidence should reflect the strength of the available evidence." in prompt

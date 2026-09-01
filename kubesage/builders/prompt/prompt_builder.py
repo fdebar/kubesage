@@ -101,6 +101,19 @@ class PromptBuilder:
         lines.append(f"Confidence: {finding.confidence:.2f}")
         lines.append(f"Description: {finding.description}")
 
+        error_kind = finding.metadata.get("error_kind")
+        error_domain = finding.metadata.get("error_domain")
+
+        if error_kind or error_domain:
+            lines.append("Classification:")
+
+            if error_kind:
+                lines.append(f"- Kind: {error_kind}")
+
+            if error_domain:
+                lines.append(f"- Domain: {error_domain}")
+            lines.append("")
+
         if finding.caused_by:
             lines.append("Caused by:")
             for cause in finding.caused_by:
@@ -223,15 +236,29 @@ over:
 
 ## Unknown root causes
 
-If the available evidence only proves a symptom but does not establish why that
-symptom occurred, the root cause is unknown.
+Distinguish between a confirmed technical cause and the deeper underlying
+reason for that cause.
 
-In that situation:
-- `root_cause` must explicitly state that the root cause is unknown;
-- do not invent or infer a likely cause from common Kubernetes failure patterns;
-- do not turn the observed symptom into the root cause;
-- use `additional_investigations` to describe what would be needed to determine it;
-- use a lower confidence appropriate to the uncertainty.
+A diagnosis can establish a concrete technical cause even when the deeper
+reason why that condition occurred remains unknown.
+
+For example:
+- "Database connection refused" establishes that the application cannot
+  establish its database connection.
+- The deeper reason for the refusal may still be unknown: the database may be
+  unavailable, unreachable, misconfigured, rejecting credentials, or affected
+  by another condition.
+
+In this situation:
+- report the most specific concrete technical condition established by the
+  evidence as `root_cause`;
+- do not invent the deeper underlying reason;
+- use `additional_investigations` to describe what would be needed to determine
+  the deeper underlying reason;
+- calibrate confidence according to how directly the root cause is established.
+
+Only use an explicitly unknown root cause when the available evidence does not
+establish any concrete technical condition that explains the incident.
 
 For example, if the evidence only shows:
 - a container exits;
@@ -239,11 +266,19 @@ For example, if the evidence only shows:
 - BackOff is reported;
 - logs only say that the application exited unexpectedly;
 
-then the correct root cause is unknown.
+then the root cause is unknown.
 
-Do NOT claim that the application has a code error, configuration problem,
-probe failure, dependency failure, or resource exhaustion unless the evidence
-actually supports that conclusion.
+However, if the evidence establishes:
+- "Database connection refused";
+- "HTTP 404 readiness probe failure";
+- "OOMKilled";
+- "CPU throttling";
+
+then these concrete technical conditions should be reported as the root cause,
+even if the deeper reason behind the condition is not known.
+
+Do NOT invent or infer a deeper cause from common Kubernetes failure patterns.
+Only report causes that are directly supported by the provided evidence.
 
 ## Evidence preservation
 
@@ -337,6 +372,19 @@ Do not use `1.0` confidence for an uncertain or unknown root cause.
 10. Do not claim impact that is not supported by the evidence.
 11. Calibrate confidence to the certainty of the root cause.
 12. Keep the report concise and technically precise.
+
+## Reasoning rules
+
+- Distinguish clearly between observed facts and inferred conclusions.
+- Use the incident timeline to reason about relationships between events.
+- Do not assume that temporal proximity implies causality.
+- Do not claim that one event caused another unless the available evidence
+  strongly supports that relationship.
+- When multiple symptoms are present, describe them as correlated observations
+  when causality cannot be established.
+- Do not invent missing technical details such as database type, endpoint,
+  network topology, application framework, or configuration.
+- Confidence should reflect the strength of the available evidence.
 
 Return JSON matching this schema:
 
