@@ -33,9 +33,15 @@ class OpenAICompatibleProvider:
                     messages=[
                         {
                             "role": "system",
-                            "content": "You are an expert Kubernetes SRE.",
+                            "content": (
+                                "You are an expert Kubernetes SRE. "
+                                "Return only the requested structured report."
+                            ),
                         },
-                        {"role": "user", "content": prompt},
+                        {
+                            "role": "user",
+                            "content": prompt,
+                        },
                     ],
                     response_format=AIReport,
                 )
@@ -67,7 +73,9 @@ class OpenAICompatibleProvider:
         if report is None:
             logger.error("llm_response_empty", response=response)
 
-            return AIReport(summary="AI analysis could not be completed.")
+            return AIReport(
+                summary="AI analysis could not be completed.",
+            )
 
         return report
 
@@ -77,7 +85,9 @@ class OpenAICompatibleProvider:
         try:
             self._client.models.list(timeout=2.0)
             return True
+
         except APIConnectionError:
             return False
+
         except APIStatusError:
             return True
