@@ -151,6 +151,7 @@ class IncidentService:
                 report=None,
                 duration_ms=int((time.perf_counter() - start) * 1000),
                 trigger=trigger,
+                intelligence=intelligence,
             )
 
         with tracer.start_as_current_span("analysis.ai_context.build") as span:
