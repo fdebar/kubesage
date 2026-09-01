@@ -70,5 +70,37 @@ def test_analyze() -> None:
             },
         )
 
-        assert response.status_code == 200
-        assert response.json()["root_cause"] == "Redis unavailable"
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["id"]
+    assert data["trigger"] == "api"
+
+    assert data["incident"] == {
+        "namespace": "default",
+        "pod": "ai-demo-app",
+        "pod_uid": None,
+        "phase": "Pending",
+    }
+
+    assert data["highest_severity"] is None
+    assert data["findings_count"] == 0
+    assert data["findings"] == []
+    assert data["correlations"] == []
+    assert data["root_causes"] == []
+
+    assert data["report"]["summary"] == "Pod is failing"
+    assert data["report"]["root_cause"] == "Redis unavailable"
+    assert data["report"]["evidence"] == [
+        {
+            "id": "123",
+            "description": "Check redis connectivity",
+            "source": None,
+        }
+    ]
+    assert data["report"]["recommendations"] == ["kubectl logs pod"]
+    assert data["report"]["additional_investigations"] == ["kubectl logs pod"]
+
+    assert data["duration_ms"] == 1000
+    assert data["created_at"]

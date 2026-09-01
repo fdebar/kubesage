@@ -1,24 +1,21 @@
-import json
 from uuid import UUID
 
 from kubesage.api.schemas.analysis import (
     AIReportResponse,
     AnalysisResponse,
+    CorrelationResponse,
     EvidenceResponse,
     FindingDetailResponse,
     IncidentResponse,
     ResourceResponse,
+    RootCauseCandidateResponse,
 )
-from kubesage.database.models import AnalysisCorrelationModel, AnalysisRootCauseModel
 from kubesage.database.models.analysis import AnalysisModel
 from kubesage.database.models.incident_snapshot import IncidentSnapshotModel
 from kubesage.mappers.ai_report_mapper import AIReportMapper
 from kubesage.mappers.finding_mapper import FindingMapper
 from kubesage.mappers.incident_intelligence_mapper import (
-    IncidentIntelligencePersistenceMapper,
-)
-from kubesage.mappers.incident_intelligent_mapper import (
-    IncidentIntelligentMapper,
+    IncidentIntelligenceMapper,
 )
 from kubesage.models.analysis import Analysis, AnalysisTrigger
 from kubesage.models.incident import Incident
@@ -58,30 +55,15 @@ class AnalysisMapper:
             data=analysis.incident.model_dump(mode="json"),
         )
 
-        model.correlations = [
-            AnalysisCorrelationModel(
-                analysis_id=str(analysis.id),
-                source_finding=correlation.source_finding,
-                target_finding=correlation.target_finding,
-                type=correlation.type.value,
-                confidence=correlation.confidence,
-                evidence=json.dumps(correlation.evidence),
-            )
-            for correlation in analysis.intelligence.correlations
-        ]
+        model.correlations = IncidentIntelligenceMapper.correlations_to_models(
+            analysis.intelligence.correlations,
+            str(analysis.id),
+        )
 
-        model.root_causes = [
-            AnalysisRootCauseModel(
-                analysis_id=str(analysis.id),
-                finding=root_cause.finding,
-                title=root_cause.title,
-                description=root_cause.description,
-                confidence=root_cause.confidence,
-                supporting_findings=json.dumps(root_cause.supporting_findings),
-                supporting_evidence=json.dumps(root_cause.supporting_evidence),
-            )
-            for root_cause in analysis.intelligence.root_causes
-        ]
+        model.root_causes = IncidentIntelligenceMapper.root_causes_to_models(
+            analysis.intelligence.root_causes,
+            str(analysis.id),
+        )
 
         if analysis.report:
             model.report = AIReportMapper.to_model(analysis.report, str(analysis.id))
@@ -115,10 +97,10 @@ class AnalysisMapper:
             intelligence=IncidentIntelligence(
                 findings=findings,
                 timeline=[],
-                correlations=IncidentIntelligencePersistenceMapper.correlations_to_domain(
+                correlations=IncidentIntelligenceMapper.correlations_to_domain(
                     model.correlations
                 ),
-                root_causes=IncidentIntelligencePersistenceMapper.root_causes_to_domain(
+                root_causes=IncidentIntelligenceMapper.root_causes_to_domain(
                     model.root_causes
                 ),
                 recommendations=[],
@@ -142,12 +124,15 @@ class AnalysisMapper:
 
         return AnalysisResponse(
             id=analysis.id,
+            trigger=analysis.trigger.value,
             incident=IncidentResponse(
                 namespace=analysis.incident.namespace,
                 pod=analysis.incident.pod,
                 pod_uid=analysis.incident.pod_uid,
                 phase=analysis.incident.phase,
             ),
+            highest_severity=analysis.highest_severity,
+            findings_count=len(findings),
             findings=[
                 FindingDetailResponse(
                     rule=finding.rule,
@@ -172,7 +157,27 @@ class AnalysisMapper:
                 )
                 for finding in findings
             ],
-            intelligence=IncidentIntelligentMapper.to_response(analysis.intelligence),
+            correlations=[
+                CorrelationResponse(
+                    source_finding=correlation.source_finding,
+                    target_finding=correlation.target_finding,
+                    type=correlation.type,
+                    confidence=correlation.confidence,
+                    evidence=correlation.evidence,
+                )
+                for correlation in analysis.intelligence.correlations
+            ],
+            root_causes=[
+                RootCauseCandidateResponse(
+                    finding=root_cause.finding,
+                    title=root_cause.title,
+                    description=root_cause.description,
+                    confidence=root_cause.confidence,
+                    supporting_findings=root_cause.supporting_findings,
+                    supporting_evidence=root_cause.supporting_evidence,
+                )
+                for root_cause in analysis.intelligence.root_causes
+            ],
             report=(
                 AIReportResponse(**analysis.report.model_dump())
                 if analysis.report

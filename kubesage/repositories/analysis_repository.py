@@ -10,7 +10,7 @@ from kubesage.database.models.finding import FindingModel
 from kubesage.mappers.analysis_mapper import AnalysisMapper
 from kubesage.mappers.analysis_summary_mapper import AnalysisSummaryMapper
 from kubesage.mappers.incident_intelligence_mapper import (
-    IncidentIntelligencePersistenceMapper,
+    IncidentIntelligenceMapper,
 )
 from kubesage.models.analysis import Analysis
 from kubesage.models.analysis_summary import AnalysisSummary
@@ -29,17 +29,13 @@ class AnalysisRepository:
                 span.set_attribute("analysis.has_report", analysis.report is not None)
 
                 model = AnalysisMapper.to_model(analysis)
-                model.correlations = (
-                    IncidentIntelligencePersistenceMapper.correlations_to_models(
-                        analysis.intelligence.correlations,
-                        str(analysis.id),
-                    )
+                model.correlations = IncidentIntelligenceMapper.correlations_to_models(
+                    analysis.intelligence.correlations,
+                    str(analysis.id),
                 )
-                model.root_causes = (
-                    IncidentIntelligencePersistenceMapper.root_causes_to_models(
-                        analysis.intelligence.root_causes,
-                        str(analysis.id),
-                    )
+                model.root_causes = IncidentIntelligenceMapper.root_causes_to_models(
+                    analysis.intelligence.root_causes,
+                    str(analysis.id),
                 )
                 self.session.add(model)
                 self.session.commit()

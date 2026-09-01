@@ -13,7 +13,7 @@ from kubesage.models.incident_intelligence import (
 )
 
 
-class IncidentIntelligencePersistenceMapper:
+class IncidentIntelligenceMapper:
     @staticmethod
     def correlations_to_models(
         correlations: list[Correlation],
