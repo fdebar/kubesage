@@ -42,3 +42,32 @@ def test_evidence_metadata_default_is_not_shared() -> None:
     first.metadata["key"] = "value"
 
     assert second.metadata == {}
+
+
+def test_evidence_id_is_stable() -> None:
+    evidence = Evidence(
+        type=EvidenceType.METRIC,
+        name="memory_usage",
+        value="64Mi",
+        source="prometheus",
+    )
+
+    assert evidence.id == evidence.id
+    assert len(evidence.id) == 12
+
+
+def test_different_evidence_has_different_id() -> None:
+    first = Evidence(
+        type=EvidenceType.METRIC,
+        name="memory_usage",
+        value="64Mi",
+        source="prometheus",
+    )
+    second = Evidence(
+        type=EvidenceType.METRIC,
+        name="memory_usage",
+        value="128Mi",
+        source="prometheus",
+    )
+
+    assert first.id != second.id

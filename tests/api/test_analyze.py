@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 
 from kubesage.api.app import app
 from kubesage.api.dependencies import get_analysis_service
-from kubesage.models.ai_report import AIReport
+from kubesage.models.ai_report import AIReport, EvidenceReference
 from kubesage.models.analysis import Analysis, AnalysisTrigger
 from kubesage.models.incident import Incident
 
@@ -38,7 +38,12 @@ class FakeIncidentService:
             report=AIReport(
                 summary="Pod is failing",
                 root_cause="Redis unavailable",
-                evidence=["Check redis connectivity"],
+                evidence=[
+                    EvidenceReference(
+                        id="123",
+                        description="Check redis connectivity",
+                    )
+                ],
                 recommendations=["kubectl logs pod"],
                 additional_investigations=["kubectl logs pod"],
             ),

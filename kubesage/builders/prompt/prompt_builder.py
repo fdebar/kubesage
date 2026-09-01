@@ -128,7 +128,8 @@ class PromptBuilder:
                     value = f"{value}{evidence.unit}"
 
                 lines.append("")
-                lines.append(f"- Type: {evidence.type or 'unknown'}")
+                lines.append(f"- ID: {evidence.id}")
+                lines.append(f"  Type: {evidence.type or 'unknown'}")
                 lines.append(f"  Name: {evidence.name}")
                 lines.append(f"  Value: {value}")
 
@@ -165,6 +166,26 @@ Your analysis must be evidence-driven and must distinguish clearly between:
 - observed symptoms;
 - diagnosed causes;
 - hypotheses that are not confirmed.
+
+## Evidence attribution
+
+Every item in the `evidence` field MUST reference an evidence item
+provided in the incident data.
+
+Use the exact evidence `id`.
+
+Never invent an evidence ID.
+
+Each evidence reference must:
+- use an existing evidence ID;
+- describe the evidence accurately;
+- preserve its technical meaning;
+- support a claim made in the report.
+
+Do not create evidence that is not present in the incident data.
+
+The `evidence` field must contain only evidence references, not free-form
+unsupported claims.
 
 ## Diagnostic reasoning
 

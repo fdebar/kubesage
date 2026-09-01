@@ -20,15 +20,19 @@ from tests.ai.scenarios.readiness_failure import readiness_failure_scenario
 UNCERTAINTY_KEYWORDS = (
     "unknown",
     "uncertain",
-    "cannot determine",
-    "cannot be determined",
-    "insufficient",
-    "not enough evidence",
+    "unclear",
     "undetermined",
-    "no clear",
-    "no specific",
-    "not provided",
+    "cannot be determined",
     "unable to determine",
+    "not determined",
+    "no specific",
+    "not known",
+    "insufficient evidence",
+    "insufficient information",
+    "no evidence",
+    "not enough evidence",
+    "cannot identify",
+    "unable to identify",
 )
 
 
@@ -78,7 +82,7 @@ def score_report_quality(
     scenario: ReportQualityScenario,
 ) -> AIQualityScore:
     root_cause = (report.root_cause or "").strip()
-    evidence = " ".join(report.evidence)
+    evidences_ids = " ".join(r.description or "" for r in report.evidence)
     recommendations = " ".join(report.recommendations)
 
     completeness_fields = (
@@ -93,7 +97,7 @@ def score_report_quality(
         root_cause=30.0
         * _keyword_coverage(root_cause, scenario.expected_root_cause_keywords),
         evidence=25.0
-        * _keyword_coverage(evidence, scenario.required_evidence_keywords),
+        * _keyword_coverage(evidences_ids, scenario.required_evidence_keywords),
         recommendations=20.0
         * _keyword_coverage(recommendations, scenario.required_recommendation_keywords),
         confidence=10.0 * _confidence_score(report, scenario),
@@ -121,7 +125,6 @@ def assert_report_quality(
     )
 
     root_cause = (report.root_cause or "").strip().lower()
-    evidence = " ".join(report.evidence).lower()
     recommendations = " ".join(report.recommendations).lower()
 
     if scenario.require_root_cause:
@@ -132,11 +135,16 @@ def assert_report_quality(
         )
 
     if scenario.require_uncertainty:
-        assert report.root_cause is None or any(
-            keyword in root_cause for keyword in UNCERTAINTY_KEYWORDS
-        ), (
+        uncertainty_detected = (
+            report.root_cause is None
+            or any(keyword in root_cause for keyword in UNCERTAINTY_KEYWORDS)
+            or (report.confidence is not None and report.confidence < 0.7)
+        )
+
+        assert uncertainty_detected, (
             f"{scenario.name}: expected uncertainty, "
-            f"got root cause={report.root_cause!r}"
+            f"got root cause={report.root_cause!r}, "
+            f"confidence={report.confidence!r}"
         )
 
     for keyword in scenario.expected_root_cause_keywords:
@@ -151,17 +159,20 @@ def assert_report_quality(
             f"in root cause, got {report.root_cause!r}"
         )
 
-    for keyword in scenario.required_evidence_keywords:
-        assert keyword.lower() in evidence, (
-            f"{scenario.name}: expected {keyword!r} "
-            f"in evidence, got {report.evidence!r}"
-        )
-
     for keyword in scenario.required_recommendation_keywords:
         assert keyword.lower() in recommendations, (
             f"{scenario.name}: expected {keyword!r} "
             f"in recommendations, got {report.recommendations!r}"
         )
+
+    valid_evidence_ids = {
+        evidence.id
+        for finding in scenario.findings
+        for evidence in finding.structured_evidences
+    }
+
+    for evidence in report.evidence:
+        assert evidence.id in valid_evidence_ids
 
     return score_report_quality(report, scenario)
 

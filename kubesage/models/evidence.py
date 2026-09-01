@@ -1,4 +1,5 @@
 from enum import StrEnum
+from hashlib import sha256
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -26,3 +27,15 @@ class Evidence(BaseModel):
     unit: str | None = None
     value: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @property
+    def id(self) -> str:
+        raw = "|".join(
+            [
+                self.type.value if self.type else "",
+                self.name,
+                self.value or "",
+                self.source or "",
+            ]
+        )
+        return sha256(raw.encode()).hexdigest()[:12]

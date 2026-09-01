@@ -41,19 +41,27 @@ class AIContext:
         return recommendations
 
     @property
-    def evidences(self) -> list[str]:
+    def evidences(self) -> list[dict[str, str | None]]:
         seen: set[str] = set()
-        evidences: list[str] = []
+        evidences: list[dict[str, str | None]] = []
 
         for finding in self.ctx.findings:
             for evidence in finding.structured_evidences:
-                key = f"{finding.rule}:{evidence.name}:{evidence.value}"
+                if evidence.id in seen:
+                    continue
 
-                if key not in seen:
-                    seen.add(key)
-                    evidences.append(
-                        f"{finding.rule}: {evidence.name}={evidence.value}"
-                    )
+                seen.add(evidence.id)
+                evidences.append(
+                    {
+                        "id": evidence.id,
+                        "finding": finding.rule,
+                        "type": evidence.type.value if evidence.type else None,
+                        "name": evidence.name,
+                        "value": evidence.value,
+                        "source": evidence.source,
+                        "description": evidence.description,
+                    }
+                )
 
         return evidences
 

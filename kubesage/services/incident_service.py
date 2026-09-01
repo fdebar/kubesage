@@ -93,7 +93,6 @@ class IncidentService:
                             "be due to authentication issues, network "
                             "problems, or the pod not existing."
                         ),
-                        evidence=[],
                     ),
                     incident=incident,
                     findings=[],

@@ -3,6 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from kubesage.models.ai_report import EvidenceReference
 from kubesage.models.evidence import EvidenceType
 from kubesage.models.finding import FindingKind, Severity
 
@@ -71,7 +72,7 @@ class AIReportResponse(BaseModel):
         default=None,
         description="User or system impact caused by the incident.",
     )
-    evidence: list[str] = Field(
+    evidence: list[EvidenceReference] = Field(
         default_factory=list,
         description="Evidence supporting the analysis.",
     )

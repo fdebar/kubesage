@@ -21,9 +21,9 @@ class AIReport(BaseModel):
         default=None,
         description="User or system impact caused by the incident.",
     )
-    evidence: list[str] = Field(
+    evidence: list[EvidenceReference] = Field(
         default_factory=list,
-        description="Evidence supporting the analysis.",
+        description="Evidence references supporting the analysis.",
     )
     recommendations: list[str] = Field(
         default_factory=list,
@@ -33,3 +33,14 @@ class AIReport(BaseModel):
         default_factory=list,
         description="Additional checks suggested by the AI.",
     )
+
+
+class EvidenceReference(BaseModel):
+    """
+    Stable identifier of a piece of evidence.
+    Generated using the Evidence.id property.
+    """
+
+    id: str
+    description: str | None = None
+    source: str | None = None
