@@ -12,9 +12,12 @@ from kubesage.database.models.analysis import AnalysisModel
 from kubesage.database.models.incident_snapshot import IncidentSnapshotModel
 from kubesage.mappers.ai_report_mapper import AIReportMapper
 from kubesage.mappers.finding_mapper import FindingMapper
-from kubesage.mappers.incident_intelligent_mapper import IncidentIntelligentMapper
+from kubesage.mappers.incident_intelligent_mapper import (
+    IncidentIntelligentMapper,
+)
 from kubesage.models.analysis import Analysis, AnalysisTrigger
 from kubesage.models.incident import Incident
+from kubesage.models.incident_intelligence import IncidentIntelligence
 
 
 class AnalysisMapper:
@@ -36,6 +39,7 @@ class AnalysisMapper:
             findings_count=len(analysis.findings),
             created_at=analysis.created_at,
             trigger=analysis.trigger.value,
+            intelligence=analysis.intelligence.model_dump(mode="json"),
         )
 
         model.findings = [
@@ -69,10 +73,13 @@ class AnalysisMapper:
             }
         )
 
+        intelligence = IncidentIntelligence.model_validate(model.intelligence or {})
+
         return Analysis(
             id=UUID(model.id),
             incident=Incident.model_validate(incident_data),
-            findings=[FindingMapper.to_domain(f) for f in model.findings],
+            findings=[FindingMapper.to_domain(finding) for finding in model.findings],
+            intelligence=intelligence,
             report=(AIReportMapper.to_domain(model.report) if model.report else None),
             duration_ms=model.duration_ms,
             created_at=model.created_at,
@@ -85,10 +92,10 @@ class AnalysisMapper:
 
         findings = sorted(
             analysis.findings,
-            key=lambda f: (
-                -f.severity.weight,
-                -f.priority,
-                -f.confidence,
+            key=lambda finding: (
+                -finding.severity.weight,
+                -finding.priority,
+                -finding.confidence,
             ),
         )
 
@@ -102,27 +109,27 @@ class AnalysisMapper:
             ),
             findings=[
                 FindingDetailResponse(
-                    rule=f.rule,
-                    severity=f.severity,
-                    kind=f.kind,
-                    title=f.title,
-                    description=f.description,
+                    rule=finding.rule,
+                    severity=finding.severity,
+                    kind=finding.kind,
+                    title=finding.title,
+                    description=finding.description,
                     resource=(
-                        ResourceResponse(**f.resource.model_dump())
-                        if f.resource
+                        ResourceResponse(**finding.resource.model_dump())
+                        if finding.resource
                         else None
                     ),
-                    recommendations=f.recommendations,
-                    priority=f.priority,
-                    confidence=f.confidence,
-                    related_findings=f.related_findings,
-                    caused_by=f.caused_by,
+                    recommendations=finding.recommendations,
+                    priority=finding.priority,
+                    confidence=finding.confidence,
+                    related_findings=finding.related_findings,
+                    caused_by=finding.caused_by,
                     evidences=[
-                        EvidenceResponse(**e.model_dump())
-                        for e in f.structured_evidences
+                        EvidenceResponse(**evidence.model_dump())
+                        for evidence in finding.structured_evidences
                     ],
                 )
-                for f in findings
+                for finding in findings
             ],
             intelligence=IncidentIntelligentMapper.to_response(analysis.intelligence),
             report=(

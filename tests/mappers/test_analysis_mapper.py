@@ -8,6 +8,12 @@ from kubesage.models.ai_report import AIReport
 from kubesage.models.analysis import Analysis, AnalysisTrigger
 from kubesage.models.finding import Finding, ResourceRef, Severity
 from kubesage.models.incident import Incident
+from kubesage.models.incident_intelligence import (
+    Correlation,
+    CorrelationType,
+    IncidentIntelligence,
+    RootCauseCandidate,
+)
 
 
 @pytest.fixture
@@ -173,3 +179,48 @@ def test_to_model_keeps_incident_phase() -> None:
     model = AnalysisMapper.to_model(analysis)
 
     assert model.phase == "Running"
+
+
+def test_analysis_intelligence_round_trip() -> None:
+    intelligence = IncidentIntelligence(
+        findings=[],
+        timeline=[],
+        correlations=[
+            Correlation(
+                source_finding="memory_exhaustion",
+                target_finding="oom_killed",
+                type=CorrelationType.CAUSED_BY,
+                confidence=1.0,
+            )
+        ],
+        root_causes=[
+            RootCauseCandidate(
+                finding="memory_exhaustion",
+                title="Memory exhaustion",
+                description="Memory exhaustion detected.",
+                confidence=1.0,
+                supporting_findings=["oom_killed"],
+            )
+        ],
+        recommendations=["Increase the container memory limit."],
+    )
+
+    incident = Incident(
+        namespace="default",
+        pod="test-pod",
+        phase="Running",
+        observed_at=datetime.now(),
+    )
+    analysis = Analysis(
+        trigger=AnalysisTrigger.API,
+        incident=incident,
+        findings=[],
+        intelligence=intelligence,
+        report=None,
+        duration_ms=100,
+    )
+
+    model = AnalysisMapper.to_model(analysis)
+    restored = AnalysisMapper.to_domain(model)
+
+    assert restored.intelligence == intelligence

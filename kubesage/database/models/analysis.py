@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from sqlalchemy import DateTime, Index, Integer, String
+from sqlalchemy import JSON, DateTime, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from kubesage.database.base import Base
@@ -28,10 +28,13 @@ class AnalysisModel(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
-    findings = relationship(
-        "FindingModel", back_populates="analysis", cascade="all, delete-orphan"
-    )
     findings_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    intelligence: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    findings = relationship(
+        "FindingModel",
+        back_populates="analysis",
+        cascade="all, delete-orphan",
+    )
     report = relationship(
         "AIReportModel",
         back_populates="analysis",
@@ -42,5 +45,15 @@ class AnalysisModel(Base):
         "IncidentSnapshotModel",
         back_populates="analysis",
         uselist=False,
+        cascade="all, delete-orphan",
+    )
+    correlations = relationship(
+        "AnalysisCorrelationModel",
+        back_populates="analysis",
+        cascade="all, delete-orphan",
+    )
+    root_causes = relationship(
+        "AnalysisRootCauseModel",
+        back_populates="analysis",
         cascade="all, delete-orphan",
     )
