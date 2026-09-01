@@ -12,6 +12,7 @@ from kubesage.database.models.analysis import AnalysisModel
 from kubesage.database.models.incident_snapshot import IncidentSnapshotModel
 from kubesage.mappers.ai_report_mapper import AIReportMapper
 from kubesage.mappers.finding_mapper import FindingMapper
+from kubesage.mappers.incident_intelligent_mapper import IncidentIntelligentMapper
 from kubesage.models.analysis import Analysis, AnalysisTrigger
 from kubesage.models.incident import Incident
 
@@ -123,6 +124,7 @@ class AnalysisMapper:
                 )
                 for f in findings
             ],
+            intelligence=IncidentIntelligentMapper.to_response(analysis.intelligence),
             report=(
                 AIReportResponse(**analysis.report.model_dump())
                 if analysis.report
