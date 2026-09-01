@@ -6,6 +6,11 @@ from kubesage.models.event import Event
 from kubesage.models.evidence import Evidence, EvidenceType
 from kubesage.models.finding import Finding, FindingKind, ResourceRef, Severity
 from kubesage.models.incident import Incident
+from kubesage.models.incident_intelligence import (
+    Correlation,
+    CorrelationType,
+    IncidentIntelligence,
+)
 from kubesage.models.timeline import (
     TimelineEvent,
     TimelineEventSource,
@@ -46,36 +51,43 @@ def make_incident_with_event() -> Incident:
     )
 
 
-def make_diagnosis_with_evidence() -> Finding:
-    return Finding(
-        rule="memory_pressure",
-        kind=FindingKind.DIAGNOSIS,
-        severity=Severity.HIGH,
-        title="Container memory limit exceeded",
-        description="Container reached its configured memory limit.",
-        confidence=0.95,
-        structured_evidences=[
-            Evidence(
-                name="memory_usage",
-                value="512",
-                unit="Mi",
-                source="prometheus",
-                type=EvidenceType.METRIC,
-                description="Container memory usage reached its configured limit.",
+def make_diagnosis_with_evidence() -> IncidentIntelligence:
+    return IncidentIntelligence(
+        findings=[
+            Finding(
+                rule="memory_pressure",
+                kind=FindingKind.DIAGNOSIS,
+                severity=Severity.HIGH,
+                title="Container memory limit exceeded",
+                description="Container reached its configured memory limit.",
+                confidence=0.95,
+                structured_evidences=[
+                    Evidence(
+                        name="memory_usage",
+                        value="512",
+                        unit="Mi",
+                        source="prometheus",
+                        type=EvidenceType.METRIC,
+                        description=(
+                            "Container memory usage reached its configured limit."
+                        ),
+                    )
+                ],
+                recommendations=["Increase container memory limit"],
             )
         ],
-        recommendations=["Increase container memory limit"],
+        root_causes=[],
+        correlations=[],
+        timeline=[],
     )
 
 
 def test_prompt_contains_structured_evidence() -> None:
     builder = PromptBuilder()
+    incident = make_incident()
+    intelligence = make_diagnosis_with_evidence()
 
-    context = AIContext(
-        make_incident(),
-        [make_diagnosis_with_evidence()],
-    )
-
+    context = AIContext(incident=incident, intelligence=intelligence)
     prompt = builder.build(context)
 
     assert "Evidence:" in prompt
@@ -88,8 +100,9 @@ def test_prompt_contains_structured_evidence() -> None:
 
 def test_prompt_contains_event_timestamp() -> None:
     builder = PromptBuilder()
-
-    context = AIContext(make_incident_with_event(), [])
+    incident = make_incident_with_event()
+    intelligence = make_diagnosis_with_evidence()
+    context = AIContext(incident, intelligence)
 
     prompt = builder.build(context)
 
@@ -101,7 +114,9 @@ def test_prompt_contains_event_timestamp() -> None:
 
 def test_prompt_contains_json_contract() -> None:
     builder = PromptBuilder()
-    context = AIContext(make_incident(), [make_diagnosis_with_evidence()])
+    incident = make_incident()
+    intelligence = make_diagnosis_with_evidence()
+    context = AIContext(incident, intelligence)
     prompt = builder.build(context)
 
     assert "Return JSON matching this schema:" in prompt
@@ -113,7 +128,9 @@ def test_prompt_contains_json_contract() -> None:
 
 def test_prompt_contains_finding_confidence() -> None:
     builder = PromptBuilder()
-    context = AIContext(make_incident(), [make_diagnosis_with_evidence()])
+    incident = make_incident()
+    intelligence = make_diagnosis_with_evidence()
+    context = AIContext(incident, intelligence)
     prompt = builder.build(context)
 
     assert "Confidence: 0.95" in prompt
@@ -121,7 +138,9 @@ def test_prompt_contains_finding_confidence() -> None:
 
 def test_prompt_contains_recommendations() -> None:
     builder = PromptBuilder()
-    context = AIContext(make_incident(), [make_diagnosis_with_evidence()])
+    incident = make_incident()
+    intelligence = make_diagnosis_with_evidence()
+    context = AIContext(incident, intelligence)
     prompt = builder.build(context)
 
     assert "# Recommendations" in prompt
@@ -129,6 +148,12 @@ def test_prompt_contains_recommendations() -> None:
 
 
 def test_prompt_builder_is_deterministic() -> None:
+    intelligence = IncidentIntelligence(
+        findings=[],
+        root_causes=[],
+        correlations=[],
+        timeline=[],
+    )
     incident = Incident(
         namespace="default",
         pod="test-pod",
@@ -141,8 +166,7 @@ def test_prompt_builder_is_deterministic() -> None:
         prometheus=None,
         metrics=None,
     )
-
-    context = AIContext(incident=incident, findings=[])
+    context = AIContext(incident, intelligence)
     builder = PromptBuilder()
 
     prompt_1 = builder.build(context)
@@ -170,8 +194,9 @@ def test_prompt_omits_missing_evidence_description() -> None:
             )
         ],
     )
-
-    context = AIContext(make_incident(), [finding])
+    incident = make_incident()
+    intelligence = IncidentIntelligence(findings=[finding])
+    context = AIContext(incident, intelligence)
     prompt = PromptBuilder().build(context)
 
     evidence_section = prompt.split("Evidence:", maxsplit=1)[1]
@@ -215,8 +240,9 @@ def test_build_includes_incident_timeline() -> None:
             description="Error: Memory allocation failed",
         ),
     ]
-
-    context = AIContext(make_incident(), [finding], timeline)
+    incident = make_incident()
+    intelligence = IncidentIntelligence(findings=[finding], timeline=timeline)
+    context = AIContext(incident, intelligence)
     prompt = PromptBuilder().build(context)
 
     assert "# Incident Timeline" in prompt
@@ -230,7 +256,45 @@ def test_build_includes_incident_timeline() -> None:
 
 
 def test_prompt_contains_timeline_reasoning_instructions() -> None:
-    context = AIContext(make_incident(), [], [])
+    finding = Finding(
+        rule="memory_pressure",
+        kind=FindingKind.DIAGNOSIS,
+        severity=Severity.HIGH,
+        title="Container memory limit exceeded",
+        description="Container reached its configured memory limit.",
+        confidence=0.95,
+        structured_evidences=[
+            Evidence(
+                name="memory_usage",
+                value="512",
+                unit="Mi",
+                source="prometheus",
+                type=EvidenceType.METRIC,
+            )
+        ],
+    )
+
+    timeline = [
+        TimelineEvent(
+            id="event-1",
+            timestamp=datetime(2026, 8, 31, 10, 42, 12, tzinfo=UTC),
+            type=TimelineEventType.CONTAINER_TERMINATED,
+            source=TimelineEventSource.KUBERNETES,
+            title="Container terminated",
+            description="Container 'api' terminated: OOMKilled.",
+        ),
+        TimelineEvent(
+            id="event-2",
+            timestamp=datetime(2026, 9, 1, 10, 42, 12, tzinfo=UTC),
+            type=TimelineEventType.METRIC_ANOMALY,
+            source=TimelineEventSource.LOKI,
+            title="Application error",
+            description="Error: Memory allocation failed",
+        ),
+    ]
+    incident = make_incident()
+    intelligence = IncidentIntelligence(findings=[finding], timeline=timeline)
+    context = AIContext(incident, intelligence)
     prompt = PromptBuilder().build(context)
 
     assert "## Timeline reasoning" in prompt
@@ -267,8 +331,9 @@ def test_build_includes_application_error_classification() -> None:
             )
         ],
     )
-
-    context = AIContext(incident=make_incident(), findings=[finding])
+    incident = make_incident()
+    intelligence = IncidentIntelligence(findings=[finding])
+    context = AIContext(incident, intelligence)
     prompt = PromptBuilder().build(context)
 
     assert "Classification:" in prompt
@@ -296,8 +361,9 @@ def test_build_includes_error_kind_without_domain() -> None:
             name="my-api",
         ),
     )
-
-    context = AIContext(incident=make_incident(), findings=[finding])
+    incident = make_incident()
+    intelligence = IncidentIntelligence(findings=[finding])
+    context = AIContext(incident, intelligence)
     prompt = PromptBuilder().build(context)
 
     assert "Classification:" in prompt
@@ -309,3 +375,40 @@ def test_build_includes_error_kind_without_domain() -> None:
     assert "Do not assume that temporal proximity implies causality." in prompt
     assert "Do not invent missing technical details" in prompt
     assert "Confidence should reflect the strength of the available evidence." in prompt
+
+
+def test_prompt_includes_correlations() -> None:
+    correlation = Correlation(
+        source_finding="memory_exhaustion",
+        target_finding="high_memory_usage",
+        type=CorrelationType.CAUSED_BY,
+        confidence=0.9,
+        evidence=["Evidence details"],
+    )
+
+    incident = make_incident()
+    intelligence = IncidentIntelligence(correlations=[correlation])
+    context = AIContext(incident, intelligence)
+    prompt = PromptBuilder().build(context)
+
+    assert "# Finding Correlations" in prompt
+    assert "memory_exhaustion" in prompt
+    assert "high_memory_usage" in prompt
+    assert "[caused_by]" in prompt
+    assert "Confidence: 0.90" in prompt
+
+
+def test_prompt_with_empty_intelligence() -> None:
+    incident = make_incident()
+    intelligence = IncidentIntelligence()
+    context = AIContext(incident, intelligence)
+    prompt = PromptBuilder().build(context)
+
+    assert "# Kubernetes Incident" in prompt
+    assert "Namespace: default" in prompt
+    assert "Pod: nginx-123" in prompt
+    assert "Phase: Running" in prompt
+
+    assert "# Incident Timeline" not in prompt
+    assert "# Finding Correlations" not in prompt
+    assert "# Root Cause Analysis" not in prompt

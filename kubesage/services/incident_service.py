@@ -9,9 +9,13 @@ from kubesage.builders.context.container_snapshot_builder import (
     ContainerSnapshotBuilder,
 )
 from kubesage.builders.context.incident_builder import IncidentBuilder
+from kubesage.builders.incident_intelligence_builder import (
+    IncidentIntelligenceBuilder,
+)
 from kubesage.builders.prompt.prompt_builder import PromptBuilder
 from kubesage.models.ai_report import AIReport
 from kubesage.models.analysis import Analysis, AnalysisTrigger
+from kubesage.models.incident_intelligence import IncidentIntelligence
 from kubesage.services.ai_service import AIService
 from kubesage.services.kubernetes_service import KubernetesService
 from kubesage.services.loki_service import LokiService
@@ -34,6 +38,7 @@ class IncidentService:
         ai_context_builder: AIContextBuilder,
         prompt_builder: PromptBuilder,
         container_snapshot_builder: ContainerSnapshotBuilder,
+        incident_intelligence_builder: IncidentIntelligenceBuilder,
     ) -> None:
         self.kubernetes = kubernetes
         self.prometheus = prometheus
@@ -44,6 +49,7 @@ class IncidentService:
         self.ai_context_builder = ai_context_builder
         self.prompt_builder = prompt_builder
         self.container_snapshot_builder = container_snapshot_builder
+        self.incident_intelligence_builder = incident_intelligence_builder
 
     def analyze(self, namespace: str, pod: str, trigger: AnalysisTrigger) -> Analysis:
         logger.info("analysis.started", namespace=namespace, pod=pod, trigger=trigger)
@@ -95,6 +101,7 @@ class IncidentService:
                         ),
                     ),
                     incident=incident,
+                    intelligence=IncidentIntelligence(),
                     findings=[],
                     duration_ms=int((time.perf_counter() - start) * 1000),
                     trigger=trigger,
@@ -108,6 +115,32 @@ class IncidentService:
             findings = self.engine.analyze(incident)
 
             span.set_attribute("analysis.findings.count", len(findings))
+
+        with tracer.start_as_current_span(
+            "analysis.incident_intelligence.build"
+        ) as span:
+            span.set_attribute("k8s.namespace", namespace)
+            span.set_attribute("k8s.pod.name", pod)
+            span.set_attribute("analysis.trigger", trigger.value)
+            span.set_attribute("analysis.findings.count", len(findings))
+
+            intelligence = self.incident_intelligence_builder.build(
+                incident,
+                findings,
+            )
+
+            span.set_attribute(
+                "incident_intelligence.timeline.count",
+                len(intelligence.timeline),
+            )
+            span.set_attribute(
+                "incident_intelligence.correlations.count",
+                len(intelligence.correlations),
+            )
+            span.set_attribute(
+                "incident_intelligence.root_causes.count",
+                len(intelligence.root_causes),
+            )
 
         if not findings:
             logger.info("analysis.skipped", namespace=namespace, pod=pod)
@@ -125,7 +158,7 @@ class IncidentService:
             span.set_attribute("k8s.pod.name", pod)
             span.set_attribute("analysis.trigger", trigger.value)
 
-            context = self.ai_context_builder.build(incident, findings)
+            context = self.ai_context_builder.build(incident, intelligence)
 
         with tracer.start_as_current_span("analysis.ai_prompt.build") as span:
             span.set_attribute("k8s.namespace", namespace)
@@ -147,6 +180,7 @@ class IncidentService:
             incident=incident,
             findings=findings,
             report=report,
+            intelligence=intelligence,
             duration_ms=int((time.perf_counter() - start) * 1000),
             trigger=trigger,
         )

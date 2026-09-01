@@ -12,6 +12,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
 )
 
 from kubesage.ai.providers.openai_compatible import OpenAICompatibleProvider
+from kubesage.builders.incident_intelligence_builder import IncidentIntelligenceBuilder
 from kubesage.models.ai_report import AIReport
 from kubesage.models.analysis import AnalysisTrigger
 from kubesage.models.container import ContainerSnapshot
@@ -213,6 +214,7 @@ def test_incident_build_is_child_of_analysis_execute(
         ai_context_builder=MagicMock(),
         prompt_builder=MagicMock(),
         container_snapshot_builder=MagicMock(),
+        incident_intelligence_builder=IncidentIntelligenceBuilder(),
     )
 
     analysis_service.incident_service = incident_service
@@ -367,6 +369,7 @@ def test_analysis_execute_trace_id_is_shared_with_real_incident_service(
         ai_context_builder=MagicMock(),
         prompt_builder=MagicMock(),
         container_snapshot_builder=MagicMock(),
+        incident_intelligence_builder=IncidentIntelligenceBuilder(),
     )
 
     analysis_service.incident_service = incident_service
@@ -419,6 +422,7 @@ def test_analysis_execute_produces_complete_trace(
         ai_context_builder=MagicMock(),
         prompt_builder=MagicMock(),
         container_snapshot_builder=MagicMock(),
+        incident_intelligence_builder=IncidentIntelligenceBuilder(),
     )
 
     session = MagicMock()
@@ -483,6 +487,7 @@ def test_database_save_analysis_is_child_of_analysis_execute(
         ai_context_builder=MagicMock(),
         prompt_builder=MagicMock(),
         container_snapshot_builder=MagicMock(),
+        incident_intelligence_builder=IncidentIntelligenceBuilder(),
     )
 
     session = MagicMock()
@@ -542,6 +547,7 @@ def test_deep_error_is_recorded_on_analysis_execute(
         ai_context_builder=MagicMock(),
         prompt_builder=MagicMock(),
         container_snapshot_builder=MagicMock(),
+        incident_intelligence_builder=IncidentIntelligenceBuilder(),
     )
 
     repository = MagicMock()
@@ -651,6 +657,7 @@ def test_analysis_execute_contains_complete_ai_trace(
         ai_context_builder=ai_context_builder,
         prompt_builder=prompt_builder,
         container_snapshot_builder=MagicMock(),
+        incident_intelligence_builder=IncidentIntelligenceBuilder(),
     )
 
     session = MagicMock()

@@ -10,6 +10,8 @@ class PromptBuilder:
         self._append_timeline(lines, ai)
         self._append_diagnostics(lines, ai)
         self._append_observations(lines, ai)
+        self._append_correlations(lines, ai)
+        self._append_root_causes(lines, ai)
         self._append_events(lines, ai)
         self._append_logs(lines, ai)
         self._append_recommendations(lines, ai)
@@ -144,6 +146,50 @@ class PromptBuilder:
 
                 lines.append("")
 
+    def _append_correlations(self, lines: list[str], ai: AIContext) -> None:
+        if not ai.correlations:
+            return
+
+        lines.append("# Finding Correlations")
+        for correlation in ai.correlations:
+            lines.append(
+                f"- {correlation.source_finding} "
+                f"[{correlation.type.value}] "
+                f"{correlation.target_finding}"
+            )
+
+            lines.append(f"  Confidence: {correlation.confidence:.2f}")
+            if correlation.evidence:
+                lines.append("  Evidence:")
+                for evidence in correlation.evidence:
+                    lines.append(f"    - {evidence}")
+
+        lines.append("")
+
+    def _append_root_causes(self, lines: list[str], ai: AIContext) -> None:
+        if not ai.root_causes:
+            return
+
+        lines.append("# Root Cause Candidates")
+        for candidate in ai.root_causes:
+            lines.append(f"### {candidate.finding}")
+
+            lines.append(f"Title: {candidate.title}")
+            lines.append(f"Description: {candidate.description}")
+            lines.append(f"Confidence: {candidate.confidence:.2f}")
+
+            if candidate.supporting_findings:
+                lines.append("Supporting findings:")
+                for finding in candidate.supporting_findings:
+                    lines.append(f"- {finding}")
+
+            if candidate.supporting_evidence:
+                lines.append("Supporting evidence:")
+                for evidence in candidate.supporting_evidence:
+                    lines.append(f"- {evidence}")
+
+            lines.append("")
+
     def _append_summary(self, lines: list[str], ai: AIContext) -> None:
         if not ai.has_findings:
             return
@@ -266,6 +312,41 @@ and make its description cover the relevant technical fact.
 Do not emit multiple entries with the same ID merely because the evidence
 appears in multiple sections of the incident context.
 
+## Structured incident intelligence
+
+The incident data may contain structured intelligence produced by
+KubeSage's deterministic analysis pipeline.
+
+This intelligence can include:
+- finding correlations;
+- root cause candidates;
+- supporting findings;
+- supporting evidence.
+
+Treat these relationships as structured analytical signals.
+
+A correlation marked as `caused_by` represents a causal relationship
+identified by the deterministic analysis pipeline.
+
+A correlation marked as `related` represents a relationship between
+findings, but does not establish causality.
+
+Root cause candidates represent diagnoses that KubeSage considers
+potential root causes based on their supporting findings.
+
+Use root cause candidates and correlations to structure your reasoning,
+but always validate the final conclusion against the available evidence.
+
+Do not invent additional causal relationships.
+
+Do not promote a `related` correlation into a causal relationship.
+
+Do not treat a root cause candidate as stronger than the evidence
+supporting it.
+
+When the structured intelligence conflicts with the available evidence,
+prefer the evidence and explicitly communicate the uncertainty.
+
 ## Diagnostic reasoning
 
 Diagnoses are the primary source of truth.
@@ -344,6 +425,16 @@ The same rule applies to:
 - dependency failures.
 
 ## Root cause requirements
+
+When root cause candidates are provided, consider them first when
+determining the root cause.
+
+A root cause candidate is not itself evidence.
+
+Use its supporting findings and supporting evidence to validate the
+candidate.
+
+The final root cause must remain consistent with the evidence.
 
 The `root_cause` field must contain the most specific cause that is actually supported
 by the provided evidence.

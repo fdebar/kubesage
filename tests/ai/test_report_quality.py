@@ -12,6 +12,7 @@ from kubesage.models.ai_context import AIContext
 from kubesage.models.ai_report import AIReport
 from kubesage.models.evidence import Evidence
 from kubesage.models.finding import Finding
+from kubesage.models.incident_intelligence import IncidentIntelligence
 from kubesage.models.timeline import TimelineEvent, TimelineEventSource
 from kubesage.utils.config import settings
 from tests.ai.scenarios import ReportQualityScenario
@@ -206,10 +207,7 @@ def _keyword_coverage(text: str, keywords: tuple[str, ...]) -> float:
     return matched / len(keywords)
 
 
-def _confidence_score(
-    report: AIReport,
-    scenario: ReportQualityScenario,
-) -> float:
+def _confidence_score(report: AIReport, scenario: ReportQualityScenario) -> float:
     if report.confidence is None:
         return 0.0
 
@@ -266,10 +264,15 @@ def score_report_quality(
 
 
 def build_prompt(scenario: ReportQualityScenario) -> str:
+    intelligence = IncidentIntelligence(
+        findings=scenario.findings,
+        root_causes=[],
+        correlations=[],
+        timeline=scenario.timeline,
+    )
     context = AIContext(
         incident=scenario.incident,
-        findings=scenario.findings,
-        timeline=scenario.timeline,
+        intelligence=intelligence,
     )
 
     return PromptBuilder().build(context)
@@ -514,11 +517,13 @@ def test_report_quality_scenario_builds_valid_context(
 ) -> None:
     scenario = scenario_factory()
 
-    context = AIContext(
-        incident=scenario.incident,
+    intelligence = IncidentIntelligence(
         findings=scenario.findings,
+        root_causes=[],
+        correlations=[],
         timeline=scenario.timeline,
     )
+    context = AIContext(incident=scenario.incident, intelligence=intelligence)
 
     assert context.finding_count == len(scenario.findings)
     assert context.has_findings

@@ -7,12 +7,14 @@ from kubesage.builders.context.ai_context_builder import AIContextBuilder
 from kubesage.builders.context.container_snapshot_builder import (
     ContainerSnapshotBuilder,
 )
+from kubesage.builders.incident_intelligence_builder import IncidentIntelligenceBuilder
 from kubesage.builders.prompt.prompt_builder import PromptBuilder
 from kubesage.models.ai_report import AIReport
 from kubesage.models.analysis import AnalysisTrigger
 from kubesage.models.container import ContainerSnapshot
 from kubesage.models.finding import Finding
 from kubesage.models.incident import Incident
+from kubesage.models.incident_intelligence import IncidentIntelligence
 from kubesage.models.log import LogSnapshot
 from kubesage.models.prometheus import PrometheusResourceUsage
 from kubesage.services.ai_service import AIService
@@ -68,6 +70,9 @@ def build_service(
     container_snapshot_builder = Mock(
         spec=ContainerSnapshotBuilder,
     )
+    incident_intelligence_builder = Mock(
+        spec=IncidentIntelligenceBuilder,
+    )
 
     engine.analyze.return_value = findings or []
     if incident is None:
@@ -91,6 +96,13 @@ def build_service(
 
     container_snapshot_builder.build.return_value = incident.containers
 
+    incident_intelligence_builder.build.return_value = IncidentIntelligence(
+        findings=findings or [],
+        timeline=[],
+        correlations=[],
+        root_causes=[],
+    )
+
     service = IncidentService(
         kubernetes=kubernetes,
         prometheus=prometheus,
@@ -101,6 +113,7 @@ def build_service(
         ai_context_builder=ai_context_builder,
         prompt_builder=prompt_builder,
         container_snapshot_builder=container_snapshot_builder,
+        incident_intelligence_builder=incident_intelligence_builder,
     )
 
     return service, {
@@ -108,6 +121,7 @@ def build_service(
         "engine": engine,
         "ai_context_builder": ai_context_builder,
         "prompt_builder": prompt_builder,
+        "incident_intelligence_builder": incident_intelligence_builder,
     }
 
 
@@ -118,12 +132,7 @@ def test_analysis_with_findings_calls_ai() -> None:
     mocks["ai_context_builder"].build.return_value = Mock()
     mocks["prompt_builder"].build.return_value = "prompt"
 
-    report = AIReport(
-        summary="summary",
-        root_cause="root cause",
-        evidence=[],
-    )
-
+    report = AIReport(summary="summary", root_cause="root cause", evidence=[])
     mocks["ai"].analyze.return_value = report
 
     result = service.analyze(

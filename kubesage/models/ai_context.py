@@ -1,24 +1,28 @@
 from kubesage.models.finding import Finding, FindingKind, Severity
 from kubesage.models.incident import Incident
+from kubesage.models.incident_intelligence import (
+    Correlation,
+    IncidentIntelligence,
+    RootCauseCandidate,
+)
 from kubesage.models.prompt_context import PromptContext
-from kubesage.models.timeline import TimelineEvent
+from kubesage.services.finding_ranker import FindingRanker
 
 
 class AIContext:
-    def __init__(
-        self,
-        incident: Incident,
-        findings: list[Finding],
-        timeline: list[TimelineEvent] | None = None,
-    ) -> None:
+    def __init__(self, incident: Incident, intelligence: IncidentIntelligence) -> None:
+        self.incident = incident
+        self.intelligence = intelligence
+        ranked_findings = FindingRanker().rank(intelligence.findings)
+
         self.ctx = PromptContext(
             namespace=incident.namespace,
             pod=incident.pod,
             phase=incident.phase,
             logs=incident.logs,
             events=incident.events,
-            findings=findings,
-            timeline=timeline or [],
+            findings=ranked_findings,
+            timeline=intelligence.timeline,
         )
 
     @property
@@ -66,17 +70,12 @@ class AIContext:
         return evidences
 
     @property
-    def root_causes(self) -> list[Finding]:
-        diagnoses = self.diagnoses
-        caused_diagnoses = {
-            cause for diagnosis in diagnoses for cause in diagnosis.caused_by
-        }
+    def root_causes(self) -> list[RootCauseCandidate]:
+        return self.intelligence.root_causes
 
-        return [
-            diagnosis
-            for diagnosis in diagnoses
-            if diagnosis.rule not in caused_diagnoses
-        ]
+    @property
+    def correlations(self) -> list[Correlation]:
+        return self.intelligence.correlations
 
     @property
     def observations(self) -> list[Finding]:
@@ -93,3 +92,10 @@ class AIContext:
     @property
     def has_findings(self) -> bool:
         return bool(self.ctx.findings)
+
+    @property
+    def root_cause_evidence(self) -> dict[str, list[str]]:
+        return {
+            candidate.finding: candidate.supporting_evidence
+            for candidate in self.intelligence.root_causes
+        }

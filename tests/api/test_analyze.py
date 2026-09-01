@@ -9,6 +9,7 @@ from kubesage.api.dependencies import get_analysis_service
 from kubesage.models.ai_report import AIReport, EvidenceReference
 from kubesage.models.analysis import Analysis, AnalysisTrigger
 from kubesage.models.incident import Incident
+from kubesage.models.incident_intelligence import IncidentIntelligence
 
 client = TestClient(app)
 
@@ -48,6 +49,7 @@ class FakeIncidentService:
                 additional_investigations=["kubectl logs pod"],
             ),
             duration_ms=1000,
+            intelligence=IncidentIntelligence(),
             trigger=AnalysisTrigger.API,
         )
 

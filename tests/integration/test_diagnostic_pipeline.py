@@ -12,6 +12,7 @@ from kubesage.models.container import (
 )
 from kubesage.models.finding import FindingKind, Severity
 from kubesage.models.incident import Incident
+from kubesage.models.incident_intelligence import IncidentIntelligence
 from kubesage.models.log import LogEntry, LogSnapshot
 from kubesage.services.findings_correlator import (
     FindingsCorrelator,
@@ -82,7 +83,13 @@ def test_full_cpu_diagnostic_pipeline() -> None:
     assert diagnosis.severity == Severity.HIGH
     assert diagnosis.caused_by == ["high_cpu_usage", "cpu_throttling"]
 
-    context = AIContext(incident, findings)
+    intelligence = IncidentIntelligence(
+        findings=findings,
+        root_causes=[],
+        correlations=[],
+        timeline=[],
+    )
+    context = AIContext(incident, intelligence)
     prompt = PromptBuilder().build(context)
 
     assert "# Diagnoses" in prompt

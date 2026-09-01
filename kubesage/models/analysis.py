@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from kubesage.models.ai_report import AIReport
 from kubesage.models.finding import Finding, Severity
 from kubesage.models.incident import Incident
+from kubesage.models.incident_intelligence import IncidentIntelligence
 
 
 class AnalysisTrigger(StrEnum):
@@ -22,6 +23,9 @@ class Analysis(BaseModel):
     trigger: AnalysisTrigger
     incident: Incident
     findings: list[Finding]
+    intelligence: IncidentIntelligence = Field(
+        default_factory=IncidentIntelligence,
+    )
     report: AIReport | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     duration_ms: int

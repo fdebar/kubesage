@@ -11,6 +11,10 @@ from kubesage.models.finding import (
     Severity,
 )
 from kubesage.models.incident import Incident
+from kubesage.models.incident_intelligence import (
+    IncidentIntelligence,
+    RootCauseCandidate,
+)
 from kubesage.models.log import LogEntry, LogSnapshot
 from kubesage.models.timeline import (
     TimelineEvent,
@@ -51,47 +55,64 @@ def make_resource() -> ResourceRef:
     )
 
 
-def make_diagnosis() -> Finding:
-    return Finding(
-        rule="high_cpu_usage",
-        kind=FindingKind.DIAGNOSIS,
-        severity=Severity.CRITICAL,
-        confidence=0.95,
-        title="High CPU usage",
-        description="Container is CPU saturated.",
-        recommendations=["Increase CPU limit"],
-        structured_evidences=[
-            Evidence(
-                name="cpu_usage",
-                value="95",
-                unit="%",
-                source="prometheus",
-                type=EvidenceType.METRIC,
+def make_diagnosis() -> IncidentIntelligence:
+    return IncidentIntelligence(
+        findings=[
+            Finding(
+                rule="high_cpu_usage",
+                kind=FindingKind.DIAGNOSIS,
+                severity=Severity.CRITICAL,
+                confidence=0.95,
+                title="High CPU usage",
+                description="Container is CPU saturated.",
+                recommendations=["Increase CPU limit"],
+                structured_evidences=[
+                    Evidence(
+                        name="cpu_usage",
+                        value="95",
+                        unit="%",
+                        source="prometheus",
+                        type=EvidenceType.METRIC,
+                    )
+                ],
+                resource=make_resource(),
+                caused_by=["cpu_throttling"],
             )
         ],
-        resource=make_resource(),
-        caused_by=["cpu_throttling"],
+        root_causes=[],
+        correlations=[],
+        timeline=[],
     )
 
 
-def make_observation() -> Finding:
-    return Finding(
-        rule="restart_count",
-        kind=FindingKind.OBSERVATION,
-        severity=Severity.WARNING,
-        confidence=0.80,
-        title="Container restarted",
-        description="Container restarted multiple times.",
-        recommendations=[],
-        structured_evidences=[],
-        resource=make_resource(),
-        caused_by=[],
+def make_observation() -> IncidentIntelligence:
+    return IncidentIntelligence(
+        findings=[
+            Finding(
+                rule="restart_count",
+                kind=FindingKind.OBSERVATION,
+                severity=Severity.WARNING,
+                confidence=0.80,
+                title="Container restarted",
+                description="Container restarted multiple times.",
+                recommendations=[],
+                structured_evidences=[],
+                resource=make_resource(),
+                caused_by=[],
+            )
+        ],
+        root_causes=[],
+        correlations=[],
+        timeline=[],
     )
 
 
 def test_build_prompt_without_findings() -> None:
     builder = PromptBuilder()
-    context = AIContext(make_incident(), [])
+    context = AIContext(
+        make_incident(),
+        IncidentIntelligence(findings=[], root_causes=[], correlations=[], timeline=[]),
+    )
 
     prompt = builder.build(context)
 
@@ -119,7 +140,8 @@ def test_build_prompt_without_findings() -> None:
 def test_build_prompt_with_diagnosis() -> None:
     builder = PromptBuilder()
 
-    context = AIContext(make_incident(), [make_diagnosis()])
+    intelligence = make_diagnosis()
+    context = AIContext(make_incident(), intelligence)
 
     prompt = builder.build(context)
 
@@ -147,7 +169,8 @@ def test_build_prompt_with_diagnosis() -> None:
 def test_build_prompt_with_observation() -> None:
     builder = PromptBuilder()
 
-    context = AIContext(make_incident(), [make_observation()])
+    intelligence = make_observation()
+    context = AIContext(make_incident(), intelligence)
 
     prompt = builder.build(context)
 
@@ -161,13 +184,9 @@ def test_build_prompt_with_observation() -> None:
 def test_build_prompt_with_multiple_findings() -> None:
     builder = PromptBuilder()
 
-    context = AIContext(
-        make_incident(),
-        [
-            make_diagnosis(),
-            make_observation(),
-        ],
-    )
+    intelligence = make_diagnosis()
+    intelligence.findings.extend(make_observation().findings)
+    context = AIContext(make_incident(), intelligence)
 
     prompt = builder.build(context)
 
@@ -202,9 +221,27 @@ def test_root_causes_returns_top_level_diagnosis() -> None:
             "memory_exhaustion",
         ],
     )
-    context = AIContext(make_incident(), [intermediate, root])
 
-    assert context.root_causes == [root]
+    intermediate_root = RootCauseCandidate(
+        finding="memory_exhaustion",
+        title="Memory exhaustion",
+        description="Memory exhausted",
+        supporting_findings=["high_memory_usage", "oom_killed"],
+        confidence=0.95,
+    )
+
+    context = AIContext(
+        make_incident(),
+        IncidentIntelligence(
+            findings=[intermediate, root],
+            root_causes=[intermediate_root],
+            correlations=[],
+            timeline=[],
+        ),
+    )
+
+    assert len(context.root_causes) == 1
+    assert context.root_causes[0] == intermediate_root
 
 
 def test_root_causes_returns_all_independent_diagnoses() -> None:
@@ -219,7 +256,6 @@ def test_root_causes_returns_all_independent_diagnoses() -> None:
             "cpu_throttling",
         ],
     )
-
     memory = Finding(
         rule="memory_exhaustion",
         kind=FindingKind.DIAGNOSIS,
@@ -231,9 +267,34 @@ def test_root_causes_returns_all_independent_diagnoses() -> None:
             "oom_killed",
         ],
     )
-    context = AIContext(make_incident(), [cpu, memory])
 
-    assert context.root_causes == [cpu, memory]
+    cpu_root = RootCauseCandidate(
+        finding="cpu_contention",
+        title="CPU contention",
+        description="CPU contention detected",
+        supporting_findings=["high_cpu_usage", "cpu_throttling"],
+        confidence=0.8,
+    )
+    memory_root = RootCauseCandidate(
+        finding="memory_exhaustion",
+        title="Memory exhaustion",
+        description="Memory exhaustion detected",
+        supporting_findings=["high_memory_usage", "oom_killed"],
+        confidence=0.8,
+    )
+
+    context = AIContext(
+        make_incident(),
+        IncidentIntelligence(
+            findings=[cpu, memory],
+            root_causes=[cpu_root, memory_root],
+            correlations=[],
+            timeline=[],
+        ),
+    )
+
+    assert context.root_causes[0].supporting_findings == cpu.caused_by
+    assert context.root_causes[1].supporting_findings == memory.caused_by
 
 
 def test_root_causes_ignores_observations() -> None:
@@ -245,7 +306,13 @@ def test_root_causes_ignores_observations() -> None:
         description="Container was killed",
     )
 
-    context = AIContext(make_incident(), [observation])
+    intelligence = IncidentIntelligence(
+        findings=[observation],
+        root_causes=[],
+        correlations=[],
+        timeline=[],
+    )
+    context = AIContext(make_incident(), intelligence)
 
     assert context.root_causes == []
 
@@ -270,5 +337,12 @@ def test_build_includes_timeline() -> None:
         )
     ]
 
-    context = AIContext(make_incident(), [observation], timeline)
+    intelligence = IncidentIntelligence(
+        findings=[observation],
+        root_causes=[],
+        correlations=[],
+        timeline=timeline,
+    )
+    context = AIContext(make_incident(), intelligence)
+
     assert context.ctx.timeline == timeline

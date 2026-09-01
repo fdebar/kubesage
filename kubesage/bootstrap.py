@@ -6,6 +6,7 @@ from kubesage.builders.context.ai_context_builder import AIContextBuilder
 from kubesage.builders.context.container_snapshot_builder import (
     ContainerSnapshotBuilder,
 )
+from kubesage.builders.incident_intelligence_builder import IncidentIntelligenceBuilder
 from kubesage.builders.prompt.prompt_builder import PromptBuilder
 from kubesage.database.health import (
     check_database_availability,
@@ -36,6 +37,7 @@ def create_incident_service() -> IncidentService:
         ai_context_builder=AIContextBuilder(),
         prompt_builder=PromptBuilder(),
         container_snapshot_builder=ContainerSnapshotBuilder(),
+        incident_intelligence_builder=IncidentIntelligenceBuilder(),
     )
 
 
