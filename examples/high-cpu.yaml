@@ -7,7 +7,9 @@ metadata:
 spec:
   containers:
     - name: cpu
-      image: progrium/stress
+      image: nickborgers/stress:v1.5.1
+      command:
+        - stress
       args:
         - "--cpu"
         - "2"
