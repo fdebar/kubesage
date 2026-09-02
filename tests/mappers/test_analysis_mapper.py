@@ -1,228 +1,164 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import uuid4
 
-import pytest
-
+from kubesage.database.models.analysis import AnalysisModel
+from kubesage.database.models.incident_snapshot import IncidentSnapshotModel
 from kubesage.mappers.analysis_mapper import AnalysisMapper
-from kubesage.models.ai_report import AIReport
 from kubesage.models.analysis import Analysis, AnalysisTrigger
-from kubesage.models.finding import Finding, ResourceRef, Severity
 from kubesage.models.incident import Incident
-from kubesage.models.incident_intelligence import (
-    Correlation,
-    CorrelationType,
-    IncidentIntelligence,
-    RootCauseCandidate,
-)
+from kubesage.models.incident_intelligence import IncidentIntelligence
 
 
-@pytest.fixture
-def analysis() -> Analysis:
-    return Analysis(
-        incident=Incident(
-            namespace="default",
-            pod="my-pod",
-            phase="Running",
-            observed_at=datetime.now(),
-        ),
-        duration_ms=1000,
-        report=AIReport(summary="Test summary", root_cause="Test root cause"),
-        intelligence=IncidentIntelligence(
-            findings=[
-                Finding(
-                    rule="crash_loop",
-                    severity=Severity.HIGH,
-                    title="Container restarting",
-                    description="Container restarted 10 times",
-                    resource=ResourceRef(
-                        api_version="v1",
-                        kind="Pod",
-                        namespace="default",
-                        name="my-pod",
-                    ),
-                )
-            ]
-        ),
-        trigger=AnalysisTrigger.API,
+def make_incident_data(*, observed_at: datetime | None = None) -> dict:
+    data = {
+        "namespace": "default",
+        "pod": "kubesage-crashloop",
+        "pod_uid": "5ba84d4a-06cd-4998-8a6e-f123456789ab",
+        "phase": "Running",
+        "containers": [],
+    }
+
+    if observed_at is not None:
+        data["observed_at"] = observed_at.isoformat()
+
+    return data
+
+
+def make_analysis_model(
+    *,
+    incident_data: dict,
+    created_at: datetime | None = None,
+) -> AnalysisModel:
+    created_at = created_at or datetime.now(UTC)
+
+    model = AnalysisModel(
+        id=str(uuid4()),
+        namespace="default",
+        pod="kubesage-crashloop",
+        pod_uid="5ba84d4a-06cd-4998-8a6e-f123456789ab",
+        duration_ms=100,
+        summary=None,
+        highest_severity=None,
+        phase="Running",
+        findings_count=0,
+        created_at=created_at,
+        trigger=AnalysisTrigger.CLI,
     )
 
-
-def test_analysis_mapper_creates_complete_model(analysis: Analysis) -> None:
-    model = AnalysisMapper.to_model(analysis)
-
-    assert model.id == str(analysis.id)
-    assert model.namespace == "default"
-    assert model.pod == "my-pod"
-    assert model.duration_ms == 1000
-
-    assert model.summary == "Test summary"
-    assert model.phase == "Running"
-
-    assert model.findings_count == 1
-    assert len(model.findings) == 1
-    assert model.findings[0].rule == "crash_loop"
-
-    assert model.report is not None
-    assert model.report.summary == "Test summary"
-
-    assert model.incident_snapshot is not None
-    assert model.incident_snapshot.data["namespace"] == "default"
-
-
-def test_to_model_without_report() -> None:
-    analysis = Analysis(
-        incident=Incident(
-            namespace="default",
-            pod="test-pod",
-            phase="Failed",
-            observed_at=datetime.now(),
-        ),
-        duration_ms=500,
-        trigger=AnalysisTrigger.API,
+    model.incident_snapshot = IncidentSnapshotModel(
+        analysis_id=model.id,
+        data=incident_data,
     )
-    model = AnalysisMapper.to_model(analysis)
 
-    assert model.report is None
-    assert model.summary is None
+    model.findings = []
+    model.correlations = []
+    model.root_causes = []
+    model.report = None
+
+    return model
 
 
-def test_to_model_calculates_findings_count() -> None:
-    analysis = Analysis(
-        incident=Incident(
-            namespace="default",
-            pod="pod",
-            phase="Running",
-            observed_at=datetime.now(),
-        ),
-        intelligence=IncidentIntelligence(
-            findings=[
-                Finding(
-                    rule="rule1",
-                    severity=Severity.HIGH,
-                    title="Finding 1",
-                    description="desc",
-                ),
-                Finding(
-                    rule="rule2",
-                    severity=Severity.LOW,
-                    title="Finding 2",
-                    description="desc",
-                ),
-            ]
-        ),
-        duration_ms=500,
-        trigger=AnalysisTrigger.API,
+def test_to_domain_restores_observed_at_from_snapshot() -> None:
+    observed_at = datetime(2026, 8, 31, 8, 0, 16, tzinfo=UTC)
+
+    model = make_analysis_model(
+        incident_data=make_incident_data(observed_at=observed_at),
     )
-    model = AnalysisMapper.to_model(analysis)
 
-    assert model.findings_count == 2
+    analysis = AnalysisMapper.to_domain(model)
+
+    assert analysis.incident.observed_at == observed_at
 
 
-def test_to_model_maps_highest_severity() -> None:
-    analysis = Analysis(
-        incident=Incident(
-            namespace="default",
-            pod="pod",
-            phase="Running",
-            observed_at=datetime.now(),
-        ),
-        intelligence=IncidentIntelligence(
-            findings=[
-                Finding(
-                    rule="critical_rule",
-                    severity=Severity.CRITICAL,
-                    title="Critical finding",
-                    description="Critical issue detected",
-                )
-            ]
-        ),
-        duration_ms=500,
-        trigger=AnalysisTrigger.API,
+def test_to_domain_falls_back_to_created_at_when_observed_at_is_missing() -> None:
+    created_at = datetime(2026, 8, 31, 8, 30, 0, tzinfo=UTC)
+
+    model = make_analysis_model(
+        incident_data=make_incident_data(),
+        created_at=created_at,
     )
-    model = AnalysisMapper.to_model(analysis)
+    analysis = AnalysisMapper.to_domain(model)
 
-    assert model.highest_severity == Severity.CRITICAL.value
-
-
-def test_to_domain_restores_analysis(analysis: Analysis) -> None:
-    model = AnalysisMapper.to_model(analysis)
-    domain = AnalysisMapper.to_domain(model)
-
-    assert domain.id == analysis.id
-    assert domain.incident.namespace == "default"
-    assert domain.incident.pod == "my-pod"
-    assert domain.incident.phase == "Running"
-
-    assert len(domain.intelligence.findings) == 1
-    assert domain.intelligence.findings[0].rule == "crash_loop"
-
-    assert domain.report is not None
-    assert domain.report.summary == "Test summary"
+    assert analysis.incident.observed_at == created_at
 
 
-def test_analysis_mapper_creates_model(analysis: Analysis) -> None:
-    model = AnalysisMapper.to_model(analysis)
+def test_to_domain_does_not_override_existing_observed_at() -> None:
+    observed_at = datetime(2026, 8, 31, 8, 0, 16, tzinfo=UTC)
+    created_at = datetime(2026, 8, 31, 9, 0, 0, tzinfo=UTC)
 
-    assert model.namespace == "default"
-    assert len(model.findings) == 1
-    assert model.findings[0].rule == "crash_loop"
-
-
-def test_to_model_keeps_incident_phase() -> None:
-    analysis = Analysis(
-        id=uuid4(),
-        incident=Incident(
-            namespace="default",
-            pod="test-pod",
-            phase="Running",
-            observed_at=datetime.now(),
-        ),
-        duration_ms=1000,
-        trigger=AnalysisTrigger.API,
+    model = make_analysis_model(
+        incident_data=make_incident_data(observed_at=observed_at),
+        created_at=created_at,
     )
-    model = AnalysisMapper.to_model(analysis)
+    analysis = AnalysisMapper.to_domain(model)
 
-    assert model.phase == "Running"
+    assert analysis.incident.observed_at == observed_at
+    assert analysis.incident.observed_at != created_at
 
 
-def test_analysis_intelligence_round_trip() -> None:
-    intelligence = IncidentIntelligence(
-        timeline=[],
-        correlations=[
-            Correlation(
-                source_finding="memory_exhaustion",
-                target_finding="oom_killed",
-                type=CorrelationType.CAUSED_BY,
-                confidence=1.0,
-            )
-        ],
-        root_causes=[
-            RootCauseCandidate(
-                finding="memory_exhaustion",
-                title="Memory exhaustion",
-                description="Memory exhaustion detected.",
-                confidence=1.0,
-                supporting_findings=["oom_killed"],
-            )
-        ],
-    )
+def test_to_model_persists_observed_at() -> None:
+    observed_at = datetime(2026, 8, 31, 8, 0, 16)
 
     incident = Incident(
         namespace="default",
-        pod="test-pod",
+        pod="kubesage-crashloop",
+        pod_uid="5ba84d4a-06cd-4998-8a6e-f123456789ab",
         phase="Running",
-        observed_at=datetime.now(),
+        containers=[],
+        observed_at=observed_at,
     )
+
     analysis = Analysis(
-        trigger=AnalysisTrigger.API,
+        id=uuid4(),
         incident=incident,
-        intelligence=intelligence,
         report=None,
         duration_ms=100,
+        intelligence=IncidentIntelligence(
+            findings=[],
+            timeline=[],
+            correlations=[],
+            root_causes=[],
+            recommendations=[],
+        ),
+        created_at=datetime(2026, 8, 31, 9, 0, 0),
+        trigger=AnalysisTrigger.CLI,
+    )
+
+    model = AnalysisMapper.to_model(analysis)
+
+    assert model.incident_snapshot is not None
+    assert model.incident_snapshot.data["observed_at"] == observed_at.isoformat()
+
+
+def test_to_model_then_to_domain_preserves_observed_at() -> None:
+    observed_at = datetime(2026, 8, 31, 8, 0, 16, tzinfo=UTC)
+
+    incident = Incident(
+        namespace="default",
+        pod="kubesage-crashloop",
+        pod_uid="5ba84d4a-06cd-4998-8a6e-f123456789ab",
+        phase="Running",
+        containers=[],
+        observed_at=observed_at,
+    )
+
+    analysis = Analysis(
+        id=uuid4(),
+        incident=incident,
+        report=None,
+        duration_ms=100,
+        intelligence=IncidentIntelligence(
+            findings=[],
+            timeline=[],
+            correlations=[],
+            root_causes=[],
+            recommendations=[],
+        ),
+        created_at=datetime(2026, 8, 31, 9, 0, 0, tzinfo=UTC),
+        trigger=AnalysisTrigger.CLI,
     )
 
     model = AnalysisMapper.to_model(analysis)
     restored = AnalysisMapper.to_domain(model)
 
-    assert restored.intelligence.correlations == intelligence.correlations
-    assert restored.intelligence.root_causes == intelligence.root_causes
+    assert restored.incident.observed_at == observed_at

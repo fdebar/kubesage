@@ -74,17 +74,8 @@ class AnalysisMapper:
     def to_domain(model: AnalysisModel) -> Analysis:
         """Convert an AnalysisModel to an Analysis."""
 
-        incident_data = (
-            model.incident_snapshot.data
-            if model.incident_snapshot is not None
-            else {
-                "namespace": model.namespace,
-                "pod": model.pod,
-                "pod_uid": model.pod_uid,
-                "phase": model.phase,
-                "observed_at": model.created_at,
-            }
-        )
+        incident_data = dict(model.incident_snapshot.data)
+        incident_data.setdefault("observed_at", model.created_at)
 
         findings = [FindingMapper.to_domain(finding) for finding in model.findings]
 
