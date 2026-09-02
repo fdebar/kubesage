@@ -5,7 +5,7 @@ import structlog
 from kubernetes import client
 from kubernetes.client import Configuration, V1Pod
 from kubernetes.client.exceptions import ApiException
-from opentelemetry import trace
+from opentelemetry.trace import Status, StatusCode, get_tracer
 
 from kubesage.models.cluster_info import ClusterInfo
 from kubesage.models.container import (
@@ -24,7 +24,7 @@ from kubesage.utils.kube_client import create_core_v1_api
 from kubesage.utils.resource_quantity import parse_cpu_quantity, parse_memory_quantity
 
 logger = structlog.get_logger()
-tracer = trace.get_tracer(__name__)
+tracer = get_tracer(__name__)
 
 
 class KubernetesService(KubernetesProvider):
@@ -46,14 +46,12 @@ class KubernetesService(KubernetesProvider):
                 span.set_attribute("k8s.pod.name", pod)
 
                 try:
-                    pod_info = self.v1.read_namespaced_pod(
-                        name=pod, namespace=namespace
-                    )
+                    pod_info = self.v1.read_namespaced_pod(pod, namespace)
                 except ApiException as exc:
                     span.record_exception(exc)
                     span.set_status(
-                        trace.Status(
-                            trace.StatusCode.ERROR,
+                        Status(
+                            StatusCode.ERROR,
                             f"Kubernetes API error: {exc.status}",
                         )
                     )
@@ -73,20 +71,24 @@ class KubernetesService(KubernetesProvider):
 
                     KUBERNETES_ERRORS.labels(reason="API Error").inc()
                     logger.error(
-                        "kubernetes_api_error", status=exc.status, reason=exc.reason
+                        "kubernetes_api_error",
+                        status=exc.status,
+                        reason=exc.reason,
                     )
 
                     return self._empty_snapshot(namespace, pod)
 
                 except Exception as exc:  # noqa: BLE001
                     span.record_exception(exc)
-                    span.set_status(trace.Status(trace.StatusCode.ERROR, str(exc)))
+                    span.set_status(Status(StatusCode.ERROR, str(exc)))
 
-                    KUBERNETES_ERRORS.labels(reason=str(exc)).inc()
+                    KUBERNETES_ERRORS.labels(reason="Unexpected Error").inc()
                     logger.warning(
                         "kubernetes_failed_to_collect_data",
                         namespace=namespace,
                         pod=pod,
+                        error_type=type(exc).__name__,
+                        error=str(exc),
                     )
                     return self._empty_snapshot(namespace, pod)
 
@@ -152,8 +154,8 @@ class KubernetesService(KubernetesProvider):
                 except ApiException as exc:
                     span.record_exception(exc)
                     span.set_status(
-                        trace.Status(
-                            trace.StatusCode.ERROR,
+                        Status(
+                            StatusCode.ERROR,
                             f"Kubernetes log API error: {exc.status}",
                         )
                     )
@@ -172,14 +174,15 @@ class KubernetesService(KubernetesProvider):
                         ) from None
                 except Exception as exc:  # noqa: BLE001
                     span.record_exception(exc)
-                    span.set_status(trace.Status(trace.StatusCode.ERROR, str(exc)))
+                    span.set_status(Status(StatusCode.ERROR, str(exc)))
 
                     logger.warning(
                         "kubernetes_failed_to_collect_logs",
                         namespace=namespace,
                         pod=pod,
                         container=container.name,
-                        reason=str(exc),
+                        error_type=type(exc).__name__,
+                        error=str(exc),
                     )
 
             return LogSnapshot(
@@ -242,8 +245,8 @@ class KubernetesService(KubernetesProvider):
             except ApiException as exc:
                 span.record_exception(exc)
                 span.set_status(
-                    trace.Status(
-                        trace.StatusCode.ERROR,
+                    Status(
+                        StatusCode.ERROR,
                         f"Kubernetes events API error: {exc.status}",
                     )
                 )
@@ -256,13 +259,14 @@ class KubernetesService(KubernetesProvider):
                 return []
             except Exception as exc:  # noqa: BLE001
                 span.record_exception(exc)
-                span.set_status(trace.Status(trace.StatusCode.ERROR, str(exc)))
+                span.set_status(Status(StatusCode.ERROR, str(exc)))
 
                 logger.warning(
                     "kubernetes_failed_to_collect_events",
                     namespace=namespace,
                     pod=pod,
-                    reason=str(exc),
+                    error_type=type(exc).__name__,
+                    error=str(exc),
                 )
 
                 return []
@@ -319,10 +323,7 @@ class KubernetesService(KubernetesProvider):
             pod_uid="",
             phase="Unknown",
             logs=LogSnapshot(source="kubernetes"),
-            containers=[],
-            events=[],
             resources=PodResources(containers=[]),
-            metrics=None,
         )
 
     def get_cluster_info(self) -> ClusterInfo:
