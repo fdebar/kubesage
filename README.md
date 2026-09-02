@@ -88,6 +88,7 @@ Investigating such incidents traditionally requires switching between kubectl, l
 
 KubeSage brings these signals together into a single analysis workflow.
 
+```text
                  Kubernetes
                      │
         ┌────────────┼────────────┐
@@ -96,26 +97,34 @@ KubeSage brings these signals together into a single analysis workflow.
         │            │            │
         └────────────┼────────────┘
                      │
-               ┌─────▼─────┐
-               │  KubeSage │
-               │  Analysis │
-               └─────┬─────┘
-                     │
+              Observability
         ┌────────────┼────────────┐
         │            │            │
     Prometheus      Loki        Tempo
         │            │            │
         └────────────┼────────────┘
                      │
-             Diagnostic Engine
-                     │
-             Findings Correlation
-                     │
-                AI Analysis
+              IncidentBuilder
                      │
                      ▼
-            Incident Explanation
+              DiagnosticEngine
+                     │
+                     ▼
+             Findings Correlation
+                     │
+                     ▼
+           Incident Intelligence
+                     │
+                     ▼
+             AIReportGenerator
+                     │
+                     ▼
+              AI / LLM Analysis
+                     │
+                     ▼
+           Incident Explanation
             + Recommendations
+```
 
 The AI layer is not intended to replace deterministic diagnostics.
 
@@ -198,42 +207,38 @@ A typical KubeSage analysis follows this workflow:
              │
              ▼
 ┌─────────────────────────┐
-│ Collect Kubernetes Data │
+│     IncidentBuilder     │
 ├─────────────────────────┤
 │ • Pod information       │
-│ • Events                │
+│ • Kubernetes Events     │
 │ • Application logs      │
+│ • Prometheus metrics    │
+│ • Container snapshots   │
+└────────────┬────────────┘
+             │
+             ▼
+┌─────────────────────────┐
+│     DiagnosticEngine    │
+├─────────────────────────┤
+│ • Rule evaluation       │
+│ • Finding generation    │
+│ • Severity              │
+│ • Evidence metrics      │
 └────────────┬────────────┘
              │
              ▼
 ┌─────────────────────────────┐
-│ Collect Observability Data  │
+│    Incident Intelligence    │
 ├─────────────────────────────┤
-│ • Prometheus metrics        │
-│ • Loki logs                 │
-│ • Tempo traces              │
+│ • Timeline                  │
+│ • Finding correlations      │
+│ • Root-cause candidates     │
+│ • Context enrichment        │
 └────────────┬────────────────┘
              │
              ▼
 ┌─────────────────────────┐
-│   Diagnostic Engine     │
-├─────────────────────────┤
-│ • Rule evaluation       │
-│ • Finding generation    │
-└────────────┬────────────┘
-             │
-             ▼
-┌─────────────────────────┐
-│  Finding Correlation    │
-├─────────────────────────┤
-│ • Related findings      │
-│ • Evidence              │
-│ • Confidence            │
-└────────────┬────────────┘
-             │
-             ▼
-┌─────────────────────────┐
-│      AI Analysis        │
+│   AIReportGenerator     │
 ├─────────────────────────┤
 │ • Context construction  │
 │ • Prompt generation     │
@@ -413,23 +418,42 @@ KubeSage uses an observability stack based on the Grafana ecosystem and OpenTele
                          ▼
                       Grafana
 
-KubeSage itself is also instrumented using OpenTelemetry.
+Kubesage itself is also instrumented using OpenTelemetry.
 
-Important operations generate spans such as:
+The main analysis execution trace is structured as:
 
 ```text
 analysis.execute
-├── kubernetes.get_pod
-├── kubernetes.get_events
-├── kubernetes.get_logs
-├── prometheus.get_cpu_metrics
-├── prometheus.get_memory_metrics
-├── rules.crashloop
-├── rules.oomkilled
-├── findings.correlate
-├── prompt.build
-├── llm.generate_report
-└── database.save_analysis
+├── analysis.incident.collect
+├── analysis.rules.engine.analyze
+├── analysis.incident_intelligence.build
+└── analysis.ai_report.generate
+    └── llm.generate_report
+```
+
+```text
+analysis.trigger
+k8s.namespace
+k8s.pod.name
+```
+
+Child spans expose operation-specific information such as:
+
+```text
+analysis.rules.engine.analyze
+└── analysis.findings.count
+|
+analysis.incident_intelligence.build
+├── analysis.findings.count
+├── incident_intelligence.timeline.count
+├── incident_intelligence.correlations.count
+└── incident_intelligence.root_causes.count
+|
+llm.generate_report
+├── llm.model
+├── llm.tokens.input
+├── llm.tokens.output
+└── llm.tokens.total
 ```
 
 This makes it possible to investigate not only the Kubernetes incident itself, but also the execution of KubeSage's analysis pipeline.
@@ -500,8 +524,8 @@ kubectl top nodes
 Clone the repository:
 
 ```bash
-git clone https://github.com/fdebar/KubeSage.git
-cd KubeSage
+git clone https://github.com/fdebar/kubesage.git
+cd kubesage
 ```
 
 Create a virtual environment:
@@ -528,7 +552,7 @@ The API is then available locally.
 Run the CLI:
 
 ```bash
-kubesage analyze --namespace default -pod ai-demo-app
+kubesage analyze --namespace default --pod ai-demo-app
 ```
 
 ---
@@ -552,6 +576,11 @@ TEMPO_URL=http://localhost:3200
 
 KUBERNETES_NAMESPACE=default
 LOG_LEVEL=INFO
+
+DATABASE_HOST=localhost
+DATABASE_NAME=kubesage
+DATABASE_USER=kubesage
+DATABASE_PASSWORD=kubesage
 ```
 
 The exact configuration depends on the deployment environment and enabled integrations.
@@ -639,10 +668,16 @@ The application Helm chart and environment-specific configuration are intentiona
 
 # 🧪 Testing
 
-Run tests:
+Run the test suite:
 
 ```bash
-pytest
+make test
+```
+
+Or directly:
+
+```bash
+uv run pytest
 ```
 
 On macOS:
@@ -658,31 +693,53 @@ python -m pytest
 Format:
 
 ```bash
-ruff format .
+make format
 ```
-
 Lint:
 
 ```bash
-ruff check .
+make lint
 ```
 
 Type checking:
 
 ```bash
-mypy .
+make typecheck
 ```
+
+Run the full quality suite:
+
+```bash
+make quality
+```
+
+The quality suite runs:
+
+- Ruff formatting
+- Ruff linting
+- MyPy
+- Pytest
 
 Additional development commands are available through the Makefile:
 
 ```bash
+make install
 make test
 make lint
 make format
-make check
-make fix
-make dev-run
-make dev-stop
+make typecheck
+make quality
+make security
+make ci
+make helm-lint
+make helm-template
+make kubeconform
+make package
+make db-upgrade
+make db-revision
+make db-current
+make db-history
+make db-downgrade
 ```
 
 ---
@@ -754,7 +811,7 @@ Grafana remains useful for low-level infrastructure and observability exploratio
 | Tempo integration | ✅ |
 | Grafana Alloy | ✅ |
 | OpenTelemetry instrumentation | ✅ |
-| Distributed analysis tracing | 🚧 |
+| Distributed analysis tracing | ✅ |
 | React dashboard | ✅ |
 | Analysis history | ✅ |
 | Helm deployment | ✅ |
