@@ -36,10 +36,6 @@ class IncidentService:
         start = time.perf_counter()
 
         with tracer.start_as_current_span("analysis.incident.collect") as span:
-            span.set_attribute("k8s.namespace", namespace)
-            span.set_attribute("k8s.pod.name", pod)
-            span.set_attribute("analysis.trigger", trigger.value)
-
             incident = self.incident_builder.collect(namespace, pod)
 
             span.set_attribute("k8s.containers.count", len(incident.containers))
@@ -79,10 +75,6 @@ class IncidentService:
                 )
 
         with tracer.start_as_current_span("analysis.rules.engine.analyze") as span:
-            span.set_attribute("k8s.namespace", namespace)
-            span.set_attribute("k8s.pod.name", pod)
-            span.set_attribute("analysis.trigger", trigger.value)
-
             findings = self.engine.analyze(incident)
 
             span.set_attribute("analysis.findings.count", len(findings))
@@ -90,11 +82,6 @@ class IncidentService:
         with tracer.start_as_current_span(
             "analysis.incident_intelligence.build"
         ) as span:
-            span.set_attribute("k8s.namespace", namespace)
-            span.set_attribute("k8s.pod.name", pod)
-            span.set_attribute("analysis.trigger", trigger.value)
-            span.set_attribute("analysis.findings.count", len(findings))
-
             intelligence = self.incident_intelligence_builder.build(
                 incident,
                 findings,
@@ -125,10 +112,6 @@ class IncidentService:
             )
 
         with tracer.start_as_current_span("analysis.ai_report.generate") as span:
-            span.set_attribute("k8s.namespace", namespace)
-            span.set_attribute("k8s.pod.name", pod)
-            span.set_attribute("analysis.trigger", trigger.value)
-
             report = self.ai_report_generator.generate(incident, intelligence)
 
         logger.info("analysis.completed", namespace=namespace, pod=pod, trigger=trigger)
