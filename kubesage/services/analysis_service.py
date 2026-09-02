@@ -38,7 +38,7 @@ class AnalysisService:
 
                 return analysis
 
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 span.record_exception(exc)
                 span.set_status(trace.Status(trace.StatusCode.ERROR, str(exc)))
 

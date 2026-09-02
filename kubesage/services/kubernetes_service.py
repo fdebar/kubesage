@@ -78,7 +78,7 @@ class KubernetesService(KubernetesProvider):
 
                     return self._empty_snapshot(namespace, pod)
 
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     span.record_exception(exc)
                     span.set_status(Status(StatusCode.ERROR, str(exc)))
 
@@ -172,7 +172,7 @@ class KubernetesService(KubernetesProvider):
                         raise PodNotFoundError(
                             f"Pod '{pod}' not found in namespace '{namespace}'."
                         ) from None
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     span.record_exception(exc)
                     span.set_status(Status(StatusCode.ERROR, str(exc)))
 
@@ -257,7 +257,7 @@ class KubernetesService(KubernetesProvider):
                 )
 
                 return []
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 span.record_exception(exc)
                 span.set_status(Status(StatusCode.ERROR, str(exc)))
 

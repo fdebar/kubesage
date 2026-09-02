@@ -7,9 +7,9 @@ from .models import (
 from .session import engine
 
 __all__ = [
-    "Base",
-    "engine",
-    "AnalysisModel",
-    "FindingModel",
     "AIReportModel",
+    "AnalysisModel",
+    "Base",
+    "FindingModel",
+    "engine",
 ]

@@ -1,3 +1,4 @@
+import re
 from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -39,7 +40,8 @@ def test_collect_pod_not_found(
 
     service = KubernetesService()
     with pytest.raises(
-        PodNotFoundError, match="Pod 'my-pod' not found in namespace 'default'."
+        PodNotFoundError,
+        match=re.escape("Pod 'my-pod' not found in namespace 'default'."),
     ):
         service.collect("default", "my-pod")
 
@@ -247,7 +249,7 @@ def test_collect_logs_raises_pod_not_found(
 
     with pytest.raises(
         PodNotFoundError,
-        match="Pod 'my-pod' not found in namespace 'default'.",
+        match=re.escape("Pod 'my-pod' not found in namespace 'default'."),
     ):
         service._collect_logs("default", "my-pod", [MagicMock(name="web")])
 

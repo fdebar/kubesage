@@ -260,7 +260,7 @@ class PrometheusService:
             for name, future in futures.items():
                 try:
                     results[name] = future.result()
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     logger.error(
                         "prometheus_metric_collection_failed",
                         metric=name,

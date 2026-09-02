@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 from kubesage.analyzers.rules.base import BaseRule, RuleCategory
 from kubesage.models.evidence import Evidence, EvidenceType
 from kubesage.models.finding import (
@@ -14,7 +16,7 @@ class ImagePullRule(BaseRule):
     description = "The container image cannot be downloaded."
     category = RuleCategory.CONTAINER
 
-    WAITING_REASONS = {
+    WAITING_REASONS: ClassVar[set[str]] = {
         "ImagePullBackOff",
         "ErrImagePull",
     }

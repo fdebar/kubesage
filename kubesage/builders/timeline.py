@@ -206,14 +206,10 @@ class TimelineBuilder:
     def _log_severity(entry: LogEntry) -> Severity | None:
         message = entry.message.lstrip().upper()
 
-        if (
-            message.startswith("FATAL")
-            or message.startswith("CRITICAL")
-            or message.startswith("ERROR")
-        ):
+        if message.startswith(("FATAL", "CRITICAL", "ERROR")):
             return Severity.ERROR
 
-        if message.startswith("WARN") or message.startswith("WARNING"):
+        if message.startswith(("WARN", "WARNING")):
             return Severity.WARNING
 
         return None

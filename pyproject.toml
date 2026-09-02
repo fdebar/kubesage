@@ -59,7 +59,7 @@ exclude = [
 ]
 
 [tool.ruff.lint]
-select = ["B", "E", "F", "I", "UP"]
+select = ["B", "E", "F", "I", "UP", "SIM", "RUF", "C4", "PIE"]
 
 [tool.ruff.lint.flake8-bugbear]
 extend-immutable-calls = ["fastapi.Depends", "fastapi.params.Depends"]

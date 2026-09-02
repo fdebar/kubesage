@@ -176,7 +176,7 @@ def test_build_ignores_events_without_timestamp() -> None:
         assert event.source == TimelineEventSource.PROMETHEUS
         assert event.timestamp == change.timestamp
         assert event.severity == Severity.INFO
-        assert event.metadata["container"] if "container" in event.metadata else True
+        assert event.metadata.get("container", True)
 
     def test_build_includes_metric_changes() -> None:
         incident = Incident(
