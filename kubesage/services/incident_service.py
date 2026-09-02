@@ -102,7 +102,6 @@ class IncidentService:
                     ),
                     incident=incident,
                     intelligence=IncidentIntelligence(),
-                    findings=[],
                     duration_ms=int((time.perf_counter() - start) * 1000),
                     trigger=trigger,
                 )
@@ -147,7 +146,6 @@ class IncidentService:
 
             return Analysis(
                 incident=incident,
-                findings=findings,
                 report=None,
                 duration_ms=int((time.perf_counter() - start) * 1000),
                 trigger=trigger,
@@ -179,7 +177,6 @@ class IncidentService:
 
         return Analysis(
             incident=incident,
-            findings=findings,
             report=report,
             intelligence=intelligence,
             duration_ms=int((time.perf_counter() - start) * 1000),

@@ -17,9 +17,9 @@ def build_analysis(report: AIReport | None = None) -> Analysis:
             pod_uid="test-pod-uid",
             observed_at=datetime.now(UTC),
         ),
-        findings=[],
         intelligence=IncidentIntelligence(
             correlations=[],
+            findings=[],
             root_causes=[],
             recommendations=[],
         ),

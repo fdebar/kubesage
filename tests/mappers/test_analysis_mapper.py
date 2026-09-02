@@ -27,20 +27,22 @@ def analysis() -> Analysis:
         ),
         duration_ms=1000,
         report=AIReport(summary="Test summary", root_cause="Test root cause"),
-        findings=[
-            Finding(
-                rule="crash_loop",
-                severity=Severity.HIGH,
-                title="Container restarting",
-                description="Container restarted 10 times",
-                resource=ResourceRef(
-                    api_version="v1",
-                    kind="Pod",
-                    namespace="default",
-                    name="my-pod",
-                ),
-            )
-        ],
+        intelligence=IncidentIntelligence(
+            findings=[
+                Finding(
+                    rule="crash_loop",
+                    severity=Severity.HIGH,
+                    title="Container restarting",
+                    description="Container restarted 10 times",
+                    resource=ResourceRef(
+                        api_version="v1",
+                        kind="Pod",
+                        namespace="default",
+                        name="my-pod",
+                    ),
+                )
+            ]
+        ),
         trigger=AnalysisTrigger.API,
     )
 
@@ -76,7 +78,6 @@ def test_to_model_without_report() -> None:
             observed_at=datetime.now(),
         ),
         duration_ms=500,
-        findings=[],
         trigger=AnalysisTrigger.API,
     )
     model = AnalysisMapper.to_model(analysis)
@@ -93,20 +94,22 @@ def test_to_model_calculates_findings_count() -> None:
             phase="Running",
             observed_at=datetime.now(),
         ),
-        findings=[
-            Finding(
-                rule="rule1",
-                severity=Severity.HIGH,
-                title="Finding 1",
-                description="desc",
-            ),
-            Finding(
-                rule="rule2",
-                severity=Severity.LOW,
-                title="Finding 2",
-                description="desc",
-            ),
-        ],
+        intelligence=IncidentIntelligence(
+            findings=[
+                Finding(
+                    rule="rule1",
+                    severity=Severity.HIGH,
+                    title="Finding 1",
+                    description="desc",
+                ),
+                Finding(
+                    rule="rule2",
+                    severity=Severity.LOW,
+                    title="Finding 2",
+                    description="desc",
+                ),
+            ]
+        ),
         duration_ms=500,
         trigger=AnalysisTrigger.API,
     )
@@ -123,14 +126,16 @@ def test_to_model_maps_highest_severity() -> None:
             phase="Running",
             observed_at=datetime.now(),
         ),
-        findings=[
-            Finding(
-                rule="critical_rule",
-                severity=Severity.CRITICAL,
-                title="Critical finding",
-                description="Critical issue detected",
-            )
-        ],
+        intelligence=IncidentIntelligence(
+            findings=[
+                Finding(
+                    rule="critical_rule",
+                    severity=Severity.CRITICAL,
+                    title="Critical finding",
+                    description="Critical issue detected",
+                )
+            ]
+        ),
         duration_ms=500,
         trigger=AnalysisTrigger.API,
     )
@@ -148,8 +153,8 @@ def test_to_domain_restores_analysis(analysis: Analysis) -> None:
     assert domain.incident.pod == "my-pod"
     assert domain.incident.phase == "Running"
 
-    assert len(domain.findings) == 1
-    assert domain.findings[0].rule == "crash_loop"
+    assert len(domain.intelligence.findings) == 1
+    assert domain.intelligence.findings[0].rule == "crash_loop"
 
     assert domain.report is not None
     assert domain.report.summary == "Test summary"
@@ -172,7 +177,6 @@ def test_to_model_keeps_incident_phase() -> None:
             phase="Running",
             observed_at=datetime.now(),
         ),
-        findings=[],
         duration_ms=1000,
         trigger=AnalysisTrigger.API,
     )
@@ -183,7 +187,6 @@ def test_to_model_keeps_incident_phase() -> None:
 
 def test_analysis_intelligence_round_trip() -> None:
     intelligence = IncidentIntelligence(
-        findings=[],
         timeline=[],
         correlations=[
             Correlation(
@@ -213,7 +216,6 @@ def test_analysis_intelligence_round_trip() -> None:
     analysis = Analysis(
         trigger=AnalysisTrigger.API,
         incident=incident,
-        findings=[],
         intelligence=intelligence,
         report=None,
         duration_ms=100,

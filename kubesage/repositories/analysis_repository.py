@@ -25,7 +25,9 @@ class AnalysisRepository:
     def save(self, analysis: Analysis) -> None:
         with tracer.start_as_current_span("database.save_analysis") as span:
             try:
-                span.set_attribute("analysis.findings.count", len(analysis.findings))
+                span.set_attribute(
+                    "analysis.findings.count", len(analysis.intelligence.findings)
+                )
                 span.set_attribute("analysis.has_report", analysis.report is not None)
 
                 model = AnalysisMapper.to_model(analysis)

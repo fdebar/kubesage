@@ -40,14 +40,14 @@ class AnalysisMapper:
                 analysis.highest_severity.value if analysis.highest_severity else None
             ),
             phase=analysis.incident.phase,
-            findings_count=len(analysis.findings),
+            findings_count=len(analysis.intelligence.findings),
             created_at=analysis.created_at,
             trigger=analysis.trigger.value,
         )
 
         model.findings = [
             FindingMapper.to_model(finding, str(analysis.id))
-            for finding in analysis.findings
+            for finding in analysis.intelligence.findings
         ]
 
         model.incident_snapshot = IncidentSnapshotModel(
@@ -91,7 +91,6 @@ class AnalysisMapper:
         return Analysis(
             id=UUID(model.id),
             incident=Incident.model_validate(incident_data),
-            findings=findings,
             report=(AIReportMapper.to_domain(model.report) if model.report else None),
             duration_ms=model.duration_ms,
             intelligence=IncidentIntelligence(
@@ -114,7 +113,7 @@ class AnalysisMapper:
         """Convert an Analysis to an AnalysisResponse."""
 
         findings = sorted(
-            analysis.findings,
+            analysis.intelligence.findings,
             key=lambda finding: (
                 -finding.severity.weight,
                 -finding.priority,

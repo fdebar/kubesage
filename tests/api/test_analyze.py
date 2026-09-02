@@ -35,7 +35,6 @@ class FakeIncidentService:
                 phase="Pending",
                 observed_at=datetime.now(),
             ),
-            findings=[],
             report=AIReport(
                 summary="Pod is failing",
                 root_cause="Redis unavailable",

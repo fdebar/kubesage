@@ -141,7 +141,7 @@ def test_analysis_with_findings_calls_ai() -> None:
         trigger=AnalysisTrigger.API,
     )
 
-    assert result.findings == [finding]
+    assert result.intelligence.findings == [finding]
     assert result.report == report
     assert result.trigger == AnalysisTrigger.API
 
@@ -157,7 +157,7 @@ def test_analysis_without_findings_skips_ai() -> None:
         trigger=AnalysisTrigger.WATCHER,
     )
 
-    assert result.findings == []
+    assert result.intelligence.findings == []
     assert result.report is None
 
     mocks["ai"].analyze.assert_not_called()

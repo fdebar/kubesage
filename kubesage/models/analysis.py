@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, Field
 
 from kubesage.models.ai_report import AIReport
-from kubesage.models.finding import Finding, Severity
+from kubesage.models.finding import Severity
 from kubesage.models.incident import Incident
 from kubesage.models.incident_intelligence import IncidentIntelligence
 
@@ -22,7 +22,6 @@ class Analysis(BaseModel):
     id: UUID = Field(default_factory=uuid4)
     trigger: AnalysisTrigger
     incident: Incident
-    findings: list[Finding]
     intelligence: IncidentIntelligence = Field(
         default_factory=IncidentIntelligence,
     )
@@ -32,7 +31,7 @@ class Analysis(BaseModel):
 
     @property
     def highest_severity(self) -> Severity | None:
-        if not self.findings:
+        if not self.intelligence.findings:
             return None
 
-        return max(self.findings, key=lambda f: f.severity.weight).severity
+        return max(self.intelligence.findings, key=lambda f: f.severity.weight).severity
