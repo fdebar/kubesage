@@ -19,6 +19,7 @@ from kubesage.models.container import ContainerSnapshot
 from kubesage.models.finding import Finding, Severity
 from kubesage.models.incident import Incident
 from kubesage.repositories.analysis_repository import AnalysisRepository
+from kubesage.services.ai_report_generator import AIReportGenerator
 from kubesage.services.ai_service import AIService
 from kubesage.services.analysis_service import AnalysisService
 from kubesage.services.incident_service import IncidentService
@@ -205,14 +206,16 @@ def test_incident_build_is_child_of_analysis_execute(
     builder.collect.return_value = incident
 
     incident_service = IncidentService(
+        ai_report_generator=AIReportGenerator(
+            ai=MagicMock(),
+            context_builder=MagicMock(),
+            prompt_builder=MagicMock(),
+        ),
         kubernetes=MagicMock(),
         prometheus=MagicMock(),
         metrics=MagicMock(),
         loki=MagicMock(),
-        ai=MagicMock(),
         engine=MagicMock(),
-        ai_context_builder=MagicMock(),
-        prompt_builder=MagicMock(),
         container_snapshot_builder=MagicMock(),
         incident_intelligence_builder=IncidentIntelligenceBuilder(),
     )
@@ -360,14 +363,16 @@ def test_analysis_execute_trace_id_is_shared_with_real_incident_service(
     builder.collect.return_value = incident
 
     incident_service = IncidentService(
+        ai_report_generator=AIReportGenerator(
+            ai=MagicMock(),
+            context_builder=MagicMock(),
+            prompt_builder=MagicMock(),
+        ),
         kubernetes=MagicMock(),
         prometheus=MagicMock(),
         metrics=MagicMock(),
         loki=MagicMock(),
-        ai=MagicMock(),
         engine=MagicMock(),
-        ai_context_builder=MagicMock(),
-        prompt_builder=MagicMock(),
         container_snapshot_builder=MagicMock(),
         incident_intelligence_builder=IncidentIntelligenceBuilder(),
     )
@@ -413,14 +418,16 @@ def test_analysis_execute_produces_complete_trace(
     engine.analyze.return_value = []
 
     incident_service = IncidentService(
+        ai_report_generator=AIReportGenerator(
+            ai=MagicMock(),
+            context_builder=MagicMock(),
+            prompt_builder=MagicMock(),
+        ),
         kubernetes=MagicMock(),
         prometheus=MagicMock(),
         metrics=MagicMock(),
         loki=MagicMock(),
-        ai=MagicMock(),
         engine=engine,
-        ai_context_builder=MagicMock(),
-        prompt_builder=MagicMock(),
         container_snapshot_builder=MagicMock(),
         incident_intelligence_builder=IncidentIntelligenceBuilder(),
     )
@@ -478,14 +485,16 @@ def test_database_save_analysis_is_child_of_analysis_execute(
     engine.analyze.return_value = []
 
     incident_service = IncidentService(
+        ai_report_generator=AIReportGenerator(
+            ai=MagicMock(),
+            context_builder=MagicMock(),
+            prompt_builder=MagicMock(),
+        ),
         kubernetes=MagicMock(),
         prometheus=MagicMock(),
         metrics=MagicMock(),
         loki=MagicMock(),
-        ai=MagicMock(),
         engine=engine,
-        ai_context_builder=MagicMock(),
-        prompt_builder=MagicMock(),
         container_snapshot_builder=MagicMock(),
         incident_intelligence_builder=IncidentIntelligenceBuilder(),
     )
@@ -538,14 +547,16 @@ def test_deep_error_is_recorded_on_analysis_execute(
     engine.analyze.side_effect = RuntimeError("Rules engine failed")
 
     incident_service = IncidentService(
+        ai_report_generator=AIReportGenerator(
+            ai=MagicMock(),
+            context_builder=MagicMock(),
+            prompt_builder=MagicMock(),
+        ),
         kubernetes=MagicMock(),
         prometheus=MagicMock(),
         metrics=MagicMock(),
         loki=MagicMock(),
-        ai=MagicMock(),
         engine=engine,
-        ai_context_builder=MagicMock(),
-        prompt_builder=MagicMock(),
         container_snapshot_builder=MagicMock(),
         incident_intelligence_builder=IncidentIntelligenceBuilder(),
     )
@@ -648,14 +659,16 @@ def test_analysis_execute_contains_complete_ai_trace(
     ai = AIService(provider)
 
     incident_service = IncidentService(
+        ai_report_generator=AIReportGenerator(
+            ai=ai,
+            context_builder=MagicMock(),
+            prompt_builder=MagicMock(),
+        ),
         kubernetes=MagicMock(),
         prometheus=MagicMock(),
         metrics=MagicMock(),
         loki=MagicMock(),
-        ai=ai,
         engine=engine,
-        ai_context_builder=ai_context_builder,
-        prompt_builder=prompt_builder,
         container_snapshot_builder=MagicMock(),
         incident_intelligence_builder=IncidentIntelligenceBuilder(),
     )
@@ -671,33 +684,23 @@ def test_analysis_execute_contains_complete_ai_trace(
         analysis_service.analyze("default", "my-pod", AnalysisTrigger.API)
 
     execute_span = get_span(span_exporter, "analysis.execute")
-    ai_context_span = get_span(span_exporter, "analysis.ai_context.build")
-    ai_prompt_span = get_span(span_exporter, "analysis.ai_prompt.build")
-    ai_analyze_span = get_span(span_exporter, "analysis.ai.analyze")
+    ai_report_generate_span = get_span(span_exporter, "analysis.ai_report.generate")
     llm_span = get_span(span_exporter, "llm.generate_report")
     database_span = get_span(span_exporter, "database.save_analysis")
 
     trace_id = execute_span.context.trace_id
     for span in (
-        ai_context_span,
-        ai_prompt_span,
-        ai_analyze_span,
+        ai_report_generate_span,
         llm_span,
         database_span,
     ):
         assert span.context.trace_id == trace_id
 
-    assert ai_context_span.parent is not None
-    assert ai_context_span.parent.span_id == execute_span.context.span_id
-
-    assert ai_prompt_span.parent is not None
-    assert ai_prompt_span.parent.span_id == execute_span.context.span_id
-
-    assert ai_analyze_span.parent is not None
-    assert ai_analyze_span.parent.span_id == execute_span.context.span_id
+    assert ai_report_generate_span.parent is not None
+    assert ai_report_generate_span.parent.span_id == execute_span.context.span_id
 
     assert llm_span.parent is not None
-    assert llm_span.parent.span_id == ai_analyze_span.context.span_id
+    assert llm_span.parent.span_id == ai_report_generate_span.context.span_id
 
     assert database_span.parent is not None
     assert database_span.parent.span_id == execute_span.context.span_id

@@ -13,6 +13,7 @@ from kubesage.database.health import (
 )
 from kubesage.observability import setup_logging
 from kubesage.repositories.analysis_repository import AnalysisRepository
+from kubesage.services.ai_report_generator import AIReportGenerator
 from kubesage.services.ai_service import AIService
 from kubesage.services.analysis_service import AnalysisService
 from kubesage.services.incident_service import IncidentService
@@ -28,14 +29,16 @@ def create_incident_service() -> IncidentService:
     loki = LokiService() if settings.loki_url else None
 
     return IncidentService(
+        ai_report_generator=AIReportGenerator(
+            ai=AIService(create_ai_provider(settings=settings)),
+            context_builder=AIContextBuilder(),
+            prompt_builder=PromptBuilder(),
+        ),
         kubernetes=KubernetesService(),
         prometheus=prometheus,
         loki=loki,
         metrics=MetricsService(),
-        ai=AIService(create_ai_provider(settings=settings)),
         engine=DiagnosticEngine(),
-        ai_context_builder=AIContextBuilder(),
-        prompt_builder=PromptBuilder(),
         container_snapshot_builder=ContainerSnapshotBuilder(),
         incident_intelligence_builder=IncidentIntelligenceBuilder(),
     )

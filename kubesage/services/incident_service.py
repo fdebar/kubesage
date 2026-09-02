@@ -4,7 +4,6 @@ import structlog
 from opentelemetry import trace
 
 from kubesage.analyzers.engine import DiagnosticEngine
-from kubesage.builders.context.ai_context_builder import AIContextBuilder
 from kubesage.builders.context.container_snapshot_builder import (
     ContainerSnapshotBuilder,
 )
@@ -12,11 +11,10 @@ from kubesage.builders.context.incident_builder import IncidentBuilder
 from kubesage.builders.incident_intelligence_builder import (
     IncidentIntelligenceBuilder,
 )
-from kubesage.builders.prompt.prompt_builder import PromptBuilder
 from kubesage.models.ai_report import AIReport
 from kubesage.models.analysis import Analysis, AnalysisTrigger
 from kubesage.models.incident_intelligence import IncidentIntelligence
-from kubesage.services.ai_service import AIService
+from kubesage.services.ai_report_generator import AIReportGenerator
 from kubesage.services.kubernetes_service import KubernetesService
 from kubesage.services.loki_service import LokiService
 from kubesage.services.metrics_service import MetricsService
@@ -29,14 +27,12 @@ logger = structlog.get_logger()
 class IncidentService:
     def __init__(
         self,
+        ai_report_generator: AIReportGenerator,
         kubernetes: KubernetesService,
         prometheus: PrometheusService | None,
         metrics: MetricsService,
         loki: LokiService | None,
-        ai: AIService,
         engine: DiagnosticEngine,
-        ai_context_builder: AIContextBuilder,
-        prompt_builder: PromptBuilder,
         container_snapshot_builder: ContainerSnapshotBuilder,
         incident_intelligence_builder: IncidentIntelligenceBuilder,
     ) -> None:
@@ -44,12 +40,10 @@ class IncidentService:
         self.prometheus = prometheus
         self.metrics = metrics
         self.loki = loki
-        self.ai = ai
         self.engine = engine
-        self.ai_context_builder = ai_context_builder
-        self.prompt_builder = prompt_builder
         self.container_snapshot_builder = container_snapshot_builder
         self.incident_intelligence_builder = incident_intelligence_builder
+        self.ai_report_generator = ai_report_generator
 
     def analyze(self, namespace: str, pod: str, trigger: AnalysisTrigger) -> Analysis:
         logger.info("analysis.started", namespace=namespace, pod=pod, trigger=trigger)
@@ -152,26 +146,12 @@ class IncidentService:
                 intelligence=intelligence,
             )
 
-        with tracer.start_as_current_span("analysis.ai_context.build") as span:
+        with tracer.start_as_current_span("analysis.ai_report.generate") as span:
             span.set_attribute("k8s.namespace", namespace)
             span.set_attribute("k8s.pod.name", pod)
             span.set_attribute("analysis.trigger", trigger.value)
 
-            context = self.ai_context_builder.build(incident, intelligence)
-
-        with tracer.start_as_current_span("analysis.ai_prompt.build") as span:
-            span.set_attribute("k8s.namespace", namespace)
-            span.set_attribute("k8s.pod.name", pod)
-            span.set_attribute("analysis.trigger", trigger.value)
-
-            prompt = self.prompt_builder.build(context)
-
-        with tracer.start_as_current_span("analysis.ai.analyze") as span:
-            span.set_attribute("k8s.namespace", namespace)
-            span.set_attribute("k8s.pod.name", pod)
-            span.set_attribute("analysis.trigger", trigger.value)
-
-            report = self.ai.analyze(prompt)
+            report = self.ai_report_generator.generate(incident, intelligence)
 
         logger.info("analysis.completed", namespace=namespace, pod=pod, trigger=trigger)
 

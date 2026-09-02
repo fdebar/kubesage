@@ -3,12 +3,10 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 from kubesage.analyzers.engine import DiagnosticEngine
-from kubesage.builders.context.ai_context_builder import AIContextBuilder
 from kubesage.builders.context.container_snapshot_builder import (
     ContainerSnapshotBuilder,
 )
 from kubesage.builders.incident_intelligence_builder import IncidentIntelligenceBuilder
-from kubesage.builders.prompt.prompt_builder import PromptBuilder
 from kubesage.models.ai_report import AIReport
 from kubesage.models.analysis import AnalysisTrigger
 from kubesage.models.container import ContainerSnapshot
@@ -17,7 +15,7 @@ from kubesage.models.incident import Incident
 from kubesage.models.incident_intelligence import IncidentIntelligence
 from kubesage.models.log import LogSnapshot
 from kubesage.models.prometheus import PrometheusResourceUsage
-from kubesage.services.ai_service import AIService
+from kubesage.services.ai_report_generator import AIReportGenerator
 from kubesage.services.incident_service import IncidentService
 from kubesage.services.kubernetes_service import KubernetesService
 from kubesage.services.loki_service import LokiService
@@ -63,10 +61,7 @@ def build_service(
     prometheus = Mock(spec=PrometheusService)
     metrics = Mock(spec=MetricsService)
     loki = Mock(spec=LokiService)
-    ai = Mock(spec=AIService)
     engine = Mock(spec=DiagnosticEngine)
-    ai_context_builder = Mock(spec=AIContextBuilder)
-    prompt_builder = Mock(spec=PromptBuilder)
     container_snapshot_builder = Mock(
         spec=ContainerSnapshotBuilder,
     )
@@ -103,24 +98,22 @@ def build_service(
         root_causes=[],
     )
 
+    ai_report_generator = Mock(spec=AIReportGenerator)
+
     service = IncidentService(
+        ai_report_generator=ai_report_generator,
         kubernetes=kubernetes,
         prometheus=prometheus,
         metrics=metrics,
         loki=loki,
-        ai=ai,
         engine=engine,
-        ai_context_builder=ai_context_builder,
-        prompt_builder=prompt_builder,
         container_snapshot_builder=container_snapshot_builder,
         incident_intelligence_builder=incident_intelligence_builder,
     )
 
     return service, {
-        "ai": ai,
+        "ai_report_generator": ai_report_generator,
         "engine": engine,
-        "ai_context_builder": ai_context_builder,
-        "prompt_builder": prompt_builder,
         "incident_intelligence_builder": incident_intelligence_builder,
     }
 
@@ -129,11 +122,8 @@ def test_analysis_with_findings_calls_ai() -> None:
     finding = Mock(spec=Finding)
     service, mocks = build_service(findings=[finding])
 
-    mocks["ai_context_builder"].build.return_value = Mock()
-    mocks["prompt_builder"].build.return_value = "prompt"
-
     report = AIReport(summary="summary", root_cause="root cause", evidence=[])
-    mocks["ai"].analyze.return_value = report
+    mocks["ai_report_generator"].generate.return_value = report
 
     result = service.analyze(
         namespace="production",
@@ -145,7 +135,7 @@ def test_analysis_with_findings_calls_ai() -> None:
     assert result.report == report
     assert result.trigger == AnalysisTrigger.API
 
-    mocks["ai"].analyze.assert_called_once_with("prompt")
+    mocks["ai_report_generator"].generate.assert_called_once()
 
 
 def test_analysis_without_findings_skips_ai() -> None:
@@ -160,9 +150,7 @@ def test_analysis_without_findings_skips_ai() -> None:
     assert result.intelligence.findings == []
     assert result.report is None
 
-    mocks["ai"].analyze.assert_not_called()
-    mocks["ai_context_builder"].build.assert_not_called()
-    mocks["prompt_builder"].build.assert_not_called()
+    mocks["ai_report_generator"].generate.assert_not_called()
 
 
 def test_analysis_when_kubernetes_data_is_unavailable_returns_error_report() -> None:
@@ -180,7 +168,7 @@ def test_analysis_when_kubernetes_data_is_unavailable_returns_error_report() -> 
         == "AI analysis could not be completed due to unavailable Kubernetes data."
     )
 
-    mocks["ai"].analyze.assert_not_called()
+    mocks["ai_report_generator"].generate.assert_not_called()
 
 
 def test_analysis_passes_trigger() -> None:
