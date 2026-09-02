@@ -58,8 +58,29 @@ def span_exporter(
 
 
 @pytest.fixture
-def incident_service() -> MagicMock:
+def mock_incident_service() -> MagicMock:
     return MagicMock()
+
+
+@pytest.fixture
+def incident_service() -> IncidentService:
+    ai = MagicMock()
+    ai.analyze.return_value = AIReport(summary="Analysis completed")
+
+    return IncidentService(
+        ai_report_generator=AIReportGenerator(
+            ai=ai,
+            context_builder=MagicMock(),
+            prompt_builder=MagicMock(),
+        ),
+        kubernetes=MagicMock(),
+        prometheus=MagicMock(),
+        metrics=MagicMock(),
+        loki=MagicMock(),
+        engine=MagicMock(),
+        container_snapshot_builder=MagicMock(),
+        incident_intelligence_builder=IncidentIntelligenceBuilder(),
+    )
 
 
 @pytest.fixture
@@ -69,7 +90,16 @@ def repository() -> MagicMock:
 
 @pytest.fixture
 def analysis_service(
-    incident_service: MagicMock, repository: MagicMock
+    mock_incident_service: MagicMock,
+    repository: MagicMock,
+) -> AnalysisService:
+    return AnalysisService(mock_incident_service, repository)
+
+
+@pytest.fixture
+def real_analysis_service(
+    incident_service: IncidentService,
+    repository: MagicMock,
 ) -> AnalysisService:
     return AnalysisService(incident_service, repository)
 
@@ -98,10 +128,10 @@ def assert_child_of(child: ReadableSpan, parent: ReadableSpan) -> None:
 
 def test_analysis_creates_execute_span(
     analysis_service: AnalysisService,
-    incident_service: MagicMock,
+    mock_incident_service: MagicMock,
     span_exporter: InMemorySpanExporter,
 ) -> None:
-    incident_service.analyze.return_value = MagicMock()
+    mock_incident_service.analyze.return_value = MagicMock()
     analysis_service.analyze("default", "my-pod", AnalysisTrigger.API)
     span = get_span(span_exporter, "analysis.execute")
 
@@ -110,10 +140,10 @@ def test_analysis_creates_execute_span(
 
 def test_analysis_execute_contains_expected_attributes(
     analysis_service: AnalysisService,
-    incident_service: MagicMock,
+    mock_incident_service: MagicMock,
     span_exporter: InMemorySpanExporter,
 ) -> None:
-    incident_service.analyze.return_value = MagicMock()
+    mock_incident_service.analyze.return_value = MagicMock()
     analysis_service.analyze("production", "api-123", AnalysisTrigger.API)
     span = get_span(span_exporter, "analysis.execute")
 
@@ -125,10 +155,10 @@ def test_analysis_execute_contains_expected_attributes(
 
 def test_analysis_execute_is_root_without_existing_context(
     analysis_service: AnalysisService,
-    incident_service: MagicMock,
+    mock_incident_service: MagicMock,
     span_exporter: InMemorySpanExporter,
 ) -> None:
-    incident_service.analyze.return_value = MagicMock()
+    mock_incident_service.analyze.return_value = MagicMock()
     analysis_service.analyze("default", "my-pod", AnalysisTrigger.API)
     span = get_span(span_exporter, "analysis.execute")
 
@@ -137,14 +167,18 @@ def test_analysis_execute_is_root_without_existing_context(
 
 def test_analysis_execute_preserves_existing_parent_context(
     analysis_service: AnalysisService,
-    incident_service: MagicMock,
+    mock_incident_service: MagicMock,
     span_exporter: InMemorySpanExporter,
 ) -> None:
-    incident_service.analyze.return_value = MagicMock()
-    test_tracer = trace.get_tracer("test")
+    mock_incident_service.analyze.return_value = MagicMock()
 
+    test_tracer = trace.get_tracer("test")
     with test_tracer.start_as_current_span("http.request") as parent:
-        analysis_service.analyze("default", "my-pod", AnalysisTrigger.API)
+        analysis_service.analyze(
+            "default",
+            "my-pod",
+            AnalysisTrigger.API,
+        )
 
         parent_span_id = parent.get_span_context().span_id
         parent_trace_id = parent.get_span_context().trace_id
@@ -158,10 +192,10 @@ def test_analysis_execute_preserves_existing_parent_context(
 
 def test_analysis_execute_success_has_no_error_status(
     analysis_service: AnalysisService,
-    incident_service: MagicMock,
+    mock_incident_service: MagicMock,
     span_exporter: InMemorySpanExporter,
 ) -> None:
-    incident_service.analyze.return_value = MagicMock()
+    mock_incident_service.analyze.return_value = MagicMock()
     analysis_service.analyze("default", "my-pod", AnalysisTrigger.API)
     span = get_span(span_exporter, "analysis.execute")
 
@@ -171,19 +205,24 @@ def test_analysis_execute_success_has_no_error_status(
 
 def test_analysis_execute_records_error(
     analysis_service: AnalysisService,
-    incident_service: MagicMock,
+    mock_incident_service: MagicMock,
     span_exporter: InMemorySpanExporter,
 ) -> None:
-    incident_service.analyze.side_effect = RuntimeError("Analysis failed")
+    mock_incident_service.analyze.side_effect = RuntimeError("Analysis failed")
 
     with pytest.raises(RuntimeError, match="Analysis failed"):
-        analysis_service.analyze("default", "my-pod", AnalysisTrigger.API)
+        analysis_service.analyze(
+            "default",
+            "my-pod",
+            AnalysisTrigger.API,
+        )
 
     span = get_span(span_exporter, "analysis.execute")
     assert span.status.status_code == trace.StatusCode.ERROR
 
     exception_events = [event for event in span.events if event.name == "exception"]
     assert exception_events
+
     assert any(
         event.attributes is not None
         and event.attributes.get("exception.type") == "RuntimeError"
@@ -193,7 +232,7 @@ def test_analysis_execute_records_error(
 
 
 def test_incident_build_is_child_of_analysis_execute(
-    analysis_service: AnalysisService,
+    real_analysis_service: AnalysisService,
     span_exporter: InMemorySpanExporter,
 ) -> None:
     incident = MagicMock(spec=Incident)
@@ -205,28 +244,11 @@ def test_incident_build_is_child_of_analysis_execute(
     builder = MagicMock()
     builder.collect.return_value = incident
 
-    incident_service = IncidentService(
-        ai_report_generator=AIReportGenerator(
-            ai=MagicMock(),
-            context_builder=MagicMock(),
-            prompt_builder=MagicMock(),
-        ),
-        kubernetes=MagicMock(),
-        prometheus=MagicMock(),
-        metrics=MagicMock(),
-        loki=MagicMock(),
-        engine=MagicMock(),
-        container_snapshot_builder=MagicMock(),
-        incident_intelligence_builder=IncidentIntelligenceBuilder(),
-    )
-
-    analysis_service.incident_service = incident_service
-
     with patch(
         "kubesage.services.incident_service.IncidentBuilder",
         return_value=builder,
     ):
-        analysis_service.analyze("default", "my-pod", AnalysisTrigger.API)
+        real_analysis_service.analyze("default", "my-pod", AnalysisTrigger.API)
 
     execute_span = get_span(span_exporter, "analysis.execute")
     incident_span = get_span(span_exporter, "analysis.incident.build")
@@ -267,6 +289,7 @@ def test_llm_generate_report_is_child_of_current_analysis_context(
         parent_trace_id = parent.get_span_context().trace_id
 
     llm_span = get_span(span_exporter, "llm.generate_report")
+
     assert llm_span.parent is not None
     assert llm_span.parent.span_id == parent_span_id
     assert llm_span.context.trace_id == parent_trace_id
@@ -283,6 +306,7 @@ def test_llm_generate_report_records_error(
 ) -> None:
     client = MagicMock()
     client.chat.completions.parse.side_effect = RuntimeError("LLM unavailable")
+
     provider = OpenAICompatibleProvider(client=client, model="test-model")
 
     report = provider.analyze("test prompt")
@@ -339,18 +363,16 @@ def test_prometheus_parallel_queries_have_expected_attributes(
         assert query_span.attributes is not None
 
         query_name = query_span.attributes["prometheus.query.name"]
-
         assert isinstance(query_name, str)
 
         actual_names.add(query_name)
-
         assert query_span.attributes["prometheus.query.result_count"] == 0
 
     assert actual_names == expected_names
 
 
 def test_analysis_execute_trace_id_is_shared_with_real_incident_service(
-    analysis_service: AnalysisService,
+    real_analysis_service: AnalysisService,
     span_exporter: InMemorySpanExporter,
 ) -> None:
     incident = MagicMock(spec=Incident)
@@ -362,38 +384,23 @@ def test_analysis_execute_trace_id_is_shared_with_real_incident_service(
     builder = MagicMock()
     builder.collect.return_value = incident
 
-    incident_service = IncidentService(
-        ai_report_generator=AIReportGenerator(
-            ai=MagicMock(),
-            context_builder=MagicMock(),
-            prompt_builder=MagicMock(),
-        ),
-        kubernetes=MagicMock(),
-        prometheus=MagicMock(),
-        metrics=MagicMock(),
-        loki=MagicMock(),
-        engine=MagicMock(),
-        container_snapshot_builder=MagicMock(),
-        incident_intelligence_builder=IncidentIntelligenceBuilder(),
-    )
-
-    analysis_service.incident_service = incident_service
-
     with patch(
         "kubesage.services.incident_service.IncidentBuilder",
         return_value=builder,
     ):
-        analysis_service.analyze("default", "my-pod", AnalysisTrigger.API)
+        real_analysis_service.analyze("default", "my-pod", AnalysisTrigger.API)
 
     execute_span = get_span(span_exporter, "analysis.execute")
     incident_span = get_span(span_exporter, "analysis.incident.build")
 
     assert incident_span.context.trace_id == execute_span.context.trace_id
+
     assert_child_of(incident_span, execute_span)
 
 
 def test_analysis_execute_produces_complete_trace(
     span_exporter: InMemorySpanExporter,
+    incident_service: IncidentService,
 ) -> None:
     incident = Incident(
         namespace="default",
@@ -417,20 +424,7 @@ def test_analysis_execute_produces_complete_trace(
     engine = MagicMock()
     engine.analyze.return_value = []
 
-    incident_service = IncidentService(
-        ai_report_generator=AIReportGenerator(
-            ai=MagicMock(),
-            context_builder=MagicMock(),
-            prompt_builder=MagicMock(),
-        ),
-        kubernetes=MagicMock(),
-        prometheus=MagicMock(),
-        metrics=MagicMock(),
-        loki=MagicMock(),
-        engine=engine,
-        container_snapshot_builder=MagicMock(),
-        incident_intelligence_builder=IncidentIntelligenceBuilder(),
-    )
+    incident_service.engine = engine
 
     session = MagicMock()
     repository = AnalysisRepository(session)
@@ -461,6 +455,7 @@ def test_analysis_execute_produces_complete_trace(
 
 def test_database_save_analysis_is_child_of_analysis_execute(
     span_exporter: InMemorySpanExporter,
+    incident_service: IncidentService,
 ) -> None:
     incident = Incident(
         namespace="default",
@@ -484,20 +479,7 @@ def test_database_save_analysis_is_child_of_analysis_execute(
     engine = MagicMock()
     engine.analyze.return_value = []
 
-    incident_service = IncidentService(
-        ai_report_generator=AIReportGenerator(
-            ai=MagicMock(),
-            context_builder=MagicMock(),
-            prompt_builder=MagicMock(),
-        ),
-        kubernetes=MagicMock(),
-        prometheus=MagicMock(),
-        metrics=MagicMock(),
-        loki=MagicMock(),
-        engine=engine,
-        container_snapshot_builder=MagicMock(),
-        incident_intelligence_builder=IncidentIntelligenceBuilder(),
-    )
+    incident_service.engine = engine
 
     session = MagicMock()
     repository = AnalysisRepository(session)
@@ -514,6 +496,7 @@ def test_database_save_analysis_is_child_of_analysis_execute(
 
     assert database_span.parent is not None
     assert database_span.parent.span_id == execute_span.context.span_id
+
     assert database_span.context.trace_id == execute_span.context.trace_id
 
     assert database_span.attributes is not None
@@ -562,6 +545,7 @@ def test_deep_error_is_recorded_on_analysis_execute(
     )
 
     repository = MagicMock()
+
     analysis_service = AnalysisService(incident_service, repository)
 
     with (
@@ -581,17 +565,16 @@ def test_deep_error_is_recorded_on_analysis_execute(
 
     assert rules_span.parent is not None
     assert rules_span.parent.span_id == execute_span.context.span_id
-    assert rules_span.context.trace_id == execute_span.context.trace_id
 
-    exception_events = [
-        event for event in execute_span.events if event.name == "exception"
-    ]
+    assert rules_span.context.trace_id == execute_span.context.trace_id
 
     assert any(
         event.attributes is not None
         and event.attributes.get("exception.type") == "RuntimeError"
         and event.attributes.get("exception.message") == "Rules engine failed"
-        for event in exception_events
+        for event in [
+            event for event in execute_span.events if event.name == "exception"
+        ]
     )
 
     repository.save.assert_not_called()
@@ -599,6 +582,7 @@ def test_deep_error_is_recorded_on_analysis_execute(
 
 def test_analysis_execute_contains_complete_ai_trace(
     span_exporter: InMemorySpanExporter,
+    incident_service: IncidentService,
 ) -> None:
     incident = Incident(
         namespace="default",
@@ -629,6 +613,8 @@ def test_analysis_execute_contains_complete_ai_trace(
     engine = MagicMock()
     engine.analyze.return_value = [finding]
 
+    incident_service.engine = engine
+
     ai_context_builder = MagicMock()
     ai_context_builder.build.return_value = MagicMock()
 
@@ -655,26 +641,20 @@ def test_analysis_execute_contains_complete_ai_trace(
     client = MagicMock()
     client.chat.completions.parse.return_value = response
 
-    provider = OpenAICompatibleProvider(client=client, model="test-model")
-    ai = AIService(provider)
-
-    incident_service = IncidentService(
-        ai_report_generator=AIReportGenerator(
-            ai=ai,
-            context_builder=MagicMock(),
-            prompt_builder=MagicMock(),
+    incident_service.ai_report_generator = AIReportGenerator(
+        ai=AIService(
+            OpenAICompatibleProvider(
+                client=client,
+                model="test-model",
+            )
         ),
-        kubernetes=MagicMock(),
-        prometheus=MagicMock(),
-        metrics=MagicMock(),
-        loki=MagicMock(),
-        engine=engine,
-        container_snapshot_builder=MagicMock(),
-        incident_intelligence_builder=IncidentIntelligenceBuilder(),
+        context_builder=ai_context_builder,
+        prompt_builder=prompt_builder,
     )
 
     session = MagicMock()
     repository = AnalysisRepository(session)
+
     analysis_service = AnalysisService(incident_service, repository)
 
     with patch(
