@@ -4,7 +4,7 @@ import structlog
 from openai import APIConnectionError, APIStatusError, Client
 from opentelemetry import trace
 
-from kubesage.models.ai_report import AIReport
+from kubesage.models.ai_report import AIReport, AIReportStatus
 from kubesage.observability.metrics import (
     LLM_DURATION,
     LLM_REQUESTS,
@@ -46,8 +46,6 @@ class OpenAICompatibleProvider:
                     response_format=AIReport,
                 )
 
-                LLM_REQUESTS.labels(status="success").inc()
-
                 if response.usage:
                     LLM_TOKENS.observe(response.usage.total_tokens)
 
@@ -57,6 +55,18 @@ class OpenAICompatibleProvider:
                     )
                     span.set_attribute("llm.tokens.total", response.usage.total_tokens)
 
+            except APIConnectionError as exc:
+                span.record_exception(exc)
+                span.set_status(trace.Status(trace.StatusCode.ERROR, str(exc)))
+
+                logger.error("llm_unavailable", reason=repr(exc))
+                LLM_REQUESTS.labels(status="unavailable").inc()
+
+                return AIReport(
+                    status=AIReportStatus.UNAVAILABLE,
+                    summary="AI analysis is currently unavailable.",
+                )
+
             except Exception as exc:
                 span.record_exception(exc)
                 span.set_status(trace.Status(trace.StatusCode.ERROR, str(exc)))
@@ -64,7 +74,10 @@ class OpenAICompatibleProvider:
                 logger.error("llm_response_failed", reason=repr(exc))
                 LLM_REQUESTS.labels(status="error").inc()
 
-                return AIReport(summary="AI analysis could not be completed.")
+                return AIReport(
+                    status=AIReportStatus.FAILED,
+                    summary="AI analysis could not be completed.",
+                )
 
             finally:
                 LLM_DURATION.observe(time.perf_counter() - start)
@@ -72,10 +85,14 @@ class OpenAICompatibleProvider:
         report: AIReport | None = response.choices[0].message.parsed
         if report is None:
             logger.error("llm_response_empty", response=response)
+            LLM_REQUESTS.labels(status="error").inc()
 
             return AIReport(
+                status=AIReportStatus.FAILED,
                 summary="AI analysis could not be completed.",
             )
+
+        LLM_REQUESTS.labels(status="success").inc()
 
         return report
 

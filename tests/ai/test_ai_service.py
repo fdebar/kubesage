@@ -7,7 +7,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
 )
 
 from kubesage.ai.providers.openai_compatible import OpenAICompatibleProvider
-from kubesage.models.ai_report import AIReport
+from kubesage.models.ai_report import AIReport, AIReportStatus
 
 
 @pytest.fixture
@@ -90,6 +90,7 @@ def test_analyze_returns_fallback_report_when_response_empty(
 
     result = provider.analyze("Analyze this incident.")
     assert result.summary == "AI analysis could not be completed."
+    assert result.status == AIReportStatus.FAILED
 
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1

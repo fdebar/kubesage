@@ -1,6 +1,13 @@
 import re
+from enum import StrEnum
 
 from pydantic import BaseModel, Field, field_validator
+
+
+class AIReportStatus(StrEnum):
+    SUCCESS = "success"
+    FAILED = "failed"
+    UNAVAILABLE = "unavailable"
 
 
 class AIReport(BaseModel):
@@ -12,6 +19,10 @@ class AIReport(BaseModel):
     root_cause: str | None = Field(
         default=None,
         description="Most likely root cause of the incident.",
+    )
+    status: AIReportStatus = Field(
+        default=AIReportStatus.SUCCESS,
+        description="Status of the AI report generation.",
     )
     confidence: float | None = Field(
         default=None,
