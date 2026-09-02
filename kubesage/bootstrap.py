@@ -55,5 +55,5 @@ def create_analysis_service(db: Session) -> AnalysisService:
 
 
 def check_application_requirements() -> None:
-    check_database_availability()
     setup_logging()
+    check_database_availability()
