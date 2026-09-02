@@ -102,6 +102,7 @@ db-upgrade:
 	uv run alembic upgrade head
 
 db-revision:
+	@test -n "$(MSG)" || (echo "Error: MSG is required. Usage: make db-revision MSG=\"your message\"" && exit 1)
 	uv run alembic revision --autogenerate -m "$(MSG)"
 
 db-current:
