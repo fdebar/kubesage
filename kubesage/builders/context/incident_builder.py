@@ -5,11 +5,8 @@ import structlog
 from kubesage.builders.context.container_snapshot_builder import (
     ContainerSnapshotBuilder,
 )
-from kubesage.models.container import ContainerSnapshot
 from kubesage.models.incident import Incident
-from kubesage.models.kubernetes_snapshot import KubernetesSnapshot
 from kubesage.models.log import LogQueryType, LogSnapshot
-from kubesage.models.metrics import PodMetrics
 from kubesage.models.prometheus import PrometheusResourceUsage
 from kubesage.providers.kubernetes_provider import KubernetesProvider
 from kubesage.providers.log_provider import LogProvider
@@ -26,61 +23,43 @@ class IncidentBuilder:
         prometheus_provider: PrometheusProvider | None,
         metrics_provider: MetricsProvider,
         log_provider: LogProvider | None,
-        container_snapshot_builder: ContainerSnapshotBuilder,
     ) -> None:
-        self.kubernetes = kubernetes_provider
+        self.kubernetes_provider = kubernetes_provider
         self.prometheus_provider = prometheus_provider
-        self.metrics = metrics_provider
-        self.logs = log_provider
-        self.container_snapshot_builder = container_snapshot_builder
+        self.metrics_provider = metrics_provider
+        self.log_provider = log_provider
+        self.snapshot_builder = ContainerSnapshotBuilder()
 
     def collect(self, namespace: str, pod: str) -> Incident:
-        observed_at = datetime.now(UTC)
-        kubernetes = self.kubernetes.collect(namespace, pod)
-        metrics = self.metrics.collect(namespace, pod)
+        kubernetes = self.kubernetes_provider.collect(namespace, pod)
+        metrics = self.metrics_provider.collect(namespace, pod)
 
         prometheus: PrometheusResourceUsage | None = None
         if self.prometheus_provider is not None:
             prometheus = self.prometheus_provider.collect(namespace, pod)
 
-        snapshots = self.container_snapshot_builder.build(
+        snapshots = self.snapshot_builder.build(
             statuses=kubernetes.containers,
             usages=prometheus.containers if prometheus else [],
             resources=kubernetes.resources,
         )
 
         loki_logs: LogSnapshot | None = None
-        if self.logs is not None:
-            loki_logs = self.logs.collect(namespace, pod, query_type=LogQueryType.ALL)
+        if self.log_provider is not None:
+            loki_logs = self.log_provider.collect(
+                namespace, pod, query_type=LogQueryType.ALL
+            )
 
-        return self.build(
-            kubernetes=kubernetes,
-            containers=snapshots,
-            prometheus=prometheus,
-            loki_logs=loki_logs,
-            container_metrics=metrics,
-            observed_at=observed_at,
-        )
-
-    def build(
-        self,
-        kubernetes: KubernetesSnapshot,
-        containers: list[ContainerSnapshot],
-        observed_at: datetime,
-        prometheus: PrometheusResourceUsage | None = None,
-        loki_logs: LogSnapshot | None = None,
-        container_metrics: PodMetrics | None = None,
-    ) -> Incident:
         return Incident(
             namespace=kubernetes.namespace,
             pod=kubernetes.pod,
             pod_uid=kubernetes.pod_uid,
             phase=kubernetes.phase,
-            observed_at=observed_at,
-            containers=containers,
+            observed_at=datetime.now(UTC),
+            containers=snapshots,
             events=kubernetes.events,
             kubernetes_logs=kubernetes.logs,
             loki_logs=loki_logs,
             prometheus=prometheus,
-            metrics=container_metrics,
+            metrics=metrics,
         )

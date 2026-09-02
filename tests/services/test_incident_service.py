@@ -1,11 +1,8 @@
 from datetime import datetime
-from types import SimpleNamespace
 from unittest.mock import Mock
 
 from kubesage.analyzers.engine import DiagnosticEngine
-from kubesage.builders.context.container_snapshot_builder import (
-    ContainerSnapshotBuilder,
-)
+from kubesage.builders.context.incident_builder import IncidentBuilder
 from kubesage.builders.incident_intelligence_builder import IncidentIntelligenceBuilder
 from kubesage.models.ai_report import AIReport
 from kubesage.models.analysis import AnalysisTrigger
@@ -14,13 +11,8 @@ from kubesage.models.finding import Finding
 from kubesage.models.incident import Incident
 from kubesage.models.incident_intelligence import IncidentIntelligence
 from kubesage.models.log import LogSnapshot
-from kubesage.models.prometheus import PrometheusResourceUsage
 from kubesage.services.ai_report_generator import AIReportGenerator
 from kubesage.services.incident_service import IncidentService
-from kubesage.services.kubernetes_service import KubernetesService
-from kubesage.services.loki_service import LokiService
-from kubesage.services.metrics_service import MetricsService
-from kubesage.services.prometheus_service import PrometheusService
 
 
 def build_container() -> ContainerSnapshot:
@@ -57,39 +49,19 @@ def build_service(
     findings: list[Finding] | None = None,
     incident: Incident | None = None,
 ) -> tuple[IncidentService, dict[str, Mock]]:
-    kubernetes = Mock(spec=KubernetesService)
-    prometheus = Mock(spec=PrometheusService)
-    metrics = Mock(spec=MetricsService)
-    loki = Mock(spec=LokiService)
     engine = Mock(spec=DiagnosticEngine)
-    container_snapshot_builder = Mock(
-        spec=ContainerSnapshotBuilder,
-    )
+    incident_builder = Mock(spec=IncidentBuilder)
     incident_intelligence_builder = Mock(
         spec=IncidentIntelligenceBuilder,
     )
+    ai_report_generator = Mock(spec=AIReportGenerator)
 
     engine.analyze.return_value = findings or []
+
     if incident is None:
         incident = build_incident()
 
-    kubernetes.collect.return_value = SimpleNamespace(
-        namespace=incident.namespace,
-        pod=incident.pod,
-        pod_uid=incident.pod_uid,
-        phase=incident.phase,
-        containers=[],
-        events=incident.events,
-        logs=incident.kubernetes_logs,
-        resources=[],
-    )
-
-    prometheus.collect.return_value = PrometheusResourceUsage(containers=[])
-
-    metrics.collect.return_value = None
-    loki.collect.return_value = None
-
-    container_snapshot_builder.build.return_value = incident.containers
+    incident_builder.collect.return_value = incident
 
     incident_intelligence_builder.build.return_value = IncidentIntelligence(
         findings=findings or [],
@@ -98,22 +70,17 @@ def build_service(
         root_causes=[],
     )
 
-    ai_report_generator = Mock(spec=AIReportGenerator)
-
     service = IncidentService(
         ai_report_generator=ai_report_generator,
-        kubernetes=kubernetes,
-        prometheus=prometheus,
-        metrics=metrics,
-        loki=loki,
         engine=engine,
-        container_snapshot_builder=container_snapshot_builder,
+        incident_builder=incident_builder,
         incident_intelligence_builder=incident_intelligence_builder,
     )
 
     return service, {
         "ai_report_generator": ai_report_generator,
         "engine": engine,
+        "incident_builder": incident_builder,
         "incident_intelligence_builder": incident_intelligence_builder,
     }
 

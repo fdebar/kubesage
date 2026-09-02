@@ -4,9 +4,6 @@ import structlog
 from opentelemetry import trace
 
 from kubesage.analyzers.engine import DiagnosticEngine
-from kubesage.builders.context.container_snapshot_builder import (
-    ContainerSnapshotBuilder,
-)
 from kubesage.builders.context.incident_builder import IncidentBuilder
 from kubesage.builders.incident_intelligence_builder import (
     IncidentIntelligenceBuilder,
@@ -15,10 +12,6 @@ from kubesage.models.ai_report import AIReport
 from kubesage.models.analysis import Analysis, AnalysisTrigger
 from kubesage.models.incident_intelligence import IncidentIntelligence
 from kubesage.services.ai_report_generator import AIReportGenerator
-from kubesage.services.kubernetes_service import KubernetesService
-from kubesage.services.loki_service import LokiService
-from kubesage.services.metrics_service import MetricsService
-from kubesage.services.prometheus_service import PrometheusService
 
 tracer = trace.get_tracer(__name__)
 logger = structlog.get_logger()
@@ -28,20 +21,12 @@ class IncidentService:
     def __init__(
         self,
         ai_report_generator: AIReportGenerator,
-        kubernetes: KubernetesService,
-        prometheus: PrometheusService | None,
-        metrics: MetricsService,
-        loki: LokiService | None,
         engine: DiagnosticEngine,
-        container_snapshot_builder: ContainerSnapshotBuilder,
+        incident_builder: IncidentBuilder,
         incident_intelligence_builder: IncidentIntelligenceBuilder,
     ) -> None:
-        self.kubernetes = kubernetes
-        self.prometheus = prometheus
-        self.metrics = metrics
-        self.loki = loki
         self.engine = engine
-        self.container_snapshot_builder = container_snapshot_builder
+        self.incident_builder = incident_builder
         self.incident_intelligence_builder = incident_intelligence_builder
         self.ai_report_generator = ai_report_generator
 
@@ -50,20 +35,13 @@ class IncidentService:
 
         start = time.perf_counter()
 
-        with tracer.start_as_current_span("analysis.incident.build") as span:
+        with tracer.start_as_current_span("analysis.incident.collect") as span:
             span.set_attribute("k8s.namespace", namespace)
             span.set_attribute("k8s.pod.name", pod)
             span.set_attribute("analysis.trigger", trigger.value)
 
-            builder = IncidentBuilder(
-                kubernetes_provider=self.kubernetes,
-                prometheus_provider=self.prometheus,
-                log_provider=self.loki,
-                metrics_provider=self.metrics,
-                container_snapshot_builder=self.container_snapshot_builder,
-            )
+            incident = self.incident_builder.collect(namespace, pod)
 
-            incident = builder.collect(namespace, pod)
             span.set_attribute("k8s.containers.count", len(incident.containers))
             span.set_attribute("k8s.events.count", len(incident.events))
 

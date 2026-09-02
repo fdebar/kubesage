@@ -3,9 +3,7 @@ from sqlalchemy.orm import Session
 from kubesage.ai.factory import create_ai_provider
 from kubesage.analyzers.engine import DiagnosticEngine
 from kubesage.builders.context.ai_context_builder import AIContextBuilder
-from kubesage.builders.context.container_snapshot_builder import (
-    ContainerSnapshotBuilder,
-)
+from kubesage.builders.context.incident_builder import IncidentBuilder
 from kubesage.builders.incident_intelligence_builder import IncidentIntelligenceBuilder
 from kubesage.builders.prompt.prompt_builder import PromptBuilder
 from kubesage.database.health import (
@@ -28,18 +26,23 @@ def create_incident_service() -> IncidentService:
     prometheus = PrometheusService() if settings.prometheus_url else None
     loki = LokiService() if settings.loki_url else None
 
+    incident_builder = IncidentBuilder(
+        kubernetes_provider=KubernetesService(),
+        prometheus_provider=prometheus,
+        metrics_provider=MetricsService(),
+        log_provider=loki,
+    )
+
+    ai_report_generator = AIReportGenerator(
+        ai=AIService(create_ai_provider(settings=settings)),
+        context_builder=AIContextBuilder(),
+        prompt_builder=PromptBuilder(),
+    )
+
     return IncidentService(
-        ai_report_generator=AIReportGenerator(
-            ai=AIService(create_ai_provider(settings=settings)),
-            context_builder=AIContextBuilder(),
-            prompt_builder=PromptBuilder(),
-        ),
-        kubernetes=KubernetesService(),
-        prometheus=prometheus,
-        loki=loki,
-        metrics=MetricsService(),
+        ai_report_generator=ai_report_generator,
+        incident_builder=incident_builder,
         engine=DiagnosticEngine(),
-        container_snapshot_builder=ContainerSnapshotBuilder(),
         incident_intelligence_builder=IncidentIntelligenceBuilder(),
     )
 
