@@ -1,5 +1,7 @@
 SHORT_SHA := $(shell git rev-parse --short HEAD)
-IMAGE_NAME := kubesage:$(SHORT_SHA)
+IMAGE_REPOSITORY := kubesage
+IMAGE_TAG := $(SHORT_SHA)
+IMAGE_NAME := $(IMAGE_REPOSITORY):$(IMAGE_TAG)
 
 .PHONY: help install test lint format typecheck security quality docker-build docker-run ci helm-lint helm-template kubeconform package db-upgrade db-revision db-current db-history db-downgrade bandit pip_audit trivy clean
 
@@ -84,7 +86,7 @@ package: helm-lint helm-template kubeconform
 
 docker-build:
 	@echo "Building docker image..."
-	docker buildx build --platform linux/amd64,linux/arm64 --no-cache -t kubesage:${IMAGE_NAME} .
+	docker buildx build --platform linux/amd64,linux/arm64 --no-cache -t ${IMAGE_NAME} .
 
 docker-run:
 	@echo "Running docker image $(IMAGE_NAME) on port 8000..."
