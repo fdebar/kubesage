@@ -6,6 +6,7 @@ from opentelemetry import trace
 from kubesage.models.analysis import Analysis, AnalysisTrigger
 from kubesage.models.analysis_summary import AnalysisSummary
 from kubesage.observability.metrics import ANALYSIS_DURATION, ANALYSIS_TOTAL
+from kubesage.observability.tracing import current_trace_context
 from kubesage.repositories.analysis_repository import AnalysisRepository
 from kubesage.services.incident_service import IncidentService
 
@@ -31,6 +32,9 @@ class AnalysisService:
 
             try:
                 analysis = self.incident_service.analyze(namespace, pod, trigger)
+
+                trace_context = current_trace_context()
+                analysis.trace_id = trace_context.trace_id
 
                 self.repository.save(analysis)
 

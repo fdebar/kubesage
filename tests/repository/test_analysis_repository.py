@@ -1,15 +1,15 @@
 from datetime import UTC, datetime
-from uuid import uuid4
+from unittest.mock import MagicMock
 
 from kubesage.models.ai_report import AIReport
 from kubesage.models.analysis import Analysis, AnalysisTrigger
 from kubesage.models.incident import Incident
 from kubesage.models.incident_intelligence import IncidentIntelligence
+from kubesage.repositories.analysis_repository import AnalysisRepository
 
 
 def build_analysis(report: AIReport | None = None) -> Analysis:
     return Analysis(
-        id=uuid4(),
         incident=Incident(
             namespace="test-namespace",
             pod="test-pod",
@@ -41,3 +41,23 @@ def build_analysis(report: AIReport | None = None) -> Analysis:
         created_at=datetime.now(UTC),
         duration_ms=100,
     )
+
+
+def test_save_and_get_preserves_trace_id() -> None:
+    trace_id = "4bf92f3577b34da6a3ce929d0e0e4736"
+
+    analysis = build_analysis()
+    analysis.trace_id = trace_id
+
+    session = MagicMock()
+    repository = AnalysisRepository(session)
+
+    repository.save(analysis)
+
+    saved_model = session.add.call_args.args[0]
+    session.execute.return_value.scalar_one_or_none.return_value = saved_model
+
+    restored = repository.get(analysis.id)
+
+    assert restored is not None
+    assert restored.trace_id == trace_id

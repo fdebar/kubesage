@@ -20,6 +20,7 @@ class Analysis(BaseModel):
     """Represents an analysis of an incident."""
 
     id: UUID = Field(default_factory=uuid4)
+    trace_id: str | None = None
     trigger: AnalysisTrigger
     incident: Incident
     intelligence: IncidentIntelligence = Field(

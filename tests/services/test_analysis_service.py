@@ -2,6 +2,7 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from opentelemetry.sdk.trace import TracerProvider
 
 from kubesage.models.analysis import AnalysisTrigger
 from kubesage.services.analysis_service import AnalysisService
@@ -124,3 +125,26 @@ def test_count(service: AnalysisService, repository: MagicMock) -> None:
     assert service.count() == 42
 
     repository.count.assert_called_once_with()
+
+
+def test_analyze_captures_trace_id(
+    service: AnalysisService,
+    incident_service: MagicMock,
+    repository: MagicMock,
+) -> None:
+    analysis = MagicMock()
+    incident_service.analyze.return_value = analysis
+
+    provider = TracerProvider()
+    tracer = provider.get_tracer("test")
+
+    with tracer.start_as_current_span("analysis.execute") as span:
+        expected_trace_id = format(span.get_span_context().trace_id, "032x")
+        result = service.analyze("default", "my-pod", AnalysisTrigger.API)
+
+    assert result is analysis
+    assert analysis.trace_id == expected_trace_id
+
+    repository.save.assert_called_once_with(analysis)
+
+    provider.shutdown()

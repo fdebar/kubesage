@@ -162,3 +162,85 @@ def test_to_model_then_to_domain_preserves_observed_at() -> None:
     restored = AnalysisMapper.to_domain(model)
 
     assert restored.incident.observed_at == observed_at
+
+
+def test_to_model_persists_trace_id() -> None:
+    trace_id = "4bf92f3577b34da6a3ce929d0e0e4736"
+
+    incident = Incident(
+        namespace="default",
+        pod="kubesage-crashloop",
+        pod_uid="5ba84d4a-06cd-4998-8a6e-f123456789ab",
+        phase="Running",
+        containers=[],
+        observed_at=datetime(2026, 8, 31, 8, 0, 16),
+    )
+
+    analysis = Analysis(
+        id=uuid4(),
+        incident=incident,
+        report=None,
+        duration_ms=100,
+        intelligence=IncidentIntelligence(
+            findings=[],
+            timeline=[],
+            correlations=[],
+            root_causes=[],
+            recommendations=[],
+        ),
+        created_at=datetime(2026, 8, 31, 9, 0, 0),
+        trigger=AnalysisTrigger.CLI,
+        trace_id=trace_id,
+    )
+
+    model = AnalysisMapper.to_model(analysis)
+
+    assert model.trace_id == trace_id
+
+
+def test_to_domain_restores_trace_id() -> None:
+    trace_id = "4bf92f3577b34da6a3ce929d0e0e4736"
+
+    model = make_analysis_model(
+        incident_data=make_incident_data(),
+    )
+    model.trace_id = trace_id
+
+    analysis = AnalysisMapper.to_domain(model)
+
+    assert analysis.trace_id == trace_id
+
+
+def test_to_model_then_to_domain_preserves_trace_id() -> None:
+    trace_id = "4bf92f3577b34da6a3ce929d0e0e4736"
+
+    incident = Incident(
+        namespace="default",
+        pod="kubesage-crashloop",
+        pod_uid="5ba84d4a-06cd-4998-8a6e-f123456789ab",
+        phase="Running",
+        containers=[],
+        observed_at=datetime(2026, 8, 31, 8, 0, 16, tzinfo=UTC),
+    )
+
+    analysis = Analysis(
+        id=uuid4(),
+        incident=incident,
+        report=None,
+        duration_ms=100,
+        intelligence=IncidentIntelligence(
+            findings=[],
+            timeline=[],
+            correlations=[],
+            root_causes=[],
+            recommendations=[],
+        ),
+        created_at=datetime(2026, 8, 31, 9, 0, 0, tzinfo=UTC),
+        trigger=AnalysisTrigger.CLI,
+        trace_id=trace_id,
+    )
+
+    model = AnalysisMapper.to_model(analysis)
+    restored = AnalysisMapper.to_domain(model)
+
+    assert restored.trace_id == trace_id

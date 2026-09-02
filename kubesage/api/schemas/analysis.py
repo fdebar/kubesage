@@ -92,6 +92,7 @@ class AnalysisResponse(BaseModel):
 
     id: UUID
     trigger: str
+    trace_id: str | None = None
     incident: IncidentResponse
     highest_severity: Severity | None
     findings_count: int

@@ -43,6 +43,7 @@ class AnalysisMapper:
             findings_count=len(analysis.intelligence.findings),
             created_at=analysis.created_at,
             trigger=analysis.trigger.value,
+            trace_id=analysis.trace_id,
         )
 
         model.findings = [
@@ -97,6 +98,7 @@ class AnalysisMapper:
             ),
             created_at=model.created_at,
             trigger=AnalysisTrigger(model.trigger),
+            trace_id=model.trace_id,
         )
 
     @staticmethod
@@ -115,6 +117,7 @@ class AnalysisMapper:
         return AnalysisResponse(
             id=analysis.id,
             trigger=analysis.trigger.value,
+            trace_id=analysis.trace_id,
             incident=IncidentResponse(
                 namespace=analysis.incident.namespace,
                 pod=analysis.incident.pod,
