@@ -18,3 +18,4 @@ class AnalysisSummary(BaseModel):
     findings_count: int
     duration_ms: int
     created_at: datetime
+    trace_id: str | None

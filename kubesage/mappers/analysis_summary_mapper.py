@@ -21,6 +21,7 @@ class AnalysisSummaryMapper:
             findings_count=model.findings_count,
             duration_ms=model.duration_ms,
             created_at=model.created_at,
+            trace_id=model.trace_id if model.trace_id else None,
         )
 
     @staticmethod
@@ -38,6 +39,7 @@ class AnalysisSummaryMapper:
                 findings_count=analysis.findings_count,
                 duration_ms=analysis.duration_ms,
                 created_at=analysis.created_at,
+                trace_id=analysis.trace_id,
             )
             for analysis in analyses
         ]
