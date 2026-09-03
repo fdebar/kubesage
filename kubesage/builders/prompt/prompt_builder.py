@@ -146,6 +146,18 @@ class PromptBuilder:
 
                 lines.append("")
 
+        occurrences = finding.metadata.get("occurrences")
+        if occurrences is not None:
+            lines.append(f"Occurrences: {occurrences}")
+
+        first_seen = finding.metadata.get("first_seen")
+        if first_seen:
+            lines.append(f"First Seen: {first_seen}")
+
+        last_seen = finding.metadata.get("last_seen")
+        if last_seen:
+            lines.append(f"Last Seen: {last_seen}")
+
     def _append_correlations(self, lines: list[str], ai: AIContext) -> None:
         if not ai.correlations:
             return

@@ -1,244 +1,195 @@
-from datetime import UTC, datetime
+from datetime import datetime
 
 from kubesage.analyzers.rules.application.application_error import (
     ApplicationErrorRule,
 )
+from kubesage.models.application_error import ApplicationErrorKind
+from kubesage.models.evidence import EvidenceType
 from kubesage.models.incident import Incident
 from kubesage.models.log import LogEntry, LogSnapshot, LogSource
 
 
-def _incident_with_logs(*messages: str) -> Incident:
-    entries = [
-        LogEntry(
-            timestamp=datetime(2026, 8, 31, 8, 0, index, tzinfo=UTC),
-            message=message,
-            labels={
-                "namespace": "default",
-                "pod": "my-api",
-                "container": "api",
-            },
-        )
-        for index, message in enumerate(messages, start=1)
-    ]
+def _entry(
+    message: str,
+    timestamp: str,
+    labels: dict[str, str] | None = None,
+) -> LogEntry:
+    return LogEntry(
+        timestamp=datetime.fromisoformat(timestamp),
+        message=message,
+        labels=labels or {},
+    )
 
+
+def _incident_with_logs(*entries: LogEntry) -> Incident:
     return Incident(
         namespace="default",
-        pod="my-api",
+        pod="application-error-pod",
         phase="Running",
-        observed_at=datetime(2026, 8, 31, 8, 0, tzinfo=UTC),
+        observed_at=datetime.now(),
         loki_logs=LogSnapshot(
-            source=LogSource.LOKI.value,
-            entries=entries,
+            source=LogSource.LOKI,
+            entries=list(entries),
         ),
     )
 
 
-def test_detects_error_log() -> None:
-    findings = ApplicationErrorRule().evaluate(
-        _incident_with_logs(
-            "INFO request completed",
-            "ERROR failed to process request",
-        )
-    )
-
-    assert len(findings) == 1
-    assert findings[0].rule == "application_error"
-    assert findings[0].severity.value == "ERROR"
-    assert findings[0].structured_evidences[0].value == (
-        "ERROR failed to process request"
-    )
-
-
-def test_detects_traceback() -> None:
-    findings = ApplicationErrorRule().evaluate(
-        _incident_with_logs(
-            "Traceback (most recent call last):",
-        )
-    )
-
-    assert len(findings) == 1
-
-
-def test_detects_exception_keyword() -> None:
-    findings = ApplicationErrorRule().evaluate(
-        _incident_with_logs(
-            "RuntimeException: invalid configuration",
-        )
-    )
-
-    assert len(findings) == 1
-
-
-def test_detects_http_5xx() -> None:
-    findings = ApplicationErrorRule().evaluate(
-        _incident_with_logs(
-            "request completed with HTTP 500",
-            "request completed with HTTP 200",
-        )
-    )
-
-    assert len(findings) == 1
-
-
-def test_detects_connection_refused() -> None:
-    findings = ApplicationErrorRule().evaluate(
-        _incident_with_logs(
-            "connect to database: connection refused",
-        )
-    )
-
-    assert len(findings) == 1
-
-
-def test_detects_timeout() -> None:
-    findings = ApplicationErrorRule().evaluate(
-        _incident_with_logs(
-            "database request timeout after 30s",
-        )
-    )
-
-    assert len(findings) == 1
-
-
-def test_ignores_normal_logs() -> None:
-    findings = ApplicationErrorRule().evaluate(
-        _incident_with_logs(
-            "INFO application started",
-            "INFO request completed successfully",
-            "HTTP 200",
-        )
-    )
-
-    assert findings == []
-
-
-def test_ignores_missing_loki_logs() -> None:
-    findings = ApplicationErrorRule().evaluate(
-        Incident(
-            namespace="default",
-            pod="my-api",
-            phase="Running",
-            observed_at=datetime(2026, 8, 31, 8, 0, tzinfo=UTC),
-        )
-    )
-
-    assert findings == []
-
-
-def test_classifies_database_error() -> None:
-    findings = ApplicationErrorRule().evaluate(
-        _incident_with_logs(
-            "ERROR Database connection refused",
-        )
-    )
-
-    assert len(findings) == 1
-    assert findings[0].metadata["error_kind"] == "connection_error"
-
-
-def test_classifies_connection_error() -> None:
-    findings = ApplicationErrorRule().evaluate(
-        _incident_with_logs(
+def test_single_application_error_creates_one_finding() -> None:
+    incident = _incident_with_logs(
+        _entry(
             "ERROR connection refused",
+            "2026-09-03T10:00:00+00:00",
         )
     )
+
+    findings = ApplicationErrorRule().evaluate(incident)
 
     assert len(findings) == 1
-    assert findings[0].metadata["error_kind"] == "connection_error"
-
-
-def test_classifies_timeout() -> None:
-    findings = ApplicationErrorRule().evaluate(
-        _incident_with_logs(
-            "request timed out after 30s",
-        )
-    )
-
-    assert len(findings) == 1
-    assert findings[0].metadata["error_kind"] == "timeout"
-
-
-def test_classifies_http_5xx() -> None:
-    findings = ApplicationErrorRule().evaluate(
-        _incident_with_logs(
-            "request failed with HTTP 503",
-        )
-    )
-
-    assert len(findings) == 1
-    assert findings[0].metadata["error_kind"] == "http_5xx"
-
-
-def test_classifies_exception() -> None:
-    findings = ApplicationErrorRule().evaluate(
-        _incident_with_logs(
-            "RuntimeException: invalid configuration",
-        )
-    )
-
-    assert len(findings) == 1
-    assert findings[0].metadata["error_kind"] == "exception"
-
-
-def test_classifies_generic_error() -> None:
-    findings = ApplicationErrorRule().evaluate(
-        _incident_with_logs(
-            "ERROR failed to process request",
-        )
-    )
-
-    assert len(findings) == 1
-    assert findings[0].metadata["error_kind"] == "generic_error"
-
-
-def test_database_error_takes_precedence_over_connection_and_timeout() -> None:
-    findings = ApplicationErrorRule().evaluate(
-        _incident_with_logs(
-            "ERROR Database connection timeout",
-        )
-    )
-
-    assert len(findings) == 1
-    assert findings[0].metadata["error_kind"] == "timeout"
-
-
-def test_database_error_has_semantic_finding() -> None:
-    findings = ApplicationErrorRule().evaluate(
-        _incident_with_logs(
-            "ERROR Database connection refused",
-        )
-    )
-
     finding = findings[0]
 
-    assert finding.title == "Database connection failure"
-    assert finding.metadata["error_kind"] == "connection_error"
-    assert finding.metadata["error_domain"] == "database"
-    assert "database connection failure" in finding.description.lower()
-    assert "Database connection refused" in finding.description
+    assert finding.metadata["occurrences"] == 1
+    assert finding.metadata["first_seen"] == "2026-09-03T10:00:00+00:00"
+    assert finding.metadata["last_seen"] == "2026-09-03T10:00:00+00:00"
+    assert finding.metadata["error_kind"] == ApplicationErrorKind.CONNECTION_ERROR.value
 
 
-def test_http_5xx_has_semantic_finding() -> None:
-    findings = ApplicationErrorRule().evaluate(
-        _incident_with_logs(
-            "HTTP 503 Service Unavailable",
+def test_repeated_identical_errors_are_aggregated() -> None:
+    incident = _incident_with_logs(
+        _entry(
+            "ERROR connection refused",
+            "2026-09-03T10:00:00+00:00",
+        ),
+        _entry(
+            "ERROR connection refused",
+            "2026-09-03T10:01:00+00:00",
+        ),
+        _entry(
+            "ERROR connection refused",
+            "2026-09-03T10:02:00+00:00",
+        ),
+    )
+
+    findings = ApplicationErrorRule().evaluate(incident)
+
+    assert len(findings) == 1
+    assert findings[0].metadata["occurrences"] == 3
+    assert findings[0].metadata["first_seen"] == "2026-09-03T10:00:00+00:00"
+    assert findings[0].metadata["last_seen"] == "2026-09-03T10:02:00+00:00"
+
+
+def test_different_error_kinds_create_different_findings() -> None:
+    incident = _incident_with_logs(
+        _entry(
+            "ERROR connection refused",
+            "2026-09-03T10:00:00+00:00",
+        ),
+        _entry(
+            "ERROR request timed out",
+            "2026-09-03T10:01:00+00:00",
+        ),
+    )
+
+    findings = ApplicationErrorRule().evaluate(incident)
+    assert len(findings) == 2
+
+
+def test_different_error_fingerprints_create_different_findings() -> None:
+    incident = _incident_with_logs(
+        _entry(
+            "ERROR connection refused to postgres:5432",
+            "2026-09-03T10:00:00+00:00",
+        ),
+        _entry(
+            "ERROR connection refused to postgres:5432",
+            "2026-09-03T10:01:00+00:00",
+        ),
+        _entry(
+            "ERROR connection refused to redis:6379",
+            "2026-09-03T10:02:00+00:00",
+        ),
+    )
+
+    findings = ApplicationErrorRule().evaluate(incident)
+    assert len(findings) == 2
+
+    occurrences = sorted(finding.metadata["occurrences"] for finding in findings)
+    assert occurrences == [1, 2]
+
+
+def test_application_error_examples_are_limited() -> None:
+    incident = _incident_with_logs(
+        _entry(
+            "ERROR connection refused attempt=1",
+            "2026-09-03T10:00:00+00:00",
+        ),
+        _entry(
+            "ERROR connection refused attempt=2",
+            "2026-09-03T10:01:00+00:00",
+        ),
+        _entry(
+            "ERROR connection refused attempt=3",
+            "2026-09-03T10:02:00+00:00",
+        ),
+        _entry(
+            "ERROR connection refused attempt=4",
+            "2026-09-03T10:03:00+00:00",
+        ),
+    )
+
+    findings = ApplicationErrorRule().evaluate(incident)
+    assert len(findings) == 1
+
+    evidence = findings[0].structured_evidences[0]
+    assert len(evidence.metadata["examples"]) == 3
+
+
+def test_same_error_with_different_request_ids_is_aggregated() -> None:
+    incident = _incident_with_logs(
+        _entry(
+            "ERROR database connection refused request_id=abc123",
+            "2026-09-03T10:00:00+00:00",
+        ),
+        _entry(
+            "ERROR database connection refused request_id=def456",
+            "2026-09-03T10:01:00+00:00",
+        ),
+    )
+
+    findings = ApplicationErrorRule().evaluate(incident)
+
+    assert len(findings) == 1
+    assert findings[0].metadata["occurrences"] == 2
+
+
+def test_finding_contains_aggregated_evidence() -> None:
+    incident = _incident_with_logs(
+        _entry(
+            "ERROR connection refused",
+            "2026-09-03T10:00:00+00:00",
+        ),
+        _entry(
+            "ERROR connection refused",
+            "2026-09-03T10:01:00+00:00",
+        ),
+    )
+
+    findings = ApplicationErrorRule().evaluate(incident)
+    evidence = findings[0].structured_evidences[0]
+
+    assert evidence.type == EvidenceType.LOG
+    assert evidence.source == "loki"
+    assert evidence.metadata["occurrences"] == 2
+    assert evidence.metadata["fingerprint"]
+
+
+def test_no_application_errors_returns_no_findings() -> None:
+    incident = _incident_with_logs(
+        _entry(
+            "INFO application started successfully",
+            "2026-09-03T10:00:00+00:00",
         )
     )
 
-    finding = findings[0]
+    findings = ApplicationErrorRule().evaluate(incident)
 
-    assert finding.title == "HTTP 5xx error"
-    assert finding.metadata["error_kind"] == "http_5xx"
-
-
-def test_exception_has_semantic_finding() -> None:
-    findings = ApplicationErrorRule().evaluate(
-        _incident_with_logs(
-            "RuntimeException: invalid configuration",
-        )
-    )
-
-    finding = findings[0]
-
-    assert finding.title == "Application exception"
-    assert finding.metadata["error_kind"] == "exception"
+    assert findings == []

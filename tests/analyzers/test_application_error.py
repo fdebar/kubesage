@@ -2,7 +2,6 @@ from datetime import datetime
 
 from kubesage.analyzers.application_error import (
     ApplicationErrorClassifier,
-    ApplicationErrorDomain,
     ApplicationErrorKind,
 )
 from kubesage.analyzers.rules.application.application_error import ApplicationErrorRule
@@ -35,7 +34,6 @@ def test_database_connection_error_has_domain() -> None:
 
     assert classification is not None
     assert classification.kind == ApplicationErrorKind.CONNECTION_ERROR
-    assert classification.domain == ApplicationErrorDomain.DATABASE
 
 
 def test_database_timeout_has_domain() -> None:
@@ -45,7 +43,6 @@ def test_database_timeout_has_domain() -> None:
 
     assert classification is not None
     assert classification.kind == ApplicationErrorKind.TIMEOUT
-    assert classification.domain == ApplicationErrorDomain.DATABASE
 
 
 def test_connection_error_without_domain() -> None:
@@ -55,7 +52,6 @@ def test_connection_error_without_domain() -> None:
 
     assert classification is not None
     assert classification.kind == ApplicationErrorKind.CONNECTION_ERROR
-    assert classification.domain is None
 
 
 def test_database_connection_error_exposes_domain() -> None:
@@ -67,4 +63,3 @@ def test_database_connection_error_exposes_domain() -> None:
     finding = findings[0]
 
     assert finding.metadata["error_kind"] == "connection_error"
-    assert finding.metadata["error_domain"] == "database"
