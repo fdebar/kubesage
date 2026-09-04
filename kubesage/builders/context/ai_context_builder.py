@@ -25,7 +25,8 @@ class AIContextBuilder:
             "ai_context_building_completed",
             namespace=incident.namespace,
             pod=incident.pod,
-            timeline_events_count=len(intelligence.timeline),
+            timeline_events_total=len(intelligence.timeline),
+            timeline_events_selected=len(context.ctx.timeline),
         )
 
         return context

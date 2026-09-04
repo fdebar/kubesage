@@ -1,3 +1,4 @@
+from kubesage.builders.context.timeline_selector import TimelineSelector
 from kubesage.models.finding import Finding, FindingKind, Severity
 from kubesage.models.incident import Incident
 from kubesage.models.incident_intelligence import (
@@ -21,7 +22,11 @@ class AIContext:
             phase=incident.phase,
             events=incident.events,
             findings=ranked_findings,
-            timeline=intelligence.timeline,
+            timeline=TimelineSelector().select(
+                timeline=intelligence.timeline,
+                findings=ranked_findings,
+                events=incident.events,
+            ),
         )
 
     @property

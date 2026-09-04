@@ -49,6 +49,15 @@ class Settings:
     # Metrics configuration
     metrics_port: int = int(os.getenv("WORKER_EXPOSED_METRICS_PORT", "9090"))
 
+    # AI Timeline configuration
+    ai_timeline_max_events: int = int(os.getenv("AI_TIMELINE_MAX_EVENTS", "50"))
+    ai_timeline_window_before_seconds: int = int(
+        os.getenv("AI_TIMELINE_WINDOW_BEFORE_SECONDS", "30")
+    )
+    ai_timeline_window_after_seconds: int = int(
+        os.getenv("AI_TIMELINE_WINDOW_AFTER_SECONDS", "10")
+    )
+
     @property
     def database_url(self) -> str:
         return (
