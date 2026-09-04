@@ -128,9 +128,6 @@ def test_build_prompt_without_findings() -> None:
     assert "# Kubernetes Events" in prompt
     assert "BackOff" in prompt
 
-    # assert "# Logs" in prompt
-    # assert "CrashLoopBackOff detected" in prompt
-
     assert (
         "You are a Senior Kubernetes Site Reliability Engineer "
         "specialized in incident diagnosis."

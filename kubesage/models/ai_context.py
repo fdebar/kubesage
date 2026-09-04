@@ -19,7 +19,6 @@ class AIContext:
             namespace=incident.namespace,
             pod=incident.pod,
             phase=incident.phase,
-            logs=incident.logs,
             events=incident.events,
             findings=ranked_findings,
             timeline=intelligence.timeline,

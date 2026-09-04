@@ -9,7 +9,6 @@ class PromptContext(BaseModel):
     namespace: str
     pod: str
     phase: str
-    logs: str
     events: list[Event]
     findings: list[Finding]
     timeline: list[TimelineEvent] = Field(default_factory=list)

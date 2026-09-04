@@ -13,7 +13,6 @@ class PromptBuilder:
         self._append_correlations(lines, ai)
         self._append_root_causes(lines, ai)
         self._append_events(lines, ai)
-        # self._append_logs(lines, ai)
         self._append_recommendations(lines, ai)
         self._append_instructions(lines)
         self._append_summary(lines, ai)
@@ -77,14 +76,6 @@ class PromptBuilder:
             if event.last_timestamp:
                 lines.append(f"  Timestamp: {event.last_timestamp.isoformat()}")
 
-        lines.append("")
-
-    def _append_logs(self, lines: list[str], ai: AIContext) -> None:
-        if not ai.ctx.logs:
-            return
-
-        lines.append("# Logs")
-        lines.append(ai.ctx.logs)
         lines.append("")
 
     def _append_recommendations(self, lines: list[str], ai: AIContext) -> None:
