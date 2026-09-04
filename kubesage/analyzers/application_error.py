@@ -1,4 +1,5 @@
 import re
+import shlex
 from dataclasses import dataclass
 from enum import StrEnum
 from hashlib import sha256
@@ -74,47 +75,54 @@ class ApplicationErrorClassifier:
         re.IGNORECASE,
     )
 
+    _DURATION_PATTERN = re.compile(
+        r"\b\d+(?:\.\d+)?(?:ns|us|µs|ms|s|m|h)\b",
+        re.IGNORECASE,
+    )
+
     def classify(self, message: str) -> ApplicationErrorClassification | None:
-        domain = self._detect_domain(message)
+        structured = self._parse_structured_log(message)
 
-        if self._CONNECTION_PATTERN.search(message):
-            return ApplicationErrorClassification(
-                kind=ApplicationErrorKind.CONNECTION_ERROR,
-                domain=domain,
+        if structured is not None:
+            level = structured.get("level", "").lower()
+
+            if level != "error":
+                return None
+
+            signal = " ".join(
+                value for key in ("msg", "error") if (value := structured.get(key))
             )
 
-        if self._TIMEOUT_PATTERN.search(message):
-            return ApplicationErrorClassification(
-                kind=ApplicationErrorKind.TIMEOUT,
-                domain=domain,
-            )
+            classification = self._classify_signal(signal)
+            if classification is not None:
+                return classification
 
-        if self._HTTP_5XX_PATTERN.search(message):
-            return ApplicationErrorClassification(
-                kind=ApplicationErrorKind.HTTP_5XX,
-                domain=domain,
-            )
-
-        if self._EXCEPTION_PATTERN.search(message):
-            return ApplicationErrorClassification(
-                kind=ApplicationErrorKind.EXCEPTION,
-                domain=domain,
-            )
-
-        if self._ERROR_PATTERN.search(message):
             return ApplicationErrorClassification(
                 kind=ApplicationErrorKind.GENERIC_ERROR,
-                domain=domain,
+                domain=self._detect_domain(signal),
             )
 
-        return None
+        return self._classify_signal(message)
 
     def fingerprint(
         self,
         classification: ApplicationErrorClassification,
         message: str,
     ) -> str:
-        normalized = self._normalize(message)
+        structured = self._parse_structured_log(message)
+
+        if structured is not None:
+            normalized_parts = [
+                structured.get("logger", ""),
+                structured.get("msg", ""),
+                structured.get("error", ""),
+            ]
+
+            normalized = " | ".join(
+                self._normalize(part) for part in normalized_parts if part
+            )
+        else:
+            normalized = self._normalize(message)
 
         raw = "|".join(
             [
@@ -126,6 +134,54 @@ class ApplicationErrorClassifier:
 
         return sha256(raw.encode()).hexdigest()[:16]
 
+    def _classify_signal(self, signal: str) -> ApplicationErrorClassification | None:
+        domain = self._detect_domain(signal)
+
+        if self._CONNECTION_PATTERN.search(signal):
+            return ApplicationErrorClassification(
+                kind=ApplicationErrorKind.CONNECTION_ERROR,
+                domain=domain,
+            )
+
+        if self._TIMEOUT_PATTERN.search(signal):
+            return ApplicationErrorClassification(
+                kind=ApplicationErrorKind.TIMEOUT,
+                domain=domain,
+            )
+
+        if self._HTTP_5XX_PATTERN.search(signal):
+            return ApplicationErrorClassification(
+                kind=ApplicationErrorKind.HTTP_5XX,
+                domain=domain,
+            )
+
+        if self._EXCEPTION_PATTERN.search(signal):
+            return ApplicationErrorClassification(
+                kind=ApplicationErrorKind.EXCEPTION,
+                domain=domain,
+            )
+
+        if self._ERROR_PATTERN.search(signal):
+            return ApplicationErrorClassification(
+                kind=ApplicationErrorKind.GENERIC_ERROR,
+                domain=domain,
+            )
+
+        return None
+
+    def _parse_structured_log(self, message: str) -> dict[str, str] | None:
+        try:
+            fields = dict(
+                token.split("=", 1) for token in shlex.split(message) if "=" in token
+            )
+        except ValueError:
+            return None
+
+        if "level" not in fields or "msg" not in fields:
+            return None
+
+        return fields
+
     def _normalize(self, message: str) -> str:
         normalized = message.strip()
 
@@ -134,6 +190,7 @@ class ApplicationErrorClassifier:
         normalized = self._REQUEST_ID_PATTERN.sub("<request_id>", normalized)
         normalized = self._IP_PATTERN.sub("<ip>", normalized)
         normalized = self._ATTEMPT_PATTERN.sub("attempt=<attempt>", normalized)
+        normalized = self._DURATION_PATTERN.sub("<duration>", normalized)
 
         normalized = re.sub(r"\s+", " ", normalized)
 

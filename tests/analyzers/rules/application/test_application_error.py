@@ -193,3 +193,107 @@ def test_no_application_errors_returns_no_findings() -> None:
     findings = ApplicationErrorRule().evaluate(incident)
 
     assert findings == []
+
+
+def test_structured_info_log_with_error_field_is_ignored() -> None:
+    incident = _incident_with_logs(
+        _entry(
+            "logger=sqlstore.transactions level=info "
+            'msg="Database locked, sleeping then retrying" '
+            'error="database is locked (5) (SQLITE_BUSY)" '
+            "retry=0 sleep=34.130801ms",
+            "2026-09-04T10:00:00+00:00",
+        )
+    )
+
+    findings = ApplicationErrorRule().evaluate(incident)
+
+    assert findings == []
+
+
+def test_structured_warn_log_with_error_field_is_ignored() -> None:
+    incident = _incident_with_logs(
+        _entry(
+            "logger=authn.service level=warn "
+            'msg="Failed to authenticate request" '
+            "client=auth.client.session "
+            'error="user token not found"',
+            "2026-09-04T10:00:00+00:00",
+        )
+    )
+
+    findings = ApplicationErrorRule().evaluate(incident)
+
+    assert findings == []
+
+
+def test_structured_grafana_error_is_detected() -> None:
+    incident = _incident_with_logs(
+        _entry(
+            "logger=plugins.validation level=error "
+            'msg="Plugin validation failed" '
+            "pluginId=grafana-piechart-panel "
+            'error="angular plugins are not supported"',
+            "2026-09-04T10:00:00+00:00",
+        )
+    )
+
+    findings = ApplicationErrorRule().evaluate(incident)
+
+    assert len(findings) == 1
+
+    finding = findings[0]
+
+    assert finding.metadata["error_kind"] == (ApplicationErrorKind.GENERIC_ERROR.value)
+    assert finding.metadata["occurrences"] == 1
+
+
+def test_repeated_structured_traceql_errors_are_aggregated() -> None:
+    incident = _incident_with_logs(
+        _entry(
+            "logger=plugin.tempo level=error "
+            'msg="Failed to execute TraceQL query" '
+            "refID=A "
+            'error="failed to execute TraceQL query: '
+            "{nestedSetParent<0 && true && undefined != nil} | rate() by(undefined) "
+            'Status: 400 Bad Request"',
+            "2026-09-04T10:00:00+00:00",
+        ),
+        _entry(
+            "logger=plugin.tempo level=error "
+            'msg="Failed to execute TraceQL query" '
+            "refID=B "
+            'error="failed to execute TraceQL query: '
+            "{nestedSetParent<0 && true && undefined != nil} | rate() by(undefined) "
+            'Status: 400 Bad Request"',
+            "2026-09-04T10:00:01+00:00",
+        ),
+    )
+
+    findings = ApplicationErrorRule().evaluate(incident)
+
+    assert len(findings) == 1
+    assert findings[0].metadata["occurrences"] == 2
+
+
+def test_different_structured_grafana_errors_create_different_findings() -> None:
+    incident = _incident_with_logs(
+        _entry(
+            "logger=plugins.validator.angular level=error "
+            "msg=\"Refusing to initialize plugin because it's using Angular, "
+            'which has been disabled" '
+            "pluginId=grafana-piechart-panel",
+            "2026-09-04T10:00:00+00:00",
+        ),
+        _entry(
+            "logger=plugins.validation level=error "
+            'msg="Plugin validation failed" '
+            "pluginId=grafana-piechart-panel "
+            'error="angular plugins are not supported"',
+            "2026-09-04T10:00:01+00:00",
+        ),
+    )
+
+    findings = ApplicationErrorRule().evaluate(incident)
+
+    assert len(findings) == 2
