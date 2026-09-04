@@ -6,6 +6,7 @@ class PromptBuilder:
     def build(self, ai: AIContext) -> str:
         lines: list[str] = []
 
+        self._append_instructions(lines)
         self._append_incident(lines, ai)
         self._append_timeline(lines, ai)
         self._append_diagnostics(lines, ai)
@@ -14,7 +15,6 @@ class PromptBuilder:
         self._append_root_causes(lines, ai)
         self._append_events(lines, ai)
         self._append_recommendations(lines, ai)
-        self._append_instructions(lines)
         self._append_summary(lines, ai)
 
         return "\n".join(lines)
