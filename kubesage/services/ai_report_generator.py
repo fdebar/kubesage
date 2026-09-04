@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from kubesage.builders.context.ai_context_builder import AIContextBuilder
 from kubesage.builders.prompt.prompt_builder import PromptBuilder
 from kubesage.models.ai_report import AIReport
@@ -26,4 +28,9 @@ class AIReportGenerator:
     ) -> AIReport:
         context = self.context_builder.build(incident, intelligence)
         prompt = self.prompt_builder.build(context)
+
+        Path("/tmp/kubesage-ai-prompt.txt").write_text(  # nosec B108
+            prompt, encoding="utf-8"
+        )
+
         return self.ai.analyze(prompt)

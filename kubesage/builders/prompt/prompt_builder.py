@@ -13,7 +13,7 @@ class PromptBuilder:
         self._append_correlations(lines, ai)
         self._append_root_causes(lines, ai)
         self._append_events(lines, ai)
-        self._append_logs(lines, ai)
+        # self._append_logs(lines, ai)
         self._append_recommendations(lines, ai)
         self._append_instructions(lines)
         self._append_summary(lines, ai)
