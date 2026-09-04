@@ -25,7 +25,6 @@ class AIContext:
             timeline=TimelineSelector().select(
                 timeline=intelligence.timeline,
                 findings=ranked_findings,
-                events=incident.events,
             ),
         )
 

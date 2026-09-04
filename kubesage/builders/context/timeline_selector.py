@@ -1,11 +1,7 @@
 from datetime import timedelta
 
-from kubesage.models.event import Event
 from kubesage.models.finding import Finding, Severity
-from kubesage.models.timeline import (
-    TimelineEvent,
-    TimelineEventType,
-)
+from kubesage.models.timeline import TimelineEvent, TimelineEventType
 from kubesage.utils.config import settings
 
 
@@ -14,7 +10,6 @@ class TimelineSelector:
         self,
         timeline: list[TimelineEvent],
         findings: list[Finding],
-        events: list[Event],
     ) -> list[TimelineEvent]:
         if not timeline:
             return []
@@ -27,7 +22,6 @@ class TimelineSelector:
             timeline=timeline,
             important_events=important_events,
         )
-
         selected = self._deduplicate_events(selected)
 
         return self._limit_events(selected)
@@ -63,7 +57,7 @@ class TimelineSelector:
         selected: list[TimelineEvent] = []
 
         if not findings:
-            return selected
+            return []
 
         finding_titles = {finding.title.lower() for finding in findings}
         finding_rules = {finding.rule.lower() for finding in findings}
@@ -93,7 +87,7 @@ class TimelineSelector:
 
         before = timedelta(seconds=settings.ai_timeline_window_before_seconds)
         after = timedelta(seconds=settings.ai_timeline_window_after_seconds)
-        selected_ids: set[str] = {event.id for event in important_events}
+        selected_ids = {event.id for event in important_events}
 
         for event in timeline:
             for important in important_events:
