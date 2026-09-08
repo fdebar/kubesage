@@ -99,6 +99,10 @@ class IncidentService:
                 "incident_intelligence.root_causes.count",
                 len(intelligence.root_causes),
             )
+            span.set_attribute(
+                "incident_intelligence.recommendations.count",
+                len(intelligence.recommendations),
+            )
 
         if not findings:
             logger.info("analysis.skipped", namespace=namespace, pod=pod)

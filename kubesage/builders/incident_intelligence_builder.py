@@ -34,24 +34,16 @@ class IncidentIntelligenceBuilder:
         correlations = self._build_correlations(findings)
         root_causes = self._build_root_causes(findings)
 
-        logger.info(
-            "incident_intelligence_building_completed",
-            namespace=incident.namespace,
-            pod=incident.pod,
-            findings_count=len(findings),
-            timeline_events_count=len(timeline),
-            correlations_count=len(correlations),
-            root_causes_count=len(root_causes),
-            supporting_evidence_count=sum(
-                len(candidate.supporting_evidence) for candidate in root_causes
-            ),
-        )
-
         return IncidentIntelligence(
             findings=findings,
             timeline=timeline,
             correlations=correlations,
             root_causes=root_causes,
+            recommendations=[
+                recommendation
+                for finding in findings
+                for recommendation in finding.recommendations
+            ],
         )
 
     def _build_correlations(self, findings: list[Finding]) -> list[Correlation]:
