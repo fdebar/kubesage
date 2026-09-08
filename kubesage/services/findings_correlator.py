@@ -40,15 +40,21 @@ class FindingsCorrelator:
 
     def _remove_duplicates(self, findings: list[Finding]) -> list[Finding]:
         """
-        Removes duplicate findings from a list of findings in case
-        multiple correlations produce the same finding.
+        Removes duplicate findings while preserving distinct findings
+        produced by the same rule.
         """
 
-        seen: set[str] = set()
+        seen: set[tuple[str, str | None]] = set()
         result: list[Finding] = []
 
         for finding in findings:
-            key = finding.rule
+            fingerprint = finding.metadata.get("fingerprint")
+
+            key = (
+                finding.rule,
+                str(fingerprint) if fingerprint is not None else None,
+            )
+
             if key in seen:
                 continue
 

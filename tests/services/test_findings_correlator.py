@@ -107,7 +107,74 @@ def test_correlator_creates_memory_diagnosis() -> None:
     diagnosis = next(f for f in result if f.rule == "memory_exhaustion")
 
     assert diagnosis.kind == FindingKind.DIAGNOSIS
-    assert diagnosis.caused_by == [
-        "high_memory_usage",
-        "oom_killed",
+    assert diagnosis.caused_by == ["high_memory_usage", "oom_killed"]
+
+
+def test_distinct_application_error_findings_are_preserved() -> None:
+    findings = [
+        Finding(
+            rule="application_error",
+            severity=Severity.ERROR,
+            kind=FindingKind.OBSERVATION,
+            title="Application error",
+            description="Error A",
+            metadata={
+                "fingerprint": "fingerprint-a",
+                "occurrences": 6,
+            },
+            resource=ResourceRef(kind="Pod", name="test", namespace="test"),
+            structured_evidences=[],
+        ),
+        Finding(
+            rule="application_error",
+            severity=Severity.ERROR,
+            kind=FindingKind.OBSERVATION,
+            title="Application error",
+            description="Error B",
+            metadata={
+                "fingerprint": "fingerprint-b",
+                "occurrences": 1,
+            },
+            resource=ResourceRef(kind="Pod", name="test", namespace="test"),
+            structured_evidences=[],
+        ),
     ]
+
+    result = FindingsCorrelator()._remove_duplicates(findings)
+
+    assert len(result) == 2
+
+
+def test_same_application_error_fingerprint_is_deduplicated() -> None:
+    findings = [
+        Finding(
+            rule="application_error",
+            severity=Severity.ERROR,
+            kind=FindingKind.OBSERVATION,
+            title="Application error",
+            description="Error A",
+            metadata={
+                "fingerprint": "fingerprint-a",
+                "occurrences": 6,
+            },
+            resource=ResourceRef(kind="Pod", name="test", namespace="test"),
+            structured_evidences=[],
+        ),
+        Finding(
+            rule="application_error",
+            severity=Severity.ERROR,
+            kind=FindingKind.OBSERVATION,
+            title="Application error",
+            description="Error B",
+            metadata={
+                "fingerprint": "fingerprint-a",
+                "occurrences": 1,
+            },
+            resource=ResourceRef(kind="Pod", name="test", namespace="test"),
+            structured_evidences=[],
+        ),
+    ]
+
+    result = FindingsCorrelator()._remove_duplicates(findings)
+
+    assert len(result) == 1
