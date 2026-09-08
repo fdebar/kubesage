@@ -1,4 +1,3 @@
-import re
 from collections import Counter
 from datetime import timedelta
 
@@ -247,19 +246,6 @@ class TimelineSelector:
             Severity.WARNING: 2,
             Severity.INFO: 1,
         }.get(severity, 0)
-
-    def _normalize_error_message(self, message: str) -> str:
-        normalized = message.lower()
-
-        normalized = re.sub(r"\b[0-9a-f]{8}-[0-9a-f-]{27,}\b", "<uuid>", normalized)
-        normalized = re.sub(r"\b(?:\d{1,3}\.){3}\d{1,3}\b", "<ip>", normalized)
-        normalized = re.sub(
-            r"\b\d+(?:\.\d+)?(?:ms|s|sec|seconds)\b", "<duration>", normalized
-        )
-        normalized = re.sub(r"(?<!\w)\d+(?!\w)", "<number>", normalized)
-        normalized = re.sub(r"\s+", " ", normalized)
-
-        return normalized.strip()
 
     def _select_with_context(
         self,
