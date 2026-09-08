@@ -57,6 +57,9 @@ class Settings:
     ai_timeline_window_after_seconds: int = int(
         os.getenv("AI_TIMELINE_WINDOW_AFTER_SECONDS", "10")
     )
+    ai_timeline_error_cluster_window_seconds: int = int(
+        os.getenv("AI_TIMELINE_ERROR_CLUSTER_WINDOW_SECONDS", "30")
+    )
 
     @property
     def database_url(self) -> str:

@@ -44,6 +44,24 @@ class PromptBuilder:
             if event.description:
                 lines.append(f"  {event.description}")
 
+            if event.metadata.get("aggregated"):
+                occurrences = event.metadata.get("occurrences")
+                first_seen = event.metadata.get("first_seen")
+                last_seen = event.metadata.get("last_seen")
+                error_kinds = event.metadata.get("error_kinds")
+
+                if occurrences is not None:
+                    lines.append(f"  Occurrences: {occurrences}")
+
+                if first_seen:
+                    lines.append(f"  First Seen: {first_seen}")
+
+                if last_seen:
+                    lines.append(f"  Last Seen: {last_seen}")
+
+                if error_kinds:
+                    lines.append(f"  Error Kinds: {error_kinds}")
+
         lines.append("")
 
     def _append_diagnostics(self, lines: list[str], ai: AIContext) -> None:

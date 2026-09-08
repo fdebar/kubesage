@@ -16,16 +16,18 @@ class AIContext:
         self.intelligence = intelligence
         ranked_findings = FindingRanker().rank(intelligence.findings)
 
+        selected_timeline = TimelineSelector().select(
+            timeline=intelligence.timeline,
+            findings=ranked_findings,
+        )
+
         self.ctx = PromptContext(
             namespace=incident.namespace,
             pod=incident.pod,
             phase=incident.phase,
             events=incident.events,
             findings=ranked_findings,
-            timeline=TimelineSelector().select(
-                timeline=intelligence.timeline,
-                findings=ranked_findings,
-            ),
+            timeline=selected_timeline,
         )
 
     @property

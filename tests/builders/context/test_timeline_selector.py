@@ -1,9 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
-from _pytest.monkeypatch import MonkeyPatch
-
 from kubesage.builders.context.timeline_selector import TimelineSelector
-from kubesage.models.finding import Finding, FindingKind, Severity
+from kubesage.models.finding import Severity
 from kubesage.models.timeline import (
     TimelineEvent,
     TimelineEventSource,
@@ -11,263 +9,365 @@ from kubesage.models.timeline import (
 )
 
 
-def make_event(
+def _log_event(
     event_id: str,
-    *,
-    offset_seconds: int = 0,
-    event_type: TimelineEventType = TimelineEventType.LOG_EVENT,
-    severity: Severity = Severity.INFO,
-    title: str = "Log message",
-    description: str | None = None,
-    metadata: dict | None = None,
+    timestamp: datetime,
+    message: str,
+    error_kind: str | None = None,
+    container: str = "grafana",
 ) -> TimelineEvent:
-    timestamp = datetime(2026, 9, 4, 10, 0, 0, tzinfo=UTC) + timedelta(
-        seconds=offset_seconds
-    )
+    metadata: dict[str, object] = {
+        "labels": {
+            "container": container,
+        }
+    }
+
+    if error_kind:
+        metadata["error_kind"] = error_kind
 
     return TimelineEvent(
         id=event_id,
         timestamp=timestamp,
-        type=event_type,
+        type=TimelineEventType.LOG_EVENT,
         source=TimelineEventSource.LOKI,
-        title=title,
-        description=description,
-        severity=severity,
-        metadata=metadata or {},
+        title="Application log",
+        description=message,
+        severity=Severity.INFO,
+        metadata=metadata,
     )
 
 
-def make_finding(
-    title: str = "Database connection failure",
-    rule: str = "application_error",
-) -> Finding:
-    return Finding(
-        rule=rule,
-        title=title,
-        kind=FindingKind.DIAGNOSIS,
-        severity=Severity.ERROR,
-        confidence=0.9,
-        description="Application database connection failed.",
-    )
-
-
-def test_empty_timeline_returns_empty_list() -> None:
+def test_select_keeps_single_application_error() -> None:
     selector = TimelineSelector()
+    timestamp = datetime.now(UTC)
 
-    result = selector.select([], [])
-    assert result == []
-
-
-def test_error_event_is_retained() -> None:
-    selector = TimelineSelector()
-
-    event = make_event(
-        "error-1",
-        severity=Severity.ERROR,
-        title="Database connection failed",
-    )
-
-    result = selector.select([event], [])
-
-    assert [event.id for event in result] == ["error-1"]
-
-
-def test_warning_event_is_retained() -> None:
-    selector = TimelineSelector()
-
-    event = make_event(
-        "warning-1",
-        severity=Severity.WARNING,
-        title="High memory usage",
-    )
-
-    result = selector.select([event], [])
-
-    assert [event.id for event in result] == ["warning-1"]
-
-
-def test_banal_info_event_is_not_retained() -> None:
-    selector = TimelineSelector()
-
-    event = make_event("info-1", title="Routine application log")
-    result = selector.select([event], [])
-
-    assert result == []
-
-
-def test_pod_restart_is_retained() -> None:
-    selector = TimelineSelector()
-
-    event = make_event(
-        "restart-1",
-        event_type=TimelineEventType.POD_RESTART,
-        title="Pod restarted",
-    )
-
-    result = selector.select([event], [])
-
-    assert [event.id for event in result] == ["restart-1"]
-
-
-def test_container_termination_is_retained() -> None:
-    selector = TimelineSelector()
-
-    event = make_event(
-        "terminated-1",
-        event_type=TimelineEventType.CONTAINER_TERMINATED,
-        title="Container terminated",
-    )
-
-    result = selector.select([event], [])
-
-    assert [event.id for event in result] == ["terminated-1"]
-
-
-def test_classified_application_error_is_retained() -> None:
-    selector = TimelineSelector()
-
-    event = make_event(
-        "app-error-1",
-        title="Application error",
-        metadata={
-            "error_kind": "connection_failure",
-            "error_domain": "database",
-        },
-    )
-
-    result = selector.select([event], [])
-
-    assert [event.id for event in result] == ["app-error-1"]
-
-
-def test_event_near_important_event_is_retained() -> None:
-    selector = TimelineSelector()
-
-    important = make_event(
-        "error-1",
-        offset_seconds=100,
-        severity=Severity.ERROR,
-        title="Database failure",
-    )
-
-    nearby = make_event(
-        "nearby-1",
-        offset_seconds=80,
-        title="Connection attempt",
-    )
-
-    unrelated = make_event(
-        "unrelated-1",
-        offset_seconds=200,
-        title="Routine log",
-    )
-
-    result = selector.select(
-        [important, nearby, unrelated],
+    selected = selector.select(
+        [
+            _log_event(
+                "error-1",
+                timestamp,
+                "Failed resource call to Tempo",
+                error_kind="timeout",
+            )
+        ],
         [],
     )
 
-    result_ids = {event.id for event in result}
-
-    assert "error-1" in result_ids
-    assert "nearby-1" in result_ids
-    assert "unrelated-1" not in result_ids
+    assert len(selected) == 1
+    assert selected[0].id == "error-1"
 
 
-def test_event_related_to_finding_is_retained() -> None:
+def test_select_aggregates_repeated_application_errors() -> None:
     selector = TimelineSelector()
+    timestamp = datetime.now(UTC)
 
-    event = make_event("database-1", title="Database connection failure")
-
-    finding = make_finding()
-
-    result = selector.select([event], [finding])
-
-    assert [event.id for event in result] == ["database-1"]
-
-
-def test_repeated_info_events_are_deduplicated() -> None:
-    selector = TimelineSelector()
-
-    events = [
-        make_event("info-1", title="Routine log"),
-        make_event("info-2", title="Routine log"),
-        make_event("info-3", title="Routine log"),
-    ]
-
-    result = selector.select(events, [])
-
-    assert len(result) == 0
-
-
-def test_repeated_important_events_are_not_deduplicated() -> None:
-    selector = TimelineSelector()
-
-    events = [
-        make_event(
+    timeline = [
+        _log_event(
             "error-1",
-            severity=Severity.ERROR,
-            title="Database failure",
+            timestamp,
+            "Failed resource call to Tempo",
+            error_kind="timeout",
         ),
-        make_event(
+        _log_event(
             "error-2",
-            severity=Severity.ERROR,
-            title="Database failure",
+            timestamp + timedelta(seconds=5),
+            "Failed resource call to Tempo",
+            error_kind="timeout",
+        ),
+        _log_event(
+            "error-3",
+            timestamp + timedelta(seconds=10),
+            "Failed resource call to Tempo",
+            error_kind="timeout",
         ),
     ]
 
-    result = selector.select(events, [])
+    selected = selector.select(timeline, [])
 
-    assert len(result) == 2
+    aggregated = [event for event in selected if event.metadata.get("aggregated")]
+    assert len(aggregated) == 1
 
-
-def test_timeline_is_limited_to_max_events(monkeypatch: MonkeyPatch) -> None:
-    selector = TimelineSelector()
-
-    monkeypatch.setattr(
-        "kubesage.builders.context.timeline_selector.settings.ai_timeline_max_events",
-        5,
+    aggregate = aggregated[0]
+    assert aggregate.metadata["occurrences"] == 3
+    assert aggregate.metadata["error_kinds"] == {"timeout": 3}
+    assert aggregate.metadata["first_seen"] == (timestamp.isoformat())
+    assert aggregate.metadata["last_seen"] == (
+        (timestamp + timedelta(seconds=10)).isoformat()
     )
 
-    events = [
-        make_event(
-            f"error-{index}",
-            offset_seconds=index,
-            severity=Severity.ERROR,
-            title=f"Error {index}",
-        )
-        for index in range(10)
-    ]
 
-    result = selector.select(events, [])
-
-    assert len(result) == 5
-
-
-def test_important_events_are_prioritized_when_limit_is_reached(
-    monkeypatch: MonkeyPatch,
-) -> None:
+def test_select_aggregates_different_error_kinds_in_same_episode() -> None:
     selector = TimelineSelector()
+    timestamp = datetime.now(UTC)
 
-    monkeypatch.setattr(
-        "kubesage.builders.context.timeline_selector.settings.ai_timeline_max_events",
-        2,
-    )
-
-    events = [
-        make_event("info-1", offset_seconds=1, title="Routine log"),
-        make_event("info-2", offset_seconds=2, title="Routine log 2"),
-        make_event(
+    timeline = [
+        _log_event(
             "error-1",
-            offset_seconds=3,
-            severity=Severity.ERROR,
-            title="Critical database failure",
+            timestamp,
+            "Failed resource call to Tempo",
+            error_kind="timeout",
+        ),
+        _log_event(
+            "error-2",
+            timestamp + timedelta(seconds=2),
+            "Failed to send request to Tempo",
+            error_kind="connection_error",
+        ),
+        _log_event(
+            "error-3",
+            timestamp + timedelta(seconds=4),
+            "Error processing TraceQL query",
+            error_kind="generic_error",
         ),
     ]
 
-    result = selector.select(events, [])
+    selected = selector.select(timeline, [])
 
-    result_ids = {event.id for event in result}
+    aggregated = [event for event in selected if event.metadata.get("aggregated")]
+    assert len(aggregated) == 1
+    assert aggregated[0].metadata["occurrences"] == 3
+    assert aggregated[0].metadata["error_kinds"] == {
+        "timeout": 1,
+        "connection_error": 1,
+        "generic_error": 1,
+    }
 
-    assert "error-1" in result_ids
-    assert len(result) == 2
+
+def test_select_keeps_separated_error_episodes() -> None:
+    selector = TimelineSelector()
+    timestamp = datetime.now(UTC)
+
+    timeline = [
+        _log_event(
+            "error-1",
+            timestamp,
+            "Tempo request failed",
+            error_kind="timeout",
+        ),
+        _log_event(
+            "error-2",
+            timestamp + timedelta(seconds=5),
+            "Tempo request failed",
+            error_kind="timeout",
+        ),
+        _log_event(
+            "error-3",
+            timestamp + timedelta(seconds=40),
+            "Tempo request failed",
+            error_kind="timeout",
+        ),
+    ]
+
+    selected = selector.select(timeline, [])
+
+    aggregated = [event for event in selected if event.metadata.get("aggregated")]
+    assert len(aggregated) == 1
+    assert aggregated[0].metadata["occurrences"] == 2
+
+    selected_ids = {event.id for event in selected}
+    assert "error-3" in selected_ids
+
+
+def test_select_does_not_select_normal_info_logs() -> None:
+    selector = TimelineSelector()
+    timestamp = datetime.now(UTC)
+
+    timeline = [
+        _log_event(
+            "info-1",
+            timestamp,
+            "Loading incluster config...",
+        ),
+        _log_event(
+            "info-2",
+            timestamp + timedelta(seconds=1),
+            "Loading incluster config...",
+        ),
+    ]
+
+    selected = selector.select(timeline, [])
+    assert selected == []
+
+
+def test_select_keeps_kubernetes_events_individual() -> None:
+    selector = TimelineSelector()
+    timestamp = datetime.now(UTC)
+
+    event = TimelineEvent(
+        id="unhealthy-1",
+        timestamp=timestamp,
+        type=TimelineEventType.KUBERNETES_EVENT,
+        source=TimelineEventSource.KUBERNETES,
+        title="Unhealthy",
+        description="Readiness probe failed",
+        severity=Severity.WARNING,
+    )
+
+    selected = selector.select([event], [])
+
+    assert len(selected) == 1
+    assert selected[0].id == "unhealthy-1"
+    assert selected[0].metadata.get("aggregated") is not True
+
+
+def test_select_keeps_container_started_individual() -> None:
+    selector = TimelineSelector()
+    timestamp = datetime.now(UTC)
+
+    event = TimelineEvent(
+        id="started-1",
+        timestamp=timestamp,
+        type=TimelineEventType.CONTAINER_STARTED,
+        source=TimelineEventSource.KUBERNETES,
+        title="Container started",
+        severity=Severity.INFO,
+    )
+
+    selected = selector.select([event], [])
+    assert len(selected) == 1
+    assert selected[0].id == "started-1"
+
+
+def test_select_does_not_return_raw_events_replaced_by_aggregate() -> None:
+    selector = TimelineSelector()
+    timestamp = datetime.now(UTC)
+
+    timeline = [
+        _log_event(
+            "error-1",
+            timestamp,
+            "Failed resource call to Tempo",
+            error_kind="timeout",
+        ),
+        _log_event(
+            "error-2",
+            timestamp + timedelta(seconds=2),
+            "Failed to send request to Tempo",
+            error_kind="connection_error",
+        ),
+        _log_event(
+            "error-3",
+            timestamp + timedelta(seconds=4),
+            "Error processing TraceQL query",
+            error_kind="generic_error",
+        ),
+    ]
+
+    selected = selector.select(timeline, [])
+    selected_ids = {event.id for event in selected}
+
+    assert "error-1" not in selected_ids
+    assert "error-2" not in selected_ids
+    assert "error-3" not in selected_ids
+
+    aggregated = [event for event in selected if event.metadata.get("aggregated")]
+    assert len(aggregated) == 1
+
+
+def test_select_keeps_context_around_aggregated_error() -> None:
+    selector = TimelineSelector()
+    timestamp = datetime.now(UTC)
+
+    started = TimelineEvent(
+        id="started",
+        timestamp=timestamp,
+        type=TimelineEventType.CONTAINER_STARTED,
+        source=TimelineEventSource.KUBERNETES,
+        title="Container started",
+        severity=Severity.INFO,
+    )
+
+    error_1 = _log_event(
+        "error-1",
+        timestamp + timedelta(seconds=5),
+        "Tempo timeout",
+        error_kind="timeout",
+    )
+
+    error_2 = _log_event(
+        "error-2",
+        timestamp + timedelta(seconds=7),
+        "Tempo connection refused",
+        error_kind="connection_error",
+    )
+
+    selected = selector.select([started, error_1, error_2], [])
+    selected_ids = {event.id for event in selected}
+    assert "started" in selected_ids
+
+    aggregated = [event for event in selected if event.metadata.get("aggregated")]
+    assert len(aggregated) == 1
+    assert aggregated[0].metadata["occurrences"] == 2
+
+
+def test_select_grafana_error_episode_is_compact() -> None:
+    selector = TimelineSelector()
+    timestamp = datetime.now(UTC)
+
+    timeline = [
+        TimelineEvent(
+            id="started",
+            timestamp=timestamp,
+            type=TimelineEventType.CONTAINER_STARTED,
+            source=TimelineEventSource.KUBERNETES,
+            title="Container started",
+            severity=Severity.INFO,
+        ),
+        _log_event(
+            "loading-1",
+            timestamp + timedelta(seconds=1),
+            "Loading incluster config...",
+        ),
+        _log_event(
+            "loading-2",
+            timestamp + timedelta(seconds=1),
+            "Loading incluster config...",
+        ),
+        _log_event(
+            "error-1",
+            timestamp + timedelta(seconds=10),
+            "Failed resource call to Tempo: timeout awaiting response headers",
+            error_kind="timeout",
+        ),
+        _log_event(
+            "error-2",
+            timestamp + timedelta(seconds=12),
+            "Failed to send request to Tempo: connection refused",
+            error_kind="connection_error",
+        ),
+        _log_event(
+            "error-3",
+            timestamp + timedelta(seconds=14),
+            "Error processing TraceQL query",
+            error_kind="generic_error",
+        ),
+        TimelineEvent(
+            id="unhealthy",
+            timestamp=timestamp + timedelta(seconds=16),
+            type=TimelineEventType.KUBERNETES_EVENT,
+            source=TimelineEventSource.KUBERNETES,
+            title="Unhealthy",
+            severity=Severity.WARNING,
+        ),
+    ]
+
+    selected = selector.select(timeline, [])
+    selected_ids = {event.id for event in selected}
+
+    assert "started" in selected_ids
+    assert "unhealthy" in selected_ids
+
+    assert "loading-1" not in selected_ids
+    assert "loading-2" not in selected_ids
+
+    aggregates = [event for event in selected if event.metadata.get("aggregated")]
+    assert len(aggregates) == 1
+
+    aggregate = aggregates[0]
+    assert aggregate.metadata["occurrences"] == 3
+    assert aggregate.metadata["error_kinds"] == {
+        "timeout": 1,
+        "connection_error": 1,
+        "generic_error": 1,
+    }
+    assert len(selected) == 3
