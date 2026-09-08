@@ -1,5 +1,5 @@
-from datetime import datetime
-from unittest.mock import Mock
+from datetime import UTC, datetime
+from unittest.mock import MagicMock, Mock
 
 from kubesage.builders.incident_intelligence_builder import (
     IncidentIntelligenceBuilder,
@@ -12,6 +12,7 @@ from kubesage.models.incident_intelligence import (
     CorrelationType,
     IncidentIntelligence,
 )
+from kubesage.models.prometheus import MetricChange
 from kubesage.models.timeline import (
     TimelineEvent,
     TimelineEventSource,
@@ -62,7 +63,7 @@ def test_builds_incident_intelligence() -> None:
     assert result.findings == [finding]
     assert result.timeline == timeline
 
-    timeline_builder.build.assert_called_once_with(incident)
+    timeline_builder.build.assert_called_once_with(incident, incident.metric_changes)
 
 
 def test_build_with_no_findings() -> None:
@@ -379,3 +380,32 @@ def test_root_cause_ignores_missing_supporting_finding() -> None:
 
     assert candidate.supporting_findings == ["high_memory_usage", "missing_finding"]
     assert candidate.supporting_evidence == []
+
+
+def test_build_includes_metric_changes_in_timeline() -> None:
+    timeline_builder = MagicMock()
+    timeline_builder.build.return_value = []
+
+    builder = IncidentIntelligenceBuilder(timeline_builder=timeline_builder)
+
+    incident = MagicMock(spec=Incident)
+    incident.namespace = "monitoring"
+    incident.pod = "grafana"
+    incident.metric_changes = [
+        MetricChange(
+            timestamp=datetime(2026, 9, 8, 15, 0, 30, tzinfo=UTC),
+            metric_name="memory",
+            previous_value=500.0,
+            value=600.0,
+            labels={
+                "namespace": "monitoring",
+                "pod": "grafana",
+                "container": "grafana",
+            },
+        )
+    ]
+
+    intelligence = builder.build(incident=incident, findings=[])
+    timeline_builder.build.assert_called_once_with(incident, incident.metric_changes)
+
+    assert intelligence.timeline == []

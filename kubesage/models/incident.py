@@ -6,7 +6,7 @@ from kubesage.models.container import ContainerSnapshot
 from kubesage.models.event import Event
 from kubesage.models.log import LogSnapshot, LogSource
 from kubesage.models.metrics import PodMetrics
-from kubesage.models.prometheus import PrometheusResourceUsage
+from kubesage.models.prometheus import MetricChange, PrometheusResourceUsage
 
 
 class Incident(BaseModel):
@@ -18,6 +18,7 @@ class Incident(BaseModel):
     events: list[Event] = Field(default_factory=list)
     containers: list[ContainerSnapshot] = Field(default_factory=list)
     metrics: PodMetrics | None = None
+    metric_changes: list[MetricChange] = Field(default_factory=list)
     log_source: LogSource = LogSource.KUBERNETES
     kubernetes_logs: LogSnapshot | None = None
     loki_logs: LogSnapshot | None = None

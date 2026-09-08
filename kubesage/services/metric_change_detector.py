@@ -7,12 +7,16 @@ class MetricChangeDetector:
     def detect(
         self,
         series: PrometheusTimeSeries,
-        relative_threshold: float = 1.0,
+        relative_threshold: float = 0.1,
     ) -> list[MetricChange]:
         changes: list[MetricChange] = []
 
-        for previous, current in zip(series.points, series.points[1:], strict=True):
+        for previous, current in zip(series.points, series.points[1:], strict=False):
             if previous.value == 0:
+                continue
+
+            relative_change = abs(current.value - previous.value) / abs(previous.value)
+            if relative_change < relative_threshold:
                 continue
 
             changes.append(

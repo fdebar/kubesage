@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -215,3 +216,132 @@ def test_time_series_preserves_container_labels(service: PrometheusService) -> N
 
     assert series[0].labels["container"] == "web"
     assert len(series[0].points) == 2
+
+
+@patch.object(PrometheusService, "query_range")
+def test_collect_time_series_collects_all_metrics(
+    mock_query_range: MagicMock,
+    service: PrometheusService,
+) -> None:
+    mock_query_range.return_value = [
+        {
+            "metric": {
+                "namespace": "monitoring",
+                "pod": "grafana",
+            },
+            "values": [
+                [1757334000, "100"],
+                [1757334030, "120"],
+            ],
+        }
+    ]
+
+    start = datetime(2026, 9, 8, 15, 0, tzinfo=UTC)
+    end = datetime(2026, 9, 8, 15, 5, tzinfo=UTC)
+
+    result = service.collect_time_series(
+        namespace="monitoring",
+        pod="grafana",
+        start=start,
+        end=end,
+        step="30s",
+    )
+
+    assert len(result) == 7
+    assert {series.name for series in result} == {
+        "cpu",
+        "memory",
+        "cpu_throttling",
+        "restarts",
+        "network_rx",
+        "network_tx",
+        "filesystem",
+    }
+
+    assert mock_query_range.call_count == 7
+
+    for call in mock_query_range.call_args_list:
+        assert call.kwargs["start"] == start
+        assert call.kwargs["end"] == end
+        assert call.kwargs["step"] == "30s"
+
+
+@patch.object(PrometheusService, "query_range")
+def test_collect_time_series_builds_metric_points(
+    mock_query_range: MagicMock,
+    service: PrometheusService,
+) -> None:
+    mock_query_range.return_value = [
+        {
+            "metric": {
+                "namespace": "monitoring",
+                "pod": "grafana",
+                "container": "grafana",
+            },
+            "values": [
+                [1757334000, "100"],
+                [1757334030, "120"],
+            ],
+        }
+    ]
+
+    start = datetime(2026, 9, 8, 15, 0, tzinfo=UTC)
+    end = datetime(2026, 9, 8, 15, 5, tzinfo=UTC)
+
+    result = service.collect_time_series(
+        namespace="monitoring",
+        pod="grafana",
+        start=start,
+        end=end,
+    )
+
+    assert result
+    for series in result:
+        assert series.points
+        assert len(series.points) == 2
+        assert series.labels["container"] == "grafana"
+        assert series.points[0].value == 100.0
+        assert series.points[1].value == 120.0
+
+
+@patch.object(PrometheusService, "query_range")
+def test_collect_time_series_propagates_custom_step(
+    mock_query_range: MagicMock,
+    service: PrometheusService,
+) -> None:
+    mock_query_range.return_value = []
+
+    start = datetime(2026, 9, 8, 15, 0, tzinfo=UTC)
+    end = datetime(2026, 9, 8, 16, 0, tzinfo=UTC)
+
+    service.collect_time_series(
+        namespace="monitoring",
+        pod="grafana",
+        start=start,
+        end=end,
+        step="1m",
+    )
+
+    assert mock_query_range.call_count == 7
+    for call in mock_query_range.call_args_list:
+        assert call.kwargs["step"] == "1m"
+
+
+@patch.object(PrometheusService, "query_range")
+def test_collect_time_series_returns_empty_when_prometheus_has_no_data(
+    mock_query_range: MagicMock,
+    service: PrometheusService,
+) -> None:
+    mock_query_range.return_value = []
+
+    start = datetime(2026, 9, 8, 15, 0, tzinfo=UTC)
+    end = datetime(2026, 9, 8, 15, 5, tzinfo=UTC)
+
+    result = service.collect_time_series(
+        namespace="monitoring",
+        pod="grafana",
+        start=start,
+        end=end,
+    )
+    assert result == []
+    assert mock_query_range.call_count == 7

@@ -30,7 +30,7 @@ class IncidentIntelligenceBuilder:
             pod=incident.pod,
         )
 
-        timeline = self.timeline_builder.build(incident)
+        timeline = self.timeline_builder.build(incident, incident.metric_changes)
         correlations = self._build_correlations(findings)
         root_causes = self._build_root_causes(findings)
 
