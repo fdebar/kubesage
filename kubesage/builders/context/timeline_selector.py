@@ -17,8 +17,11 @@ class TimelineSelector:
 
         important_events = [event for event in timeline if self._is_important(event)]
         important_events.extend(self._events_related_to_findings(timeline, findings))
-        important_events = self._aggregate_error_events(important_events)
+        important_events = list(
+            {event.id: event for event in important_events}.values()
+        )
         important_events = self._deduplicate_events(important_events)
+        important_events = self._aggregate_error_events(important_events)
 
         selected = self._select_with_context(timeline, important_events)
         selected = self._deduplicate_events(selected)
