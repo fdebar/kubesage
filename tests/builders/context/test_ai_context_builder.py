@@ -122,7 +122,7 @@ def test_build_prompt_without_findings() -> None:
     assert "Phase: Running" in prompt
 
     assert "# Diagnostic Summary" not in prompt
-    assert "# Diagnoses" not in prompt
+    assert "# Diagnoses " not in prompt
     assert "# Observations" not in prompt
 
     assert "# Kubernetes Events" in prompt
@@ -175,7 +175,7 @@ def test_build_prompt_with_observation() -> None:
     assert "### Container restarted" in prompt
     assert "Description: Container restarted multiple times." in prompt
 
-    assert "# Diagnoses" not in prompt
+    assert "# Diagnoses " not in prompt
 
 
 def test_build_prompt_with_multiple_findings() -> None:

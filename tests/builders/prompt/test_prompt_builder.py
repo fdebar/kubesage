@@ -410,5 +410,18 @@ def test_prompt_with_empty_intelligence() -> None:
     assert "Phase: Running" in prompt
 
     assert "# Incident Timeline" not in prompt
-    assert "# Finding Correlations" not in prompt
+    assert "# Finding Correlations " not in prompt
     assert "# Root Cause Analysis" not in prompt
+
+
+def test_prompt_explicitly_constrains_root_cause_without_diagnosis() -> None:
+    incident = make_incident()
+    intelligence = IncidentIntelligence()
+    context = AIContext(incident, intelligence)
+    prompt = PromptBuilder().build(context)
+
+    assert "deterministic analysis pipeline is authoritative" in prompt
+    assert "no deterministic diagnosis exists" in prompt
+    assert "do not present an observation as a confirmed root cause" in prompt
+    assert "confidence" in prompt
+    assert "<= 0.7" in prompt

@@ -368,6 +368,44 @@ supporting it.
 When the structured intelligence conflicts with the available evidence,
 prefer the evidence and explicitly communicate the uncertainty.
 
+## Deterministic diagnostic authority
+
+KubeSage's deterministic analysis pipeline is authoritative for
+diagnoses, causal relationships, and root cause candidates.
+
+The LLM must synthesize and explain the deterministic analysis.
+It must NOT create a stronger diagnosis than the deterministic pipeline.
+
+If `# Diagnoses` is absent or empty:
+- no deterministic diagnosis exists;
+- do not present an observation as a confirmed root cause;
+- do not infer causality between observations;
+- do not promote a metric threshold, log error, Kubernetes event,
+  restart, or probe failure into a confirmed root cause.
+
+If `# Root Cause Candidates` is absent or empty:
+- no deterministic root cause candidate was identified;
+- the final `root_cause` MUST be explicitly described as unconfirmed,
+  unknown, or not established;
+- `confidence` MUST be <= 0.7.
+
+If `# Finding Correlations` is absent or empty:
+- no deterministic causal correlation was established;
+- do not claim that one observation caused another.
+
+An observation can describe a concrete technical condition,
+but it is not automatically a root cause.
+
+For example:
+
+- "memory usage reached 107% of the configured limit" is an observation;
+- "memory pressure caused the readiness failure" is a causal claim;
+- the causal claim is forbidden unless deterministic analysis or
+  explicit evidence establishes it.
+
+Temporal proximity, severity, or plausibility is not sufficient
+to establish causality.
+
 ## Diagnostic reasoning
 
 Diagnoses are the primary source of truth.
@@ -469,6 +507,15 @@ The same rule applies to:
 - dependency failures.
 
 ## Root cause requirements
+
+Before determining the root cause, check whether deterministic
+diagnoses or root cause candidates are present.
+
+If no diagnosis and no root cause candidate are provided, do not
+turn an observation into a confirmed root cause.
+
+In that situation, the root cause must explicitly communicate
+uncertainty and confidence MUST be <= 0.7.
 
 When root cause candidates are provided, consider them first when
 determining the root cause.
