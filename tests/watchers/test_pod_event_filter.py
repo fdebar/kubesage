@@ -51,7 +51,11 @@ def build_event(pod: V1Pod, event_type: str = "MODIFIED") -> PodWatchEvent:
 def test_returns_none_when_no_change() -> None:
     event_filter = PodEventFilter()
     trigger = event_filter.evaluate(
-        PodStateDiff(), "default", "test-pod", "123e4567-e89b-12d3-a456-426614174000"
+        PodStateDiff(),
+        "default",
+        "test-pod",
+        "123e4567-e89b-12d3-a456-426614174000",
+        "100",
     )
 
     assert trigger is None
@@ -63,6 +67,7 @@ def test_triggers_oom_killed() -> None:
         "default",
         "test-pod",
         "123e4567-e89b-12d3-a456-426614174000",
+        "100",
     )
 
     assert trigger is not None
@@ -79,6 +84,7 @@ def test_triggers_crashloop_transition() -> None:
         "default",
         "test-pod",
         "123e4567-e89b-12d3-a456-426614174000",
+        "100",
     )
 
     assert trigger is not None
@@ -95,6 +101,7 @@ def test_does_not_trigger_when_crashloop_is_unchanged() -> None:
         "default",
         "test-pod",
         "123e4567-e89b-12d3-a456-426614174000",
+        "100",
     )
 
     assert trigger is None
@@ -121,6 +128,7 @@ def test_crash_loop_backoff_triggers_only_when_waiting_reason_changes() -> None:
         namespace="default",
         pod="my-pod",
         pod_uid="123e4567-e89b-12d3-a456-426614174000",
+        resource_version="100",
     )
 
     assert trigger is not None
@@ -148,6 +156,7 @@ def test_existing_crash_loop_backoff_does_not_trigger_again() -> None:
         namespace="default",
         pod="my-pod",
         pod_uid="123e4567-e89b-12d3-a456-426614174000",
+        resource_version="100",
     )
 
     assert trigger is None

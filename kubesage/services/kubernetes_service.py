@@ -94,7 +94,6 @@ class KubernetesService(KubernetesProvider):
 
             containers = self._collect_containers(pod_info)
             logs = self._collect_logs(namespace, pod, containers)
-            events = self._collect_events(namespace, pod)
             resources = self._collect_resources(pod_info)
             pod_uid = pod_info.metadata.uid
 
@@ -102,6 +101,8 @@ class KubernetesService(KubernetesProvider):
                 raise PodNotFoundError(
                     f"Pod '{pod}' has no UID in namespace '{namespace}'."
                 )
+
+            events = self._collect_events(namespace, pod, pod_uid)
 
             KUBERNETES_DURATION.observe(time.perf_counter() - start)
 
@@ -232,15 +233,18 @@ class KubernetesService(KubernetesProvider):
 
         return containers
 
-    def _collect_events(self, namespace: str, pod: str) -> list[Event]:
+    def _collect_events(self, namespace: str, pod: str, pod_uid: str) -> list[Event]:
         with tracer.start_as_current_span("kubernetes.get_events") as span:
             span.set_attribute("k8s.namespace", namespace)
             span.set_attribute("k8s.pod.name", pod)
+            span.set_attribute("k8s.pod.uid", pod_uid)
 
             try:
                 events = self.v1.list_namespaced_event(
                     namespace=namespace,
-                    field_selector=f"involvedObject.name={pod}",
+                    field_selector=(
+                        f"involvedObject.name={pod}, involvedObject.uid={pod_uid}"
+                    ),
                 )
             except ApiException as exc:
                 span.record_exception(exc)

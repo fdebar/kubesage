@@ -270,15 +270,7 @@ def test_collect_events_returns_warning_events(
     mock_event.type = "Warning"
     mock_event.reason = "BackOff"
     mock_event.message = "Back-off restarting failed container"
-    mock_event.last_timestamp = datetime(
-        2026,
-        7,
-        25,
-        12,
-        0,
-        0,
-        tzinfo=UTC,
-    )
+    mock_event.last_timestamp = datetime(2026, 7, 25, 12, 0, 0, tzinfo=UTC)
 
     mock_v1 = MagicMock()
     mock_v1.list_namespaced_event.return_value.items = [mock_event]
@@ -287,7 +279,7 @@ def test_collect_events_returns_warning_events(
 
     service = KubernetesService()
 
-    result = service._collect_events(namespace="default", pod="my-pod")
+    result = service._collect_events("default", "my-pod", "123e4567-e89b")
 
     assert len(result) == 1
     assert result[0].type == "Warning"
@@ -314,7 +306,7 @@ def test_collect_events_ignores_normal_events(
     mock_create_api.return_value = mock_v1
 
     service = KubernetesService()
-    result = service._collect_events(namespace="default", pod="my-pod")
+    result = service._collect_events("default", "my-pod", "123e4567-e89b")
 
     assert result == []
 
@@ -335,15 +327,10 @@ def test_collect_events_returns_empty_list_on_api_error(
 
     service = KubernetesService()
 
-    result = service._collect_events(
-        namespace="default",
-        pod="my-pod",
-    )
-
+    result = service._collect_events("default", "my-pod", "123e4567-e89b")
     assert result == []
 
     span = _get_span(span_exporter, "kubernetes.get_events")
-
     assert span.status.status_code.name == "ERROR"
     assert any(event.name == "exception" for event in span.events)
 
@@ -360,9 +347,7 @@ def test_collect_events_returns_empty_list_on_unexpected_error(
     mock_create_api.return_value = mock_v1
 
     service = KubernetesService()
-
-    result = service._collect_events(namespace="default", pod="my-pod")
-
+    result = service._collect_events("default", "my-pod", "123e4567-e89b")
     assert result == []
 
     span = _get_span(span_exporter, "kubernetes.get_events")
@@ -421,14 +406,8 @@ def test_collect_resources_extracts_resource_quantities() -> None:
     service = KubernetesService.__new__(KubernetesService)
 
     resources = MagicMock()
-    resources.limits = {
-        "cpu": "500m",
-        "memory": "256Mi",
-    }
-    resources.requests = {
-        "cpu": "100m",
-        "memory": "128Mi",
-    }
+    resources.limits = {"cpu": "500m", "memory": "256Mi"}
+    resources.requests = {"cpu": "100m", "memory": "128Mi"}
 
     container = MagicMock()
     container.name = "web"

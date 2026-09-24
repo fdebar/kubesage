@@ -1,46 +1,52 @@
+from collections.abc import Iterable
+
 from kubernetes.client import V1Pod
 
 
 class PodStateCache:
     """
-    Stores the latest observed state of each pod.
+    Stores the latest observed state of each Pod, keyed by Pod UID.
     """
 
     def __init__(self) -> None:
         self._pods: dict[str, V1Pod] = {}
 
-    def get(self, namespace: str, pod: str) -> V1Pod | None:
-        """
-        Returns the last known state of a pod.
-        """
-
-        return self._pods.get(self._key(namespace, pod))
+    def get(self, namespace: str, pod_uid: str) -> V1Pod | None:
+        return self._pods.get(self._key(namespace, pod_uid))
 
     def update(self, pod: V1Pod) -> None:
-        """
-        Stores or replaces the latest pod state.
-        """
-
         metadata = pod.metadata
+
         if metadata is None:
             return
 
-        self._pods[self._key(metadata.namespace, metadata.name)] = pod
+        if metadata.namespace is None or metadata.uid is None:
+            return
 
-    def remove(self, namespace: str, pod: str) -> None:
-        """
-        Removes a pod from the cache.
-        """
+        self._pods[self._key(metadata.namespace, metadata.uid)] = pod
 
-        self._pods.pop(self._key(namespace, pod), None)
+    def remove(self, namespace: str, pod_uid: str) -> None:
+        self._pods.pop(self._key(namespace, pod_uid), None)
+
+    def replace(self, pods: Iterable[V1Pod]) -> None:
+        new_cache: dict[str, V1Pod] = {}
+
+        for pod in pods:
+            metadata = pod.metadata
+
+            if metadata is None:
+                continue
+
+            if metadata.namespace is None or metadata.uid is None:
+                continue
+
+            new_cache[self._key(metadata.namespace, metadata.uid)] = pod
+
+        self._pods = new_cache
 
     def size(self) -> int:
-        """
-        Returns the number of cached Pods.
-        """
-
         return len(self._pods)
 
     @staticmethod
-    def _key(namespace: str, pod: str) -> str:
-        return f"{namespace}/{pod}"
+    def _key(namespace: str, pod_uid: str) -> str:
+        return f"{namespace}/{pod_uid}"

@@ -1,7 +1,6 @@
 import structlog
 
-from kubesage.bootstrap import check_application_requirements, create_analysis_service
-from kubesage.database.session import SessionLocal
+from kubesage.bootstrap import check_application_requirements
 from kubesage.observability.worker_metrics import start_metrics_server
 from kubesage.utils.config import settings
 from kubesage.watchers.incident_deduplicator import IncidentDeduplicator
@@ -12,6 +11,7 @@ from kubesage.watchers.kubernetes_watcher import KubernetesWatcher
 from kubesage.watchers.pod_event_filter import PodEventFilter
 from kubesage.watchers.pod_state_cache import PodStateCache
 from kubesage.watchers.pod_state_diff_builder import PodStateDiffBuilder
+from kubesage.worker.analysis_worker import AnalysisWorker
 
 logger = structlog.get_logger()
 
@@ -19,24 +19,28 @@ logger = structlog.get_logger()
 def run_worker() -> None:
     check_application_requirements()
     start_metrics_server(settings.metrics_port)
-    db = SessionLocal()
 
-    try:
-        watcher = KubernetesWatcher(
-            analysis_service=create_analysis_service(db),
-            event_filter=PodEventFilter(),
-            deduplicator=IncidentDeduplicator(),
-            state_cache=PodStateCache(),
-            diff_builder=PodStateDiffBuilder(),
-        )
-        logger.info("kubesage_worker_started")
-        watcher.start(KubernetesPodEventSource())
-    except Exception:
-        logger.exception("kubesage_worker_failed")
-        raise
+    deduplicator = IncidentDeduplicator()
 
-    finally:
-        db.close()
+    analysis_worker = AnalysisWorker(
+        deduplicator=deduplicator,
+        queue_size=settings.worker_queue_size,
+        max_retries=settings.worker_analysis_retries,
+    )
+
+    analysis_worker.start()
+
+    watcher = KubernetesWatcher(
+        event_filter=PodEventFilter(),
+        deduplicator=deduplicator,
+        state_cache=PodStateCache(),
+        diff_builder=PodStateDiffBuilder(),
+        analysis_submitter=analysis_worker.submit,
+    )
+
+    logger.info("kubesage_worker_started")
+
+    watcher.start(KubernetesPodEventSource())
 
 
 def main() -> None:

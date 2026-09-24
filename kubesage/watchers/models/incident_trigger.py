@@ -14,6 +14,7 @@ class IncidentTrigger(BaseModel):
     namespace: str
     pod: str
     pod_uid: str
+    resource_version: str
     message: str | None = None
     occurred_at: datetime
 
@@ -26,4 +27,5 @@ class PodWatchEvent(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     type: str
     pod: V1Pod
+    resource_version: str | None = None
     received_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

@@ -64,6 +64,10 @@ class Settings:
         os.getenv("AI_TIMELINE_ERROR_CLUSTER_MAX_EXAMPLES", "3")
     )
 
+    # Worker configuration
+    worker_queue_size: int = int(os.getenv("WORKER_QUEUE_SIZE", "100"))
+    worker_analysis_retries: int = int(os.getenv("WORKER_ANALYSIS_RETRIES", "3"))
+
     @property
     def database_url(self) -> str:
         return (

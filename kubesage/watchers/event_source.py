@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from dataclasses import dataclass
 from typing import Protocol
 
 from kubernetes.client import V1Pod
@@ -6,21 +7,24 @@ from kubernetes.client import V1Pod
 from kubesage.watchers.models.incident_trigger import PodWatchEvent
 
 
+@dataclass(frozen=True)
+class PodListSnapshot:
+    pods: list[V1Pod]
+    resource_version: str
+
+
 class EventSource(Protocol):
     """
-    Contract for objects able to produce watch events.
+    Contract for objects able to produce Kubernetes Pod snapshots and watch
+    subsequent changes.
     """
 
-    def initial_pods(self) -> Iterator[V1Pod]:
-        """Yields all pods at the time the watcher is started.
-        This is used to populate the initial state cache.
-        """
+    def initial_state(self) -> PodListSnapshot:
+        """Return the current Pods and the collection resourceVersion."""
 
         raise NotImplementedError
 
-    def watch(self) -> Iterator[PodWatchEvent]:
-        """Yields watch events as they arrive.
-        This should include all pod events that may be interesting to the watcher.
-        """
+    def watch(self, resource_version: str) -> Iterator[PodWatchEvent]:
+        """Watch Pod changes starting exactly after resource_version."""
 
         raise NotImplementedError

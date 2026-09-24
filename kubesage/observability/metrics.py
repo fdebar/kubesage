@@ -1,4 +1,4 @@
-from prometheus_client import Counter, Histogram
+from prometheus_client import Counter, Gauge, Histogram
 
 REQUEST_COUNT = Counter(
     "kubesage_http_requests_total",
@@ -69,4 +69,19 @@ WATCHER_INCIDENTS_IGNORED_TOTAL = Counter(
 
 WATCHER_ERRORS_TOTAL = Counter(
     "kubesage_watcher_errors_total", "Total number of watcher errors"
+)
+
+WATCHER_RESYNCS_TOTAL = Counter(
+    "kubesage_watcher_resyncs_total",
+    "Number of Kubernetes watcher cache resynchronizations",
+)
+
+WATCHER_RECONNECTS_TOTAL = Counter(
+    "kubesage_watcher_reconnects_total",
+    "Number of Kubernetes watcher reconnects",
+)
+
+WATCHER_QUEUE_DEPTH = Gauge(
+    "kubesage_watcher_analysis_queue_depth",
+    "Current number of incident analyses waiting to be processed",
 )
