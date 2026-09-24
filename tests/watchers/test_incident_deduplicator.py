@@ -46,13 +46,13 @@ def test_different_reason_is_processed() -> None:
     assert deduplicator.should_process(second) is True
 
 
-def test_same_reason_with_new_resource_version_is_processed() -> None:
+def test_same_reason_with_new_resource_version_is_suppressed_during_cooldown() -> None:
     deduplicator = IncidentDeduplicator()
     first = build_trigger(resource_version="100")
     second = build_trigger(resource_version="101")
 
     assert deduplicator.should_process(first) is True
-    assert deduplicator.should_process(second) is True
+    assert deduplicator.should_process(second) is False
 
 
 def test_same_resource_version_is_deduplicated() -> None:

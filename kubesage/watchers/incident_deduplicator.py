@@ -6,20 +6,22 @@ from kubesage.watchers.models.incident_trigger import IncidentTrigger
 
 class IncidentDeduplicator:
     """
-    Prevents the same Kubernetes watch event from being processed twice.
+    Suppresses repeated analyses for the same Pod and incident reason during
+    a cooldown window.
 
-    The identity of an event is:
+    The deduplication identity is:
         namespace
         pod UID
-        resourceVersion
         reason
 
-    TTL is only used to limit in-memory cache retention.
+    The resourceVersion identifies a watch event, but a CrashLoopBackOff
+    produces a new resourceVersion on each restart. It is therefore not part
+    of the cooldown key.
     """
 
-    def __init__(self, ttl_seconds: int = 600) -> None:
+    def __init__(self, ttl_seconds: int = 300) -> None:
         self.ttl = timedelta(seconds=ttl_seconds)
-        self._cache: dict[tuple[str, str, str, str], datetime] = {}
+        self._cache: dict[tuple[str, str, str], datetime] = {}
         self._lock = Lock()
 
     def should_process(self, trigger: IncidentTrigger) -> bool:
@@ -46,11 +48,10 @@ class IncidentDeduplicator:
         with self._lock:
             self._cache.pop(self._build_key(trigger), None)
 
-    def _build_key(self, trigger: IncidentTrigger) -> tuple[str, str, str, str]:
+    def _build_key(self, trigger: IncidentTrigger) -> tuple[str, str, str]:
         return (
             trigger.namespace,
             trigger.pod_uid,
-            trigger.resource_version,
             trigger.reason,
         )
 
