@@ -182,6 +182,12 @@ class TimelineBuilder:
             classification = self.application_error_classifier.classify(entry.message)
             if classification:
                 metadata["error_kind"] = classification.kind.value
+                metadata["error_fingerprint"] = (
+                    self.application_error_classifier.fingerprint(
+                        classification,
+                        entry.message,
+                    )
+                )
 
                 if classification.domain:
                     metadata["error_domain"] = classification.domain.value
@@ -202,8 +208,21 @@ class TimelineBuilder:
 
         return events
 
-    @staticmethod
-    def _log_severity(entry: LogEntry) -> Severity | None:
+    _ERROR_LEVELS = frozenset({"error", "err", "fatal", "critical", "panic"})
+    _WARNING_LEVELS = frozenset({"warn", "warning"})
+
+    def _log_severity(self, entry: LogEntry) -> Severity | None:
+        level = self.application_error_classifier.structured_level(entry.message)
+
+        if level is not None:
+            if level in self._ERROR_LEVELS:
+                return Severity.ERROR
+
+            if level in self._WARNING_LEVELS:
+                return Severity.WARNING
+
+            return None
+
         message = entry.message.lstrip().upper()
 
         if message.startswith(("FATAL", "CRITICAL", "ERROR")):

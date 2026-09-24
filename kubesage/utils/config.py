@@ -60,6 +60,9 @@ class Settings:
     ai_timeline_error_cluster_window_seconds: int = int(
         os.getenv("AI_TIMELINE_ERROR_CLUSTER_WINDOW_SECONDS", "30")
     )
+    ai_timeline_error_cluster_max_examples: int = int(
+        os.getenv("AI_TIMELINE_ERROR_CLUSTER_MAX_EXAMPLES", "3")
+    )
 
     @property
     def database_url(self) -> str:

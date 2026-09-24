@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from unittest.mock import ANY
 
 from kubesage.builders.timeline import TimelineBuilder
 from kubesage.models.container import ContainerSnapshot
@@ -219,6 +220,7 @@ def test_build_includes_loki_error_log() -> None:
             "pod": "kubesage-api",
         },
         "error_kind": "connection_error",
+        "error_fingerprint": ANY,
         "error_domain": "database",
     }
 
@@ -250,6 +252,7 @@ def test_build_preserves_loki_labels() -> None:
     assert events[0].metadata == {
         "labels": labels,
         "error_kind": "generic_error",
+        "error_fingerprint": ANY,
     }
 
 
@@ -647,3 +650,88 @@ def test_build_kubernetes_normal_event_has_info_severity() -> None:
     events = TimelineBuilder().build(incident)
     assert len(events) == 1
     assert events[0].severity == Severity.INFO
+
+
+def _log_incident(*messages: str) -> Incident:
+    timestamp = datetime(2026, 8, 31, 10, 5, tzinfo=UTC)
+
+    return _incident(
+        loki_logs=LogSnapshot(
+            source=LogSource.LOKI.value,
+            entries=[
+                LogEntry(timestamp=timestamp, message=message, labels={})
+                for message in messages
+            ],
+        ),
+    )
+
+
+def test_build_logfmt_error_level_has_error_severity() -> None:
+    events = TimelineBuilder().build(
+        _log_incident('level=error msg="connection refused" logger=db')
+    )
+
+    assert events[0].severity == Severity.ERROR
+    assert events[0].title == "Application error"
+
+
+def test_build_logfmt_fatal_and_panic_levels_have_error_severity() -> None:
+    events = TimelineBuilder().build(
+        _log_incident(
+            'level=fatal msg="cannot start server"',
+            'level=panic msg="nil pointer dereference"',
+        )
+    )
+
+    assert [event.severity for event in events] == [Severity.ERROR, Severity.ERROR]
+
+
+def test_build_logfmt_warn_level_has_warning_severity() -> None:
+    events = TimelineBuilder().build(
+        _log_incident('level=warn msg="retrying query" attempt=2')
+    )
+
+    assert events[0].severity == Severity.WARNING
+
+
+def test_build_logfmt_info_level_ignores_error_wording() -> None:
+    events = TimelineBuilder().build(
+        _log_incident('level=info msg="ERROR budget healthy"')
+    )
+
+    assert events[0].severity == Severity.INFO
+    assert "error_kind" not in events[0].metadata
+
+
+def test_build_error_fingerprint_is_stable_for_same_error() -> None:
+    events = TimelineBuilder().build(
+        _log_incident(
+            'level=error msg="db timeout" error="timeout after 30s"',
+            'level=error msg="db timeout" error="timeout after 45s"',
+        )
+    )
+
+    assert (
+        events[0].metadata["error_fingerprint"]
+        == events[1].metadata["error_fingerprint"]
+    )
+
+
+def test_build_error_fingerprint_differs_between_errors() -> None:
+    events = TimelineBuilder().build(
+        _log_incident(
+            'level=error msg="db timeout"',
+            'level=error msg="payment gateway HTTP 503"',
+        )
+    )
+
+    assert (
+        events[0].metadata["error_fingerprint"]
+        != events[1].metadata["error_fingerprint"]
+    )
+
+
+def test_build_log_without_error_has_no_fingerprint() -> None:
+    events = TimelineBuilder().build(_log_incident("INFO request served"))
+
+    assert "error_fingerprint" not in events[0].metadata

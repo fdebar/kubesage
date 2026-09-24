@@ -1,9 +1,24 @@
 from collections import Counter
-from datetime import timedelta
+from dataclasses import dataclass
+from datetime import datetime, timedelta
 
 from kubesage.models.finding import Finding, Severity
 from kubesage.models.timeline import TimelineEvent, TimelineEventType
 from kubesage.utils.config import settings
+
+_MAX_EXAMPLE_LENGTH = 300
+
+
+@dataclass
+class _ErrorGroup:
+    """Distinct error (same fingerprint) inside an aggregated error episode."""
+
+    key: str
+    kind: str
+    occurrences: int
+    first_seen: datetime
+    last_seen: datetime
+    example: str
 
 
 class TimelineSelector:
@@ -184,7 +199,9 @@ class TimelineSelector:
             str(event.metadata.get("error_kind", "unknown")) for event in events
         )
 
-        messages = [event.description for event in events if event.description]
+        groups = self._group_error_events(events)
+        max_examples = max(settings.ai_timeline_error_cluster_max_examples, 1)
+        kept_groups = groups[:max_examples]
 
         metadata = dict(representative.metadata)
         metadata["aggregated"] = True
@@ -193,7 +210,20 @@ class TimelineSelector:
         metadata["last_seen"] = last_seen.isoformat()
         metadata["error_kinds"] = dict(error_kinds)
         metadata["aggregated_event_ids"] = [event.id for event in events]
+        metadata["error_groups"] = [
+            {
+                "fingerprint": group.key,
+                "error_kind": group.kind,
+                "occurrences": group.occurrences,
+                "first_seen": group.first_seen.isoformat(),
+                "last_seen": group.last_seen.isoformat(),
+                "example": group.example,
+            }
+            for group in kept_groups
+        ]
+        metadata["error_groups_omitted"] = len(groups) - len(kept_groups)
         metadata.pop("error_kind", None)
+        metadata.pop("error_fingerprint", None)
 
         return TimelineEvent(
             id=f"aggregated-error-{representative.id}",
@@ -204,7 +234,8 @@ class TimelineSelector:
             description=self._build_aggregated_error_description(
                 events=events,
                 error_kinds=error_kinds,
-                messages=messages,
+                groups=kept_groups,
+                omitted=len(groups) - len(kept_groups),
             ),
             severity=max(
                 (event.severity for event in events),
@@ -214,11 +245,54 @@ class TimelineSelector:
             metadata=metadata,
         )
 
+    def _group_error_events(self, events: list[TimelineEvent]) -> list[_ErrorGroup]:
+        """Group the events of one episode by distinct error.
+
+        Events are keyed by fingerprint when available, otherwise by their
+        raw message. Groups are ordered by occurrences (desc), then by first
+        appearance, so the most representative errors come first.
+        """
+        groups: dict[str, _ErrorGroup] = {}
+
+        for event in events:
+            message = event.description or ""
+            key = str(event.metadata.get("error_fingerprint") or message)
+            kind = str(event.metadata.get("error_kind", "unknown"))
+
+            group = groups.get(key)
+            if group is None:
+                groups[key] = _ErrorGroup(
+                    key=key,
+                    kind=kind,
+                    occurrences=1,
+                    first_seen=event.timestamp,
+                    last_seen=event.timestamp,
+                    example=self._truncate(message),
+                )
+                continue
+
+            group.occurrences += 1
+            group.first_seen = min(group.first_seen, event.timestamp)
+            group.last_seen = max(group.last_seen, event.timestamp)
+
+        return sorted(
+            groups.values(),
+            key=lambda group: (-group.occurrences, group.first_seen),
+        )
+
+    @staticmethod
+    def _truncate(message: str) -> str:
+        if len(message) <= _MAX_EXAMPLE_LENGTH:
+            return message
+
+        return f"{message[: _MAX_EXAMPLE_LENGTH - 1]}…"
+
     def _build_aggregated_error_description(
         self,
         events: list[TimelineEvent],
         error_kinds: Counter[str],
-        messages: list[str],
+        groups: list[_ErrorGroup],
+        omitted: int,
     ) -> str:
         first_seen = events[0].timestamp
         last_seen = events[-1].timestamp
@@ -234,8 +308,17 @@ class TimelineSelector:
             f"Last seen: {last_seen.isoformat()}",
         ]
 
-        if messages:
-            lines.append(f"Example: {messages[0]}")
+        if groups:
+            examples = " | ".join(
+                f"[x{group.occurrences} {group.kind}] {group.example}"
+                for group in groups
+                if group.example
+            )
+            label = "Distinct errors" if len(groups) + omitted > 1 else "Example"
+            lines.append(f"{label}: {examples}")
+
+        if omitted:
+            lines.append(f"(+{omitted} other distinct errors omitted)")
 
         return " ".join(lines)
 

@@ -18,6 +18,8 @@ def _log_event(
     message: str,
     error_kind: str | None = None,
     container: str = "grafana",
+    fingerprint: str | None = None,
+    severity: Severity = Severity.INFO,
 ) -> TimelineEvent:
     metadata: dict[str, object] = {
         "labels": {
@@ -28,6 +30,9 @@ def _log_event(
     if error_kind:
         metadata["error_kind"] = error_kind
 
+    if fingerprint:
+        metadata["error_fingerprint"] = fingerprint
+
     return TimelineEvent(
         id=event_id,
         timestamp=timestamp,
@@ -35,7 +40,7 @@ def _log_event(
         source=TimelineEventSource.LOKI,
         title="Application log",
         description=message,
-        severity=Severity.INFO,
+        severity=severity,
         metadata=metadata,
     )
 
@@ -818,3 +823,169 @@ def test_select_keeps_error_trace_event() -> None:
     selected = TimelineSelector().select([event], [])
 
     assert [event.id for event in selected] == ["trace-error"]
+
+
+def _episode(*specs: tuple[str, str, str]) -> list[TimelineEvent]:
+    """Build an error episode from (fingerprint, kind, message) tuples."""
+    timestamp = datetime.now(UTC)
+
+    return [
+        _log_event(
+            f"error-{index}",
+            timestamp + timedelta(seconds=index),
+            message,
+            error_kind=kind,
+            fingerprint=fingerprint,
+        )
+        for index, (fingerprint, kind, message) in enumerate(specs)
+    ]
+
+
+def _single_aggregate(selected: list[TimelineEvent]) -> TimelineEvent:
+    aggregates = [event for event in selected if event.metadata.get("aggregated")]
+    assert len(aggregates) == 1
+
+    return aggregates[0]
+
+
+def test_aggregate_keeps_one_example_per_distinct_error() -> None:
+    timeline = _episode(
+        ("fp-db", "connection_error", "db connection refused"),
+        ("fp-npe", "exception", "NullPointerException in handler"),
+        ("fp-db", "connection_error", "db connection refused"),
+        ("fp-pay", "http_5xx", "payment gateway HTTP 503"),
+    )
+
+    aggregate = _single_aggregate(TimelineSelector().select(timeline, []))
+
+    assert aggregate.metadata["occurrences"] == 4
+    assert aggregate.metadata["error_groups_omitted"] == 0
+    assert [
+        (group["fingerprint"], group["occurrences"])
+        for group in aggregate.metadata["error_groups"]
+    ] == [("fp-db", 2), ("fp-npe", 1), ("fp-pay", 1)]
+
+    assert aggregate.description is not None
+    assert "db connection refused" in aggregate.description
+    assert "NullPointerException in handler" in aggregate.description
+    assert "payment gateway HTTP 503" in aggregate.description
+    assert "[x2 connection_error]" in aggregate.description
+
+
+def test_aggregate_orders_distinct_errors_by_occurrences() -> None:
+    timeline = _episode(
+        ("fp-rare", "exception", "rare failure"),
+        ("fp-common", "timeout", "common timeout"),
+        ("fp-common", "timeout", "common timeout"),
+        ("fp-common", "timeout", "common timeout"),
+    )
+
+    aggregate = _single_aggregate(TimelineSelector().select(timeline, []))
+
+    fingerprints = [
+        group["fingerprint"] for group in aggregate.metadata["error_groups"]
+    ]
+    assert fingerprints == ["fp-common", "fp-rare"]
+
+
+def test_aggregate_limits_distinct_errors(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "ai_timeline_error_cluster_max_examples", 2)
+
+    timeline = _episode(
+        ("fp-a", "timeout", "error a"),
+        ("fp-a", "timeout", "error a"),
+        ("fp-b", "timeout", "error b"),
+        ("fp-c", "timeout", "error c"),
+        ("fp-d", "timeout", "error d"),
+    )
+
+    aggregate = _single_aggregate(TimelineSelector().select(timeline, []))
+
+    assert len(aggregate.metadata["error_groups"]) == 2
+    assert aggregate.metadata["error_groups_omitted"] == 2
+    assert aggregate.metadata["occurrences"] == 5
+    assert aggregate.description is not None
+    assert "(+2 other distinct errors omitted)" in aggregate.description
+    assert "error c" not in aggregate.description
+
+
+def test_aggregate_truncates_long_examples() -> None:
+    long_message = "boom " + "x" * 5000
+    timeline = _episode(
+        ("fp-long", "exception", long_message),
+        ("fp-long", "exception", long_message),
+    )
+
+    aggregate = _single_aggregate(TimelineSelector().select(timeline, []))
+
+    example = aggregate.metadata["error_groups"][0]["example"]
+    assert len(example) <= 300
+    assert example.endswith("…")
+    assert aggregate.description is not None
+    assert len(aggregate.description) < 1000
+
+
+def test_aggregate_falls_back_to_message_without_fingerprint() -> None:
+    timeline = _episode(
+        ("", "timeout", "same message"),
+        ("", "timeout", "same message"),
+        ("", "timeout", "other message"),
+    )
+
+    aggregate = _single_aggregate(TimelineSelector().select(timeline, []))
+
+    assert [group["occurrences"] for group in aggregate.metadata["error_groups"]] == [
+        2,
+        1,
+    ]
+
+
+def test_aggregate_single_distinct_error_uses_example_label() -> None:
+    timeline = _episode(
+        ("fp-a", "timeout", "call to Tempo timed out"),
+        ("fp-a", "timeout", "call to Tempo timed out"),
+    )
+
+    aggregate = _single_aggregate(TimelineSelector().select(timeline, []))
+
+    assert aggregate.description is not None
+    assert "Example: [x2 timeout] call to Tempo timed out" in aggregate.description
+    assert "Distinct errors" not in aggregate.description
+
+
+def test_aggregate_severity_follows_most_severe_event() -> None:
+    timestamp = datetime.now(UTC)
+    timeline = [
+        _log_event(
+            "error-1",
+            timestamp,
+            "first",
+            error_kind="timeout",
+            fingerprint="fp-a",
+            severity=Severity.WARNING,
+        ),
+        _log_event(
+            "error-2",
+            timestamp + timedelta(seconds=1),
+            "second",
+            error_kind="timeout",
+            fingerprint="fp-b",
+            severity=Severity.ERROR,
+        ),
+    ]
+
+    aggregate = _single_aggregate(TimelineSelector().select(timeline, []))
+
+    assert aggregate.severity == Severity.ERROR
+
+
+def test_aggregate_does_not_leak_single_event_fingerprint() -> None:
+    timeline = _episode(
+        ("fp-a", "timeout", "call one"),
+        ("fp-b", "timeout", "call two"),
+    )
+
+    aggregate = _single_aggregate(TimelineSelector().select(timeline, []))
+
+    assert "error_fingerprint" not in aggregate.metadata
+    assert "error_kind" not in aggregate.metadata

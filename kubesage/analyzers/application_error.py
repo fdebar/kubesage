@@ -104,6 +104,16 @@ class ApplicationErrorClassifier:
 
         return self._classify_signal(message)
 
+    def structured_level(self, message: str) -> str | None:
+        """Return the lowercase ``level`` of a logfmt line, or None if the
+        message is not a structured log."""
+        structured = self._parse_structured_log(message)
+
+        if structured is None:
+            return None
+
+        return structured.get("level", "").lower()
+
     def fingerprint(
         self,
         classification: ApplicationErrorClassification,
