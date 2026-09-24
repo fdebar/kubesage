@@ -39,7 +39,7 @@ def test_analyze_success(
     assert result is analysis
 
     incident_service.analyze.assert_called_once_with(
-        "default", "my-pod", AnalysisTrigger.API
+        "default", "my-pod", AnalysisTrigger.API, None
     )
     repository.save.assert_called_once_with(analysis)
 

@@ -22,7 +22,13 @@ class AnalysisService:
         self.incident_service = incident_service
         self.repository = repository
 
-    def analyze(self, namespace: str, pod: str, trigger: AnalysisTrigger) -> Analysis:
+    def analyze(
+        self,
+        namespace: str,
+        pod: str,
+        trigger: AnalysisTrigger,
+        expected_pod_uid: str | None = None,
+    ) -> Analysis:
         start = time.perf_counter()
 
         with tracer.start_as_current_span("analysis.execute") as span:
@@ -31,7 +37,12 @@ class AnalysisService:
             span.set_attribute("k8s.pod.name", pod)
 
             try:
-                analysis = self.incident_service.analyze(namespace, pod, trigger)
+                analysis = self.incident_service.analyze(
+                    namespace,
+                    pod,
+                    trigger,
+                    expected_pod_uid,
+                )
 
                 trace_context = current_trace_context()
                 analysis.trace_id = trace_context.trace_id

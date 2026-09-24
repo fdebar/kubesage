@@ -30,13 +30,19 @@ class IncidentService:
         self.incident_intelligence_builder = incident_intelligence_builder
         self.ai_report_generator = ai_report_generator
 
-    def analyze(self, namespace: str, pod: str, trigger: AnalysisTrigger) -> Analysis:
+    def analyze(
+        self,
+        namespace: str,
+        pod: str,
+        trigger: AnalysisTrigger,
+        expected_pod_uid: str | None = None,
+    ) -> Analysis:
         logger.info("analysis.started", namespace=namespace, pod=pod, trigger=trigger)
 
         start = time.perf_counter()
 
         with tracer.start_as_current_span("analysis.incident.collect") as span:
-            incident = self.incident_builder.collect(namespace, pod)
+            incident = self.incident_builder.collect(namespace, pod, expected_pod_uid)
 
             span.set_attribute("k8s.containers.count", len(incident.containers))
             span.set_attribute("k8s.events.count", len(incident.events))

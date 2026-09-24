@@ -19,7 +19,7 @@ from kubesage.models.log import LogEntry, LogSnapshot, LogSource
 from kubesage.observability.metrics import KUBERNETES_DURATION, KUBERNETES_ERRORS
 from kubesage.providers.kubernetes_provider import KubernetesProvider
 from kubesage.utils.config import settings
-from kubesage.utils.exceptions import PodNotFoundError
+from kubesage.utils.exceptions import PodIdentityMismatchError, PodNotFoundError
 from kubesage.utils.kube_client import create_core_v1_api
 from kubesage.utils.resource_quantity import parse_cpu_quantity, parse_memory_quantity
 
@@ -33,7 +33,12 @@ class KubernetesService(KubernetesProvider):
     def __init__(self) -> None:
         self.v1 = create_core_v1_api()
 
-    def collect(self, namespace: str, pod: str) -> KubernetesSnapshot:
+    def collect(
+        self,
+        namespace: str,
+        pod: str,
+        expected_pod_uid: str | None = None,
+    ) -> KubernetesSnapshot:
         start = time.perf_counter()
         logger.info("kubernetes_starting_collecting_data", namespace=namespace, pod=pod)
 
@@ -44,6 +49,8 @@ class KubernetesService(KubernetesProvider):
             with tracer.start_as_current_span("kubernetes.get_pod") as span:
                 span.set_attribute("k8s.namespace", namespace)
                 span.set_attribute("k8s.pod.name", pod)
+                if expected_pod_uid is not None:
+                    span.set_attribute("k8s.pod.uid.expected", expected_pod_uid)
 
                 try:
                     pod_info = self.v1.read_namespaced_pod(pod, namespace)
@@ -91,6 +98,14 @@ class KubernetesService(KubernetesProvider):
                         error=str(exc),
                     )
                     return self._empty_snapshot(namespace, pod)
+
+            if expected_pod_uid is not None:
+                actual_pod_uid = pod_info.metadata.uid if pod_info.metadata else None
+                if actual_pod_uid != expected_pod_uid:
+                    raise PodIdentityMismatchError(
+                        f"Pod '{pod}' in namespace '{namespace}' has UID "
+                        f"'{actual_pod_uid}', expected '{expected_pod_uid}'."
+                    )
 
             containers = self._collect_containers(pod_info)
             logs = self._collect_logs(namespace, pod, containers)

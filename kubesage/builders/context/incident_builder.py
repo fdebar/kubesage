@@ -32,12 +32,17 @@ class IncidentBuilder:
         self.snapshot_builder = ContainerSnapshotBuilder()
         self.metric_change_detector = MetricChangeDetector()
 
-    def collect(self, namespace: str, pod: str) -> Incident:
+    def collect(
+        self,
+        namespace: str,
+        pod: str,
+        expected_pod_uid: str | None = None,
+    ) -> Incident:
         prometheus: PrometheusResourceUsage | None = None
         metric_changes: list[MetricChange] = []
         observed_at = datetime.now(UTC)
 
-        kubernetes = self.kubernetes_provider.collect(namespace, pod)
+        kubernetes = self.kubernetes_provider.collect(namespace, pod, expected_pod_uid)
         metrics = self.metrics_provider.collect(namespace, pod)
 
         if self.prometheus_provider is not None:

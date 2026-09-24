@@ -8,6 +8,7 @@ class KubernetesProvider(Protocol):
         self,
         namespace: str,
         pod: str,
+        expected_pod_uid: str | None = None,
     ) -> KubernetesSnapshot:
         """Collect Kubernetes information for a pod."""
         ...

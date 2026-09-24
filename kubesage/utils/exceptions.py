@@ -14,6 +14,10 @@ class PodNotFoundError(KubeSageError):
     """Requested pod does not exist."""
 
 
+class PodIdentityMismatchError(PodNotFoundError):
+    """The pod name now refers to a different pod than the requested UID."""
+
+
 class PrometheusQueryError(KubeSageError):
     """Prometheus request failed."""
 

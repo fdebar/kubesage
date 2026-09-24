@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import time
-from queue import Queue
-from threading import Thread
+from collections import deque
+from queue import Empty, Queue
+from threading import BoundedSemaphore, Thread
 
 import structlog
 
@@ -11,7 +12,7 @@ from kubesage.database.session import SessionLocal
 from kubesage.models.analysis import AnalysisTrigger
 from kubesage.observability.metrics import WATCHER_QUEUE_DEPTH
 from kubesage.utils.config import settings
-from kubesage.utils.exceptions import PodNotFoundError
+from kubesage.utils.exceptions import PodIdentityMismatchError, PodNotFoundError
 from kubesage.watchers.incident_deduplicator import IncidentDeduplicator
 from kubesage.watchers.models.incident_trigger import IncidentTrigger
 
@@ -31,7 +32,8 @@ class AnalysisWorker:
     ) -> None:
         self.deduplicator = deduplicator
         self.max_retries = max(1, max_retries)
-        self._queue: Queue[IncidentTrigger] = Queue(maxsize=queue_size)
+        self._capacity = BoundedSemaphore(max(1, queue_size))
+        self._queue: Queue[IncidentTrigger] = Queue(maxsize=max(1, queue_size))
         self._thread = Thread(
             target=self._run,
             name="kubesage-analysis-worker",
@@ -55,26 +57,50 @@ class AnalysisWorker:
         dropping incident triggers.
         """
 
-        self._queue.put(trigger)
+        self._capacity.acquire()
+        try:
+            self._queue.put(trigger)
+        except Exception:
+            self._capacity.release()
+            raise
 
         WATCHER_QUEUE_DEPTH.set(self._queue.qsize())
 
     def _run(self) -> None:
+        pending_retries: deque[IncidentTrigger] = deque()
+        process_retry_next = False
+
         while True:
-            trigger = self._queue.get()
+            from_queue = False
+
+            if pending_retries and process_retry_next:
+                trigger = pending_retries.popleft()
+            else:
+                try:
+                    trigger = self._queue.get(timeout=0.1)
+                    from_queue = True
+                except Empty:
+                    if not pending_retries:
+                        continue
+                    trigger = pending_retries.popleft()
 
             try:
-                self._process(trigger)
+                completed = self._process(trigger)
+                if completed:
+                    self._capacity.release()
+                else:
+                    pending_retries.append(trigger)
             finally:
-                self._queue.task_done()
+                if from_queue:
+                    self._queue.task_done()
 
-                WATCHER_QUEUE_DEPTH.set(self._queue.qsize())
+                WATCHER_QUEUE_DEPTH.set(self._queue.qsize() + len(pending_retries))
 
-    def _process(self, trigger: IncidentTrigger) -> None:
-        attempt = 0
+            # Give queued new incidents and failed incidents turns in rotation.
+            process_retry_next = from_queue
 
-        while True:
-            attempt += 1
+    def _process(self, trigger: IncidentTrigger) -> bool:
+        for attempt in range(1, self.max_retries + 1):
             db = None
 
             try:
@@ -85,6 +111,7 @@ class AnalysisWorker:
                     trigger.namespace,
                     trigger.pod,
                     AnalysisTrigger.WATCHER,
+                    trigger.pod_uid,
                 )
 
                 logger.info(
@@ -96,7 +123,17 @@ class AnalysisWorker:
                     reason=trigger.reason,
                 )
 
-                return
+                return True
+
+            except PodIdentityMismatchError:
+                logger.info(
+                    "worker_analysis_stale_pod_skipped",
+                    namespace=trigger.namespace,
+                    pod=trigger.pod,
+                    expected_pod_uid=trigger.pod_uid,
+                )
+
+                return True
 
             except PodNotFoundError:
                 logger.info(
@@ -107,12 +144,12 @@ class AnalysisWorker:
                 )
 
                 # Terminal result: do not retry a Pod which has already disappeared.
-                return
+                return True
 
             except Exception:
-                if attempt % self.max_retries == 0:
+                if attempt == self.max_retries:
                     logger.exception(
-                        "worker_analysis_still_failing",
+                        "worker_analysis_requeued_after_failures",
                         namespace=trigger.namespace,
                         pod=trigger.pod,
                         pod_uid=trigger.pod_uid,
@@ -120,6 +157,7 @@ class AnalysisWorker:
                         reason=trigger.reason,
                         attempts=attempt,
                     )
+                    return False
                 else:
                     logger.exception(
                         "worker_analysis_retrying",
@@ -130,11 +168,18 @@ class AnalysisWorker:
                         max_retries=self.max_retries,
                     )
 
-                # The watch cursor may already have advanced beyond this
-                # trigger, so retain it here instead of relying on Kubernetes
-                # to replay the event after the retry budget is exhausted.
-                time.sleep(min(2 ** min(attempt - 1, 6), 60))
+                    time.sleep(min(2 ** min(attempt - 1, 6), 60))
 
             finally:
                 if db is not None:
-                    db.close()
+                    try:
+                        db.close()
+                    except Exception:
+                        logger.exception(
+                            "worker_database_session_close_failed",
+                            namespace=trigger.namespace,
+                            pod=trigger.pod,
+                            attempt=attempt,
+                        )
+
+        return False
