@@ -208,17 +208,14 @@ class TimelineBuilder:
 
         return events
 
-    _ERROR_LEVELS = frozenset({"error", "err", "fatal", "critical", "panic"})
-    _WARNING_LEVELS = frozenset({"warn", "warning"})
-
     def _log_severity(self, entry: LogEntry) -> Severity | None:
-        level = self.application_error_classifier.structured_level(entry.message)
+        level = self.application_error_classifier.log_level(entry.message)
 
         if level is not None:
-            if level in self._ERROR_LEVELS:
+            if level in ApplicationErrorClassifier.ERROR_LEVELS:
                 return Severity.ERROR
 
-            if level in self._WARNING_LEVELS:
+            if level in ApplicationErrorClassifier.WARNING_LEVELS:
                 return Severity.WARNING
 
             return None
