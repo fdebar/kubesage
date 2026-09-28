@@ -1,7 +1,7 @@
 import os
 import re
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import pytest
 from openai import Client
@@ -10,8 +10,8 @@ from kubesage.ai.providers.openai_compatible import OpenAICompatibleProvider
 from kubesage.builders.prompt.prompt_builder import PromptBuilder
 from kubesage.models.ai_context import AIContext
 from kubesage.models.ai_report import AIReport
-from kubesage.models.evidence import Evidence
-from kubesage.models.finding import Finding
+from kubesage.models.evidence import Evidence, EvidenceType
+from kubesage.models.finding import Finding, FindingKind, ResourceRef, Severity
 from kubesage.models.incident_intelligence import IncidentIntelligence
 from kubesage.models.timeline import TimelineEvent, TimelineEventSource
 from kubesage.utils.config import settings
@@ -151,6 +151,13 @@ def _forbidden_root_cause_is_asserted(root_cause: str, keyword: str) -> bool:
         "not established",
         "no evidence",
         "no concrete",
+        "possible",
+        "possibly",
+        "potential",
+        "hypothesis",
+        "may cause",
+        "might cause",
+        "could cause",
     )
 
     for clause in clauses:
@@ -646,6 +653,59 @@ def test_ai_report_quality(
     )
 
 
+@pytest.mark.ai_quality
+@pytest.mark.skipif(
+    os.getenv("KUBESAGE_RUN_AI_QUALITY") != "1",
+    reason="AI quality tests require an explicit live AI provider",
+)
+def test_irrelevant_duplicate_evidence_does_not_change_diagnosis() -> None:
+    scenario = oomkilled_scenario()
+    unrelated = Finding(
+        rule="unrelated_network_observation",
+        kind=FindingKind.OBSERVATION,
+        severity=Severity.INFO,
+        confidence=0.99,
+        title="Unrelated worker network activity",
+        description="A separate metrics worker has normal network activity.",
+        resource=ResourceRef(
+            api_version="v1",
+            kind="Pod",
+            namespace="monitoring",
+            name="metrics-worker",
+        ),
+        structured_evidences=[
+            Evidence(
+                name="network_activity",
+                value="1",
+                unit="connection",
+                source="prometheus",
+                type=EvidenceType.METRIC,
+                description=(
+                    "An unrelated metrics worker recorded one network connection."
+                ),
+            ),
+        ],
+    )
+    noisy_scenario = replace(
+        scenario,
+        findings=[*scenario.findings, unrelated, unrelated.model_copy(deep=True)],
+    )
+    client = Client(base_url=settings.ai_url, api_key=settings.ai_api_key)
+    provider = OpenAICompatibleProvider(client=client, model=settings.ai_model)
+
+    baseline_report = provider.analyze(build_prompt(scenario))
+    noisy_report = provider.analyze(build_prompt(noisy_scenario))
+
+    assert_report_quality(baseline_report, scenario)
+    assert_report_quality(noisy_report, scenario)
+    assert baseline_report.confidence is not None
+    assert noisy_report.confidence is not None
+    assert abs(baseline_report.confidence - noisy_report.confidence) <= 0.2, (
+        "irrelevant duplicated evidence changed confidence by more than 0.2: "
+        f"{baseline_report.confidence} -> {noisy_report.confidence}"
+    )
+
+
 def test_evidence_ids_are_unique_in_scenario() -> None:
     for scenario_factory in SCENARIOS:
         scenario = scenario_factory()
@@ -807,6 +867,11 @@ def test_uncertainty_detection_handles_wording_and_confidence(
         ("There is no evidence CPU caused the HTTP 500", "cpu caused", False),
         ("CPU did not cause the HTTP 500", "cpu caused", False),
         ("OOMKilled is not confirmed (e.g. no termination reason)", "oomkilled", False),
+        (
+            "Possible causes include memory pressure or CPU throttling",
+            "cpu throttling",
+            False,
+        ),
     ],
 )
 def test_forbidden_root_cause_detection_respects_negation(
