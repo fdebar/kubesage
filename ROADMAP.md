@@ -637,6 +637,16 @@ Is the reference unique and consistent?
 
 This is a foundational part of KubeSage's anti-hallucination strategy.
 
+### Recent quality-suite hardening — September 28, 2026
+
+The report-quality scenarios now check canonical finding-rule references, calibrated uncertainty, and resistance to contradictory or irrelevant duplicate evidence, with a minimum score of 80/100. A live-provider comparison was added for a baseline report and one with duplicated irrelevant findings. These changes strengthen prompts and evaluation coverage; they do not add a separate runtime quality gate after report generation.
+
+Representative commits:
+
+* `5f47aec` — strengthen report quality checks and uncertainty handling
+* `f2664c6` — add report-quality cases for ambiguous and contradictory signals
+* `8da8993` — test the effect of irrelevant duplicate evidence
+
 ---
 
 ## Sprint 22 — Productisation / Web & Platform Integration
@@ -740,11 +750,19 @@ Incident Intelligence
 AI reasoning
 ```
 
+### Recent extension — September 25, 2026
+
+Application log parsing was broadened to handle JSON, logfmt and plain-text level prefixes. Classification now recognizes common connection failures, timeouts, HTTP 5xx responses, exceptions and database-related signals; non-error and unknown explicit log levels are filtered out. The timeline builder uses the normalized log level when assigning severity.
+
+Representative commit:
+
+* `c2b89e4` — improve application log parsing and classification
+
 ---
 
 # 5. AI Context Optimisation
 
-**Status:** In progress
+**Status:** Context selection and prompt-size bounds implemented; quality evaluation and token-budget work remain.
 
 A major current challenge is LLM hallucination and prompt growth.
 
@@ -752,7 +770,7 @@ The project is therefore moving away from the idea that:
 
 > **more context is always better.**
 
-KubeSage already collects a large amount of evidence. The next architectural problem is selecting the most valuable subset.
+KubeSage already collects a large amount of evidence. Initial selection and prompt-size bounds are now implemented; the current work is checking that these limits preserve useful evidence and improve report quality. The count and field-length bounds limit growth, but are not a provider-aware token budget.
 
 Recent Git history shows a deliberate optimisation layer around timeline selection:
 
@@ -765,6 +783,9 @@ Recent Git history shows a deliberate optimisation layer around timeline selecti
 * structured metadata in prompts
 * removal of redundant normalisation logic
 * deduplication of important events before aggregation
+* ranked finding selection with a configurable maximum (25 by default)
+* relevance-based timeline selection capped at 50 events by default
+* prompt field-length limits and a cap on standalone Kubernetes events
 
 Representative commits:
 
@@ -774,6 +795,7 @@ Representative commits:
 * `ce6a1443` — aggregate identical timeline error events
 * `32564ee1` — structured timeline/evidence details in prompts
 * `77a38256` — deduplicate important events before error aggregation
+* `177921b` — bound AI context and filter timeline noise
 
 ### Current architectural direction
 
@@ -785,7 +807,8 @@ AI Context Selector
         ├── priority
         ├── temporal proximity
         ├── deduplication
-        └── token budget
+        ├── finding/event count and field-size bounds
+        └── token-budget measurement and enforcement (next step)
         ↓
 Minimal high-value context
         ↓
@@ -801,6 +824,8 @@ This is strategically important:
 # 6. Current State — September 2026
 
 KubeSage has reached a significantly different architectural maturity than the original Kubernetes diagnostic tool.
+
+In the current observability stack, cluster logs are sent through Grafana Alloy and queried by KubeSage from Loki. A Tempo service is deployed by the stack for traces; KubeSage can export its own traces to Tempo over OTLP, but does not query Tempo for incident evidence.
 
 ## Current pipeline
 
@@ -1062,9 +1087,9 @@ The goal of this document is to preserve the evolution of the architecture witho
 
 # 13. Current Milestone
 
-**September 2026 — KubeSage is transitioning from an AI-assisted diagnostic engine into an evidence-driven incident intelligence platform.**
+**September 28, 2026 — KubeSage has improved application-log classification, bounded the AI-facing context, and expanded report-quality scenarios for uncertainty and irrelevant evidence.**
 
-The central engineering problem is no longer simply collecting more information.
+The central engineering problem is no longer simply collecting more information. The latest implementation bounds the selected context and filters timeline noise; validating the quality of the remaining evidence is the next step.
 
 It is:
 
