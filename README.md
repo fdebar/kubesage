@@ -566,6 +566,7 @@ Example local configuration:
 ```bash
 AI_URL=http://localhost:11434/v1
 AI_API_KEY=your_api_key
+AI_PROVIDER=ollama
 AI_MODEL=qwen2.5-coder:14b
 AI_CONTEXT_MAX_FINDINGS=25
 
@@ -573,7 +574,7 @@ PROMETHEUS_URL=http://localhost:9090
 PROMETHEUS_TIMEOUT=5
 
 LOKI_URL=http://localhost:3100
-TEMPO_URL=http://localhost:3200
+OTLP_ENDPOINT=http://localhost:4318/v1/traces
 
 KUBERNETES_NAMESPACE=default
 LOG_LEVEL=INFO
