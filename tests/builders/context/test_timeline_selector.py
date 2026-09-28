@@ -218,7 +218,7 @@ def test_select_keeps_kubernetes_events_individual() -> None:
     assert selected[0].metadata.get("aggregated") is not True
 
 
-def test_select_keeps_container_started_individual() -> None:
+def test_select_does_not_use_container_started_as_an_anchor() -> None:
     selector = TimelineSelector()
     timestamp = datetime.now(UTC)
 
@@ -232,8 +232,7 @@ def test_select_keeps_container_started_individual() -> None:
     )
 
     selected = selector.select([event], [])
-    assert len(selected) == 1
-    assert selected[0].id == "started-1"
+    assert selected == []
 
 
 def test_select_does_not_return_raw_events_replaced_by_aggregate() -> None:
@@ -643,7 +642,7 @@ def test_select_excludes_normal_info_logs_from_context() -> None:
     assert "info-log" not in selected_ids
 
 
-def test_select_deduplicates_info_non_log_events() -> None:
+def test_select_ignores_unrelated_info_kubernetes_events() -> None:
     timestamp = datetime(2026, 9, 8, 12, 0, 0)
 
     event_a = TimelineEvent(
@@ -666,7 +665,7 @@ def test_select_deduplicates_info_non_log_events() -> None:
 
     selected = TimelineSelector().select([event_a, event_b], [])
 
-    assert len(selected) == 1
+    assert selected == []
 
 
 def test_select_keeps_duplicate_non_info_events() -> None:

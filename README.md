@@ -567,6 +567,7 @@ Example local configuration:
 AI_URL=http://localhost:11434/v1
 AI_API_KEY=your_api_key
 AI_MODEL=qwen2.5-coder:14b
+AI_CONTEXT_MAX_FINDINGS=25
 
 PROMETHEUS_URL=http://localhost:9090
 PROMETHEUS_TIMEOUT=5

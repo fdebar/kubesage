@@ -1,5 +1,11 @@
 from kubesage.models.ai_context import AIContext
 from kubesage.models.finding import Finding
+from kubesage.models.timeline import TimelineEventType
+
+_MAX_UNREPRESENTED_KUBERNETES_EVENTS = 5
+_MAX_KUBERNETES_EVENT_FIELD_LENGTH = 300
+_MAX_TIMELINE_TITLE_LENGTH = 160
+_MAX_TIMELINE_DESCRIPTION_LENGTH = 800
 
 
 class PromptBuilder:
@@ -32,17 +38,27 @@ class PromptBuilder:
 
         lines.append("# Incident Timeline")
         for event in ai.ctx.timeline:
+            title = self._truncate_prompt_field(
+                event.title,
+                _MAX_TIMELINE_TITLE_LENGTH,
+            )
             line = (
                 f"- [{event.timestamp.isoformat()}] "
                 f"[{event.severity.value}] "
                 f"{event.source.value} | "
-                f"{event.title}"
+                f"{title}"
             )
 
             lines.append(line)
 
             if event.description:
-                lines.append(f"  {event.description}")
+                lines.append(
+                    "  "
+                    + self._truncate_prompt_field(
+                        event.description,
+                        _MAX_TIMELINE_DESCRIPTION_LENGTH,
+                    )
+                )
 
             if event.metadata.get("aggregated"):
                 occurrences = event.metadata.get("occurrences")
@@ -84,17 +100,60 @@ class PromptBuilder:
         if not ai.ctx.events:
             return
 
-        lines.append("# Kubernetes Events")
+        timeline_events = {
+            (event.title, event.description, event.timestamp)
+            for event in ai.intelligence.timeline
+            if event.type == TimelineEventType.KUBERNETES_EVENT
+        }
+
+        unrepresented_events = []
+        seen: set[tuple[str, str, object]] = set()
         for event in ai.ctx.events:
+            key = (event.reason, event.message, event.last_timestamp)
+            if key in timeline_events or key in seen:
+                continue
+
+            seen.add(key)
+            unrepresented_events.append(event)
+
+        selected_events = unrepresented_events[:_MAX_UNREPRESENTED_KUBERNETES_EVENTS]
+        if not selected_events:
+            return
+
+        lines.append("# Kubernetes Events")
+        for event in selected_events:
             lines.append("")
-            lines.append(f"- Type: {event.type}")
-            lines.append(f"  Reason: {event.reason}")
-            lines.append(f"  Message: {event.message}")
+            event_type = self._truncate_prompt_field(
+                event.type,
+                _MAX_KUBERNETES_EVENT_FIELD_LENGTH,
+            )
+            reason = self._truncate_prompt_field(
+                event.reason,
+                _MAX_KUBERNETES_EVENT_FIELD_LENGTH,
+            )
+            message = self._truncate_prompt_field(
+                event.message,
+                _MAX_KUBERNETES_EVENT_FIELD_LENGTH,
+            )
+            lines.append(f"- Type: {event_type}")
+            lines.append(f"  Reason: {reason}")
+            lines.append(f"  Message: {message}")
 
             if event.last_timestamp:
                 lines.append(f"  Timestamp: {event.last_timestamp.isoformat()}")
 
+        omitted = len(unrepresented_events) - len(selected_events)
+        if omitted:
+            lines.append(f"  ({omitted} additional Kubernetes events omitted)")
+
         lines.append("")
+
+    @staticmethod
+    def _truncate_prompt_field(value: str, max_length: int) -> str:
+        if len(value) <= max_length:
+            return value
+
+        return f"{value[: max_length - 1]}…"
 
     def _append_recommendations(self, lines: list[str], ai: AIContext) -> None:
         if not ai.recommendations:

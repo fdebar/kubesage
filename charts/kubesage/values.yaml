@@ -126,6 +126,7 @@ ai:
   endpoint: ""
   model: ""
   provider: ""
+  contextMaxFindings: 25
 
 observability:
   

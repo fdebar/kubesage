@@ -8,6 +8,7 @@ from kubesage.models.incident_intelligence import (
 )
 from kubesage.models.prompt_context import PromptContext
 from kubesage.services.finding_ranker import FindingRanker
+from kubesage.utils.config import settings
 
 
 class AIContext:
@@ -15,10 +16,11 @@ class AIContext:
         self.incident = incident
         self.intelligence = intelligence
         ranked_findings = FindingRanker().rank(intelligence.findings)
+        selected_findings = ranked_findings[: max(settings.ai_context_max_findings, 0)]
 
         selected_timeline = TimelineSelector().select(
             timeline=intelligence.timeline,
-            findings=ranked_findings,
+            findings=selected_findings,
         )
 
         self.ctx = PromptContext(
@@ -26,7 +28,7 @@ class AIContext:
             pod=incident.pod,
             phase=incident.phase,
             events=incident.events,
-            findings=ranked_findings,
+            findings=selected_findings,
             timeline=selected_timeline,
         )
 

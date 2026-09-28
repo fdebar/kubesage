@@ -36,7 +36,20 @@ class TimelineSelector:
             {event.id: event for event in important_events}.values()
         )
         important_events = self._deduplicate_events(important_events)
-        important_events = self._aggregate_error_events(important_events)
+        non_error_events = [
+            event
+            for event in important_events
+            if not self._is_aggregatable_error_event(event)
+        ]
+        error_events = [
+            event
+            for event in important_events
+            if self._is_aggregatable_error_event(event)
+        ]
+        important_events = [
+            *non_error_events,
+            *self._aggregate_error_events(error_events),
+        ]
 
         selected = self._select_with_context(timeline, important_events)
         selected = self._deduplicate_events(selected)
@@ -47,23 +60,26 @@ class TimelineSelector:
         if event.severity in {
             Severity.CRITICAL,
             Severity.ERROR,
-            Severity.WARNING,
         }:
+            return True
+
+        if event.metadata.get("error_kind") or event.metadata.get("error_domain"):
             return True
 
         if event.type in {
             TimelineEventType.POD_RESTART,
             TimelineEventType.CONTAINER_TERMINATED,
-            TimelineEventType.CONTAINER_STARTED,
-            TimelineEventType.KUBERNETES_EVENT,
             TimelineEventType.METRIC_ANOMALY,
-            TimelineEventType.METRIC_CHANGE,
             TimelineEventType.FINDING,
         }:
             return True
 
-        return bool(event.metadata.get("error_kind")) or bool(
-            event.metadata.get("error_domain")
+        # Kubernetes Events collected for the incident are pod-scoped warnings.
+        # Keep them as diagnostic anchors, while ordinary warning logs remain
+        # contextual unless a finding explicitly refers to them.
+        return (
+            event.type == TimelineEventType.KUBERNETES_EVENT
+            and event.severity == Severity.WARNING
         )
 
     def _events_related_to_findings(
@@ -113,18 +129,14 @@ class TimelineSelector:
         to the same error episode when they occur close enough in time.
         """
 
-        error_events = [
-            event for event in events if self._is_aggregatable_error_event(event)
-        ]
-
-        if not error_events:
+        if not events:
             return events
 
         clusters: list[list[TimelineEvent]] = []
         current_cluster: list[TimelineEvent] = []
         aggregated: list[TimelineEvent] = []
 
-        error_events = sorted(error_events, key=lambda event: event.timestamp)
+        error_events = sorted(events, key=lambda event: event.timestamp)
         for event in error_events:
             if not current_cluster:
                 current_cluster = [event]

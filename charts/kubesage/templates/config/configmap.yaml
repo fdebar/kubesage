@@ -13,6 +13,7 @@ data:
   AI_MODEL: {{ .Values.ai.model | quote }}
   AI_URL: {{ .Values.ai.endpoint | quote }}
   AI_PROVIDER: {{ .Values.ai.provider | quote }}
+  AI_CONTEXT_MAX_FINDINGS: {{ .Values.ai.contextMaxFindings | quote }}
   {{ if .Values.observability.prometheus.enabled }}
   PROMETHEUS_URL: {{ .Values.observability.prometheus.url | quote }}
   {{ end }}
