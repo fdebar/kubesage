@@ -150,6 +150,7 @@ def ambiguous_resource_pressure_scenario() -> ReportQualityScenario:
         incident=incident,
         findings=[memory, cpu, restart],
         timeline=timeline,
+        required_finding_rules=("container_restart",),
         forbidden_root_cause_keywords=(
             "oomkilled",
             "oom killed",

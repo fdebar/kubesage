@@ -53,6 +53,7 @@ UNCERTAINTY_KEYWORDS = (
     "no termination reason",
     "termination reason is not available",
     "not confirmed",
+    "cannot be confirmed",
     "not explicitly confirmed",
     "cannot be determined",
     "cannot determine",
@@ -126,6 +127,12 @@ ROOT_CAUSE_KEYWORD_ALIASES: dict[str, tuple[str, ...]] = {
 
 def _forbidden_root_cause_is_asserted(root_cause: str, keyword: str) -> bool:
     normalized_keyword = keyword.lower()
+    keyword_tokens = normalized_keyword.split()
+    keyword_pattern = (
+        r"\b"
+        + r"(?:\W+\w+){0,2}\W+".join(re.escape(token) for token in keyword_tokens)
+        + r"\b"
+    )
     normalized_root_cause = re.sub(r"\be\.g\.", "eg", root_cause.lower())
     clauses = re.split(r"[.;]|\bbut\b|\bhowever\b", normalized_root_cause)
 
@@ -147,7 +154,7 @@ def _forbidden_root_cause_is_asserted(root_cause: str, keyword: str) -> bool:
     )
 
     for clause in clauses:
-        if normalized_keyword not in clause:
+        if not re.search(keyword_pattern, clause):
             continue
 
         if any(marker in clause for marker in negation_markers):
@@ -237,6 +244,15 @@ def _confidence_score(report: AIReport, scenario: ReportQualityScenario) -> floa
         return max(0.0, 1.0 - report.confidence)
 
     return min(1.0, report.confidence)
+
+
+def _report_expresses_uncertainty(report: AIReport) -> bool:
+    root_cause = (report.root_cause or "").strip().lower()
+    return (
+        report.root_cause is None
+        or any(keyword in root_cause for keyword in UNCERTAINTY_KEYWORDS)
+        or (report.confidence is not None and report.confidence <= 0.7)
+    )
 
 
 def _normalize_evidence_source(source: str | None) -> str:
@@ -511,13 +527,7 @@ def assert_report_quality(
         )
 
     if scenario.require_uncertainty:
-        uncertainty_expressed = (
-            report.root_cause is None
-            or any(keyword in root_cause for keyword in UNCERTAINTY_KEYWORDS)
-            or (report.confidence is not None and report.confidence <= 0.7)
-        )
-
-        assert uncertainty_expressed, (
+        assert _report_expresses_uncertainty(report), (
             f"{scenario.name}: expected uncertainty, "
             f"got root cause={report.root_cause!r}, "
             f"confidence={report.confidence!r}"
@@ -634,28 +644,6 @@ def test_ai_report_quality(
         f"confidence={score.confidence:.1f}, "
         f"completeness={score.completeness:.1f})"
     )
-
-
-@pytest.mark.ai_quality
-@pytest.mark.skipif(
-    os.getenv("KUBESAGE_RUN_AI_QUALITY") != "1",
-    reason="AI quality tests require an explicit live AI provider",
-)
-def test_oomkilled_ai_report_quality() -> None:
-    scenario = oomkilled_scenario()
-    client = Client(base_url=settings.ai_url, api_key=settings.ai_api_key)
-    provider = OpenAICompatibleProvider(client=client, model=settings.ai_model)
-
-    report: AIReport = provider.analyze(build_prompt(scenario))
-
-    print(f"\n{'=' * 80}")
-    print("SCENARIO: oomkilled")
-    print(f"{'=' * 80}")
-    print(report.model_dump_json(indent=2))
-
-    score = assert_report_quality(report, scenario)
-
-    print(f"QUALITY SCORE: {score.overall:.1f}/100")
 
 
 def test_evidence_ids_are_unique_in_scenario() -> None:
@@ -785,3 +773,45 @@ def test_evidence_timeline_consistency() -> None:
                 f"{evidence_id!r} has no matching "
                 "timeline event"
             )
+
+
+@pytest.mark.parametrize(
+    ("root_cause", "confidence", "expected"),
+    [
+        ("Unconfirmed root cause", 0.9, True),
+        ("No termination reason is available", 0.9, True),
+        ("Root cause cannot be confirmed", 0.9, True),
+        ("HTTP 500 followed by a restart", 0.7, True),
+        ("HTTP 500 followed by a restart", 0.71, False),
+        ("OOMKilled", 0.95, False),
+    ],
+)
+def test_uncertainty_detection_handles_wording_and_confidence(
+    root_cause: str,
+    confidence: float,
+    expected: bool,
+) -> None:
+    report = AIReport(
+        summary="Incident summary",
+        root_cause=root_cause,
+        confidence=confidence,
+    )
+
+    assert _report_expresses_uncertainty(report) is expected
+
+
+@pytest.mark.parametrize(
+    ("root_cause", "keyword", "asserted"),
+    [
+        ("CPU usage caused the HTTP 500 error", "cpu caused", True),
+        ("There is no evidence CPU caused the HTTP 500", "cpu caused", False),
+        ("CPU did not cause the HTTP 500", "cpu caused", False),
+        ("OOMKilled is not confirmed (e.g. no termination reason)", "oomkilled", False),
+    ],
+)
+def test_forbidden_root_cause_detection_respects_negation(
+    root_cause: str,
+    keyword: str,
+    asserted: bool,
+) -> None:
+    assert _forbidden_root_cause_is_asserted(root_cause, keyword) is asserted

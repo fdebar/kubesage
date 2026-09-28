@@ -96,6 +96,7 @@ def crashloop_unknown_scenario() -> ReportQualityScenario:
         incident=incident,
         findings=[finding],
         timeline=timeline,
+        required_finding_rules=("crashloop",),
         forbidden_root_cause_keywords=(
             "oom",
             "out of memory",

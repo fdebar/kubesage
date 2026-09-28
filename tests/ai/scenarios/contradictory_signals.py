@@ -144,6 +144,7 @@ def contradictory_signals_scenario() -> ReportQualityScenario:
             event,
         ],
         timeline=timeline,
+        required_finding_rules=("container_restart",),
         forbidden_root_cause_keywords=(
             "oomkilled",
             "oom killed",
