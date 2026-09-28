@@ -31,7 +31,16 @@ def correlated_oom_scenario() -> ReportQualityScenario:
         title="High memory usage",
         description="Memory usage reached the configured container limit.",
         resource=resource,
-        structured_evidences=[],
+        structured_evidences=[
+            Evidence(
+                name="memory_usage",
+                value="64",
+                unit="Mi",
+                source="prometheus",
+                type=EvidenceType.METRIC,
+                description="Container memory usage reached the configured 64Mi limit.",
+            ),
+        ],
     )
 
     oom = Finding(
@@ -42,7 +51,17 @@ def correlated_oom_scenario() -> ReportQualityScenario:
         title="Container OOMKilled",
         description="The container was terminated with reason OOMKilled.",
         resource=resource,
-        structured_evidences=[],
+        structured_evidences=[
+            Evidence(
+                name="termination_reason",
+                value="OOMKilled",
+                source="kubernetes",
+                type=EvidenceType.CONTAINER_STATE,
+                description=(
+                    "The previous container state reports termination reason OOMKilled."
+                ),
+            ),
+        ],
     )
 
     restart = Finding(
@@ -93,5 +112,6 @@ def correlated_oom_scenario() -> ReportQualityScenario:
         expected_root_cause_keywords=("memory", "oom"),
         required_evidence_keywords=("memory", "OOMKilled"),
         required_recommendation_keywords=("memory",),
+        required_finding_rules=("memory_exhaustion",),
         require_root_cause=True,
     )

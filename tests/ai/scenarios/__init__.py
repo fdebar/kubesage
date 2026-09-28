@@ -17,6 +17,7 @@ class ReportQualityScenario:
 
     required_evidence_keywords: tuple[str, ...] = ()
     required_recommendation_keywords: tuple[str, ...] = ()
+    required_finding_rules: tuple[str, ...] = ()
 
     require_root_cause: bool = False
     require_uncertainty: bool = False

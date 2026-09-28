@@ -153,5 +153,6 @@ def oomkilled_scenario() -> ReportQualityScenario:
         forbidden_root_cause_keywords=("memory leak",),
         required_evidence_keywords=("OOMKilled", "memory", "64Mi"),
         required_recommendation_keywords=("memory",),
+        required_finding_rules=("memory_exhaustion",),
         require_root_cause=True,
     )

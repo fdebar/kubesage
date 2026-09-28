@@ -60,13 +60,14 @@ def correlated_but_not_causal_scenario() -> ReportQualityScenario:
 
     application_error = Finding(
         rule="application_error",
-        kind=FindingKind.DIAGNOSIS,
+        kind=FindingKind.OBSERVATION,
         severity=Severity.HIGH,
         confidence=0.95,
         title="Application error detected",
         description=(
             "The application reported an internal error. The available "
-            "evidence does not establish that CPU usage caused the error."
+            "evidence does not establish the underlying cause of the error "
+            "or that CPU usage caused it."
         ),
         resource=resource,
         structured_evidences=[
@@ -155,6 +156,7 @@ def correlated_but_not_causal_scenario() -> ReportQualityScenario:
         ),
         required_evidence_keywords=("500", "cpu"),
         required_recommendation_keywords=("application", "logs"),
-        require_root_cause=True,
-        require_uncertainty=False,
+        required_finding_rules=("application_error",),
+        require_root_cause=False,
+        require_uncertainty=True,
     )

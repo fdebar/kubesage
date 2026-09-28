@@ -109,6 +109,7 @@ class PromptBuilder:
 
     def _append_finding(self, lines: list[str], finding: Finding) -> None:
         lines.append(f"### {finding.title}")
+        lines.append(f"Rule: {finding.rule}")
         lines.append(f"Severity: {finding.severity.value}")
         lines.append(f"Confidence: {finding.confidence:.2f}")
         lines.append(f"Description: {finding.description}")
@@ -738,26 +739,28 @@ Do not add commentary before or after the JSON.
 ## Rules
 
 1. Use Diagnoses as the primary source of truth.
-2. Use Observations, Events, Logs, Metrics, and Timeline as supporting evidence.
-3. Never invent missing information.
-4. Never convert a symptom into a root cause.
-5. Separate confirmed facts from hypotheses.
-6. Preserve concrete technical identifiers in the root cause.
-7. If the root cause cannot be determined, explicitly state that it 
+2. In `findings`, copy the exact `Rule` identifier from the incident context; 
+do not use the finding title.
+3. Use Observations, Events, Logs, Metrics, and Timeline as supporting evidence.
+4. Never invent missing information.
+5. Never convert a symptom into a root cause.
+6. Separate confirmed facts from hypotheses.
+7. Preserve concrete technical identifiers in the root cause.
+8. If the root cause cannot be determined, explicitly state that it
 is unknown or unconfirmed.
-8. Do not infer causes merely because they are common Kubernetes explanations.
-9. Recommendations must be grounded in the provided evidence.
-10. Do not claim impact that is not supported by the evidence.
-11. Calibrate confidence to the certainty of the root cause.
-12. Keep the report concise and technically precise.
-13. Never duplicate an evidence ID in the `evidence` array.
-14. Preserve the exact canonical `source` of every evidence item.
-15. Never substitute a TimelineEvent source for an Evidence source.
-16. Do not claim causality from temporal proximity alone.
-17. For ambiguous incidents, confidence MUST be <= 0.7.
-18. For ambiguous incidents, do not assert a specific termination 
+9. Do not infer causes merely because they are common Kubernetes explanations.
+10. Recommendations must be grounded in the provided evidence.
+11. Do not claim impact that is not supported by the evidence.
+12. Calibrate confidence to the certainty of the root cause.
+13. Keep the report concise and technically precise.
+14. Never duplicate an evidence ID in the `evidence` array.
+15. Preserve the exact canonical `source` of every evidence item.
+16. Never substitute a TimelineEvent source for an Evidence source.
+17. Do not claim causality from temporal proximity alone.
+18. For ambiguous incidents, confidence MUST be <= 0.7.
+19. For ambiguous incidents, do not assert a specific termination
 reason without evidence.
-19. Evidence IDs must be copied exactly from the incident context.
+20. Evidence IDs must be copied exactly from the incident context.
 
 ## Reasoning rules
 
@@ -778,8 +781,12 @@ Return JSON matching this schema:
 {
   "summary": "...",
   "root_cause": "...",
+  "status": "success",
   "confidence": 0.0,
   "impact": "...",
+  "findings": [
+    {"rule": "...", "description": "..."}
+  ],
   "evidence": [
     {
       "id": "...",

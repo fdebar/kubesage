@@ -85,5 +85,6 @@ def application_error_scenario() -> ReportQualityScenario:
         forbidden_root_cause_keywords=("oom", "out of memory", "cpu throttling"),
         required_evidence_keywords=("database", "connection refused"),
         required_recommendation_keywords=("database", "connection"),
+        required_finding_rules=("application_error",),
         require_root_cause=True,
     )

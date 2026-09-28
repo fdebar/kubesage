@@ -63,5 +63,6 @@ def cpu_throttling_scenario() -> ReportQualityScenario:
         forbidden_root_cause_keywords=("oom", "out of memory", "crash"),
         required_evidence_keywords=("thrott", "cpu"),
         required_recommendation_keywords=("cpu",),
+        required_finding_rules=("cpu_throttling",),
         require_root_cause=True,
     )

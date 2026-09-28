@@ -81,5 +81,6 @@ def readiness_failure_scenario() -> ReportQualityScenario:
         forbidden_root_cause_keywords=("crash", "crashloop", "oom", "out of memory"),
         required_evidence_keywords=("readiness", "probe"),
         required_recommendation_keywords=("probe",),
+        required_finding_rules=("readiness_failure",),
         require_root_cause=True,
     )

@@ -45,8 +45,13 @@ SCENARIOS = (
 
 UNCERTAINTY_KEYWORDS = (
     "unknown",
+    "unconfirmed",
     "unclear",
     "uncertain",
+    "no diagnosed cause",
+    "without a diagnosed cause",
+    "no termination reason",
+    "termination reason is not available",
     "not confirmed",
     "not explicitly confirmed",
     "cannot be determined",
@@ -121,7 +126,8 @@ ROOT_CAUSE_KEYWORD_ALIASES: dict[str, tuple[str, ...]] = {
 
 def _forbidden_root_cause_is_asserted(root_cause: str, keyword: str) -> bool:
     normalized_keyword = keyword.lower()
-    clauses = re.split(r"[.;]|\bbut\b|\bhowever\b", root_cause.lower())
+    normalized_root_cause = re.sub(r"\be\.g\.", "eg", root_cause.lower())
+    clauses = re.split(r"[.;]|\bbut\b|\bhowever\b", normalized_root_cause)
 
     negation_markers = (
         "no ",
@@ -207,6 +213,22 @@ def _keyword_coverage(text: str, keywords: tuple[str, ...]) -> float:
     return matched / len(keywords)
 
 
+def _recommendation_coverage(
+    recommendations: str,
+    keywords: tuple[str, ...],
+) -> float:
+    if not keywords:
+        return 1.0
+
+    matched = sum(
+        _recommendations_contain_investigation(recommendations)
+        if keyword == "__investigation__"
+        else keyword.lower() in recommendations.lower()
+        for keyword in keywords
+    )
+    return matched / len(keywords)
+
+
 def _confidence_score(report: AIReport, scenario: ReportQualityScenario) -> float:
     if report.confidence is None:
         return 0.0
@@ -254,7 +276,7 @@ def score_report_quality(
             scenario.required_evidence_keywords,
         ),
         recommendations=20.0
-        * _keyword_coverage(
+        * _recommendation_coverage(
             recommendations,
             scenario.required_recommendation_keywords,
         ),
@@ -286,6 +308,17 @@ def _scenario_evidence_by_id(
         for finding in scenario.findings
         for evidence in finding.structured_evidences
     }
+
+
+def _canonical_finding_rule(
+    reported_rule: str,
+    scenario: ReportQualityScenario,
+) -> str | None:
+    normalized = reported_rule.strip().casefold()
+    for finding in scenario.findings:
+        if normalized in {finding.rule.casefold(), finding.title.casefold()}:
+            return finding.rule
+    return None
 
 
 def _timeline_event_matches_evidence(
@@ -442,6 +475,29 @@ def assert_report_quality(
     assert report.summary != "AI analysis could not be completed.", (
         f"{scenario.name}: AI provider did not return a report"
     )
+    assert report.status.value == "success", (
+        f"{scenario.name}: generated report must have success status, "
+        f"got {report.status.value!r}"
+    )
+
+    reported_finding_rules = [finding.rule for finding in report.findings]
+    assert len(reported_finding_rules) == len(set(reported_finding_rules)), (
+        f"{scenario.name}: duplicate finding references in report"
+    )
+    canonical_reported_rules = [
+        _canonical_finding_rule(rule, scenario) for rule in reported_finding_rules
+    ]
+    assert all(rule is not None for rule in canonical_reported_rules), (
+        f"{scenario.name}: report references findings absent from context: "
+        f"{reported_finding_rules!r}"
+    )
+    missing_finding_rules = set(scenario.required_finding_rules) - set(
+        canonical_reported_rules
+    )
+    assert not missing_finding_rules, (
+        f"{scenario.name}: missing relevant finding references "
+        f"{sorted(missing_finding_rules)!r}"
+    )
 
     root_cause = (report.root_cause or "").strip().lower()
     recommendations = " ".join(report.recommendations).lower()
@@ -455,16 +511,20 @@ def assert_report_quality(
         )
 
     if scenario.require_uncertainty:
-        uncertainty_detected = (
+        uncertainty_expressed = (
             report.root_cause is None
             or any(keyword in root_cause for keyword in UNCERTAINTY_KEYWORDS)
             or (report.confidence is not None and report.confidence <= 0.7)
         )
 
-        assert uncertainty_detected, (
+        assert uncertainty_expressed, (
             f"{scenario.name}: expected uncertainty, "
             f"got root cause={report.root_cause!r}, "
             f"confidence={report.confidence!r}"
+        )
+        assert report.confidence is not None and report.confidence <= 0.7, (
+            f"{scenario.name}: uncertain diagnosis must have confidence <= 0.7, "
+            f"got {report.confidence!r}"
         )
 
     for keyword in scenario.expected_root_cause_keywords:
@@ -504,7 +564,11 @@ def assert_report_quality(
     _assert_report_evidence_ids_are_unique(report, scenario)
     _assert_report_evidence_timeline_consistency(report, scenario)
 
-    return score_report_quality(report, scenario)
+    score = score_report_quality(report, scenario)
+    assert score.overall >= 80.0, (
+        f"{scenario.name}: quality score {score.overall:.1f}/100 is below 80"
+    )
+    return score
 
 
 @pytest.mark.parametrize(
