@@ -1,8 +1,12 @@
 import structlog
 
 from kubesage.bootstrap import check_application_requirements
+from kubesage.database.session import SessionLocal
 from kubesage.observability.worker_metrics import start_metrics_server
 from kubesage.utils.config import settings
+from kubesage.watchers.deduplication_repository import (
+    IncidentDeduplicationRepository,
+)
 from kubesage.watchers.incident_deduplicator import IncidentDeduplicator
 from kubesage.watchers.kubernetes_event_source import (
     KubernetesPodEventSource,
@@ -11,6 +15,7 @@ from kubesage.watchers.kubernetes_watcher import KubernetesWatcher
 from kubesage.watchers.pod_event_filter import PodEventFilter
 from kubesage.watchers.pod_state_cache import PodStateCache
 from kubesage.watchers.pod_state_diff_builder import PodStateDiffBuilder
+from kubesage.watchers.state_repository import WatcherPodStateRepository
 from kubesage.worker.analysis_worker import AnalysisWorker
 
 logger = structlog.get_logger()
@@ -20,7 +25,9 @@ def run_worker() -> None:
     check_application_requirements()
     start_metrics_server(settings.metrics_port)
 
-    deduplicator = IncidentDeduplicator()
+    deduplicator = IncidentDeduplicator(
+        repository=IncidentDeduplicationRepository(SessionLocal)
+    )
 
     analysis_worker = AnalysisWorker(
         deduplicator=deduplicator,
@@ -33,7 +40,7 @@ def run_worker() -> None:
     watcher = KubernetesWatcher(
         event_filter=PodEventFilter(),
         deduplicator=deduplicator,
-        state_cache=PodStateCache(),
+        state_cache=PodStateCache(repository=WatcherPodStateRepository(SessionLocal)),
         diff_builder=PodStateDiffBuilder(),
         analysis_submitter=analysis_worker.submit,
     )

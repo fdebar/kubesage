@@ -1,7 +1,8 @@
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 
 import structlog
+from kubernetes.client import V1Pod
 
 from kubesage.observability.metrics import (
     WATCHER_ERRORS_TOTAL,
@@ -52,11 +53,17 @@ class KubernetesWatcher:
 
         resource_version: str | None = None
         backoff_seconds = 1
+        startup_reconciled = False
 
         while True:
             try:
                 if resource_version is None:
                     snapshot = event_source.initial_state()
+
+                    if not startup_reconciled:
+                        self._reconcile_startup(snapshot.pods)
+                        startup_reconciled = True
+
                     self.state_cache.replace(snapshot.pods)
                     resource_version = snapshot.resource_version
 
@@ -133,6 +140,53 @@ class KubernetesWatcher:
                 time.sleep(backoff_seconds)
 
                 backoff_seconds = min(backoff_seconds * 2, self.max_backoff_seconds)
+
+    def _reconcile_startup(self, pods: Sequence[V1Pod]) -> None:
+        logger.info("watcher_startup_reconciliation_started", pods=len(pods))
+        submitted = 0
+
+        for pod in pods:
+            metadata = pod.metadata
+            previous = None
+            if metadata is not None and metadata.namespace and metadata.uid:
+                previous = self.state_cache.get(metadata.namespace, metadata.uid)
+
+            trigger = self._evaluate_event(
+                PodWatchEvent(
+                    type="MODIFIED",
+                    pod=pod,
+                    resource_version=(
+                        metadata.resource_version if metadata is not None else None
+                    ),
+                )
+            )
+            if not isinstance(trigger, IncidentTrigger):
+                trigger = None
+            if trigger is None and previous is None:
+                trigger = self.event_filter.evaluate_current(pod)
+                if not isinstance(trigger, IncidentTrigger):
+                    trigger = None
+            if trigger is None:
+                continue
+
+            WATCHER_INCIDENTS_DETECTED_TOTAL.labels(reason=trigger.reason).inc()
+            if not self.deduplicator.should_process(trigger):
+                WATCHER_INCIDENTS_IGNORED_TOTAL.labels(reason=trigger.reason).inc()
+                continue
+
+            try:
+                self.analysis_submitter(trigger)
+                submitted += 1
+            except Exception:
+                self.deduplicator.forget(trigger)
+                if metadata is not None and metadata.namespace and metadata.uid:
+                    if previous is None:
+                        self.state_cache.remove(metadata.namespace, metadata.uid)
+                    else:
+                        self.state_cache.update(previous)
+                raise
+
+        logger.info("watcher_startup_reconciliation_completed", submitted=submitted)
 
     def _evaluate_event(self, event: PodWatchEvent) -> IncidentTrigger | None:
         pod = event.pod

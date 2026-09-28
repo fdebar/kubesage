@@ -1,6 +1,9 @@
 from datetime import UTC, datetime, timedelta
 from threading import Lock
 
+from kubesage.watchers.deduplication_repository import (
+    IncidentDeduplicationRepository,
+)
 from kubesage.watchers.models.incident_trigger import IncidentTrigger
 
 
@@ -19,12 +22,20 @@ class IncidentDeduplicator:
     of the cooldown key.
     """
 
-    def __init__(self, ttl_seconds: int = 300) -> None:
+    def __init__(
+        self,
+        ttl_seconds: int = 300,
+        repository: IncidentDeduplicationRepository | None = None,
+    ) -> None:
         self.ttl = timedelta(seconds=ttl_seconds)
+        self._repository = repository
         self._cache: dict[tuple[str, str, str], datetime] = {}
         self._lock = Lock()
 
     def should_process(self, trigger: IncidentTrigger) -> bool:
+        if self._repository is not None:
+            return self._repository.claim(trigger, self.ttl)
+
         now = datetime.now(UTC)
 
         with self._lock:
@@ -45,15 +56,15 @@ class IncidentDeduplicator:
         if it is replayed by Kubernetes.
         """
 
+        if self._repository is not None:
+            self._repository.forget(trigger)
+            return
+
         with self._lock:
             self._cache.pop(self._build_key(trigger), None)
 
     def _build_key(self, trigger: IncidentTrigger) -> tuple[str, str, str]:
-        return (
-            trigger.namespace,
-            trigger.pod_uid,
-            trigger.reason,
-        )
+        return (trigger.namespace, trigger.pod_uid, trigger.reason)
 
     def _cleanup(self, now: datetime) -> None:
         expired = [
