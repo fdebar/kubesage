@@ -13,6 +13,7 @@ from kubesage.api.routes.findings import router as findings_router
 from kubesage.api.routes.metrics import router as metrics_router
 from kubesage.api.routes.settings import router as settings_router
 from kubesage.api.routes.system import router as system_router
+from kubesage.api.routes.watcher_incidents import router as watcher_incidents_router
 from kubesage.observability.telemetry import setup_telemetry
 from kubesage.utils.config import settings
 
@@ -30,6 +31,7 @@ app.include_router(analysis_router, prefix="/api/v1")
 app.include_router(dashboard_router, prefix="/api/v1")
 app.include_router(findings_router, prefix="/api/v1")
 app.include_router(settings_router, prefix="/api/v1")
+app.include_router(watcher_incidents_router, prefix="/api/v1")
 app.include_router(metrics_router)
 app.include_router(system_router)
 

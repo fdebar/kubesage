@@ -7,6 +7,9 @@ from kubesage.bootstrap import create_analysis_service
 from kubesage.database.session import SessionLocal
 from kubesage.repositories.analysis_repository import AnalysisRepository
 from kubesage.repositories.finding_repository import FindingRepository
+from kubesage.repositories.watcher_incident_repository import (
+    WatcherIncidentRepository,
+)
 from kubesage.services.analysis_service import AnalysisService
 from kubesage.services.dashboard_service import DashboardService
 from kubesage.services.kubernetes_service import KubernetesService
@@ -35,3 +38,9 @@ def get_dashboard_service(db: Session = Depends(get_db)) -> DashboardService:
 
 def get_finding_repository(session: Session = Depends(get_db)) -> FindingRepository:
     return FindingRepository(session)
+
+
+def get_watcher_incident_repository(
+    session: Session = Depends(get_db),
+) -> WatcherIncidentRepository:
+    return WatcherIncidentRepository(session)
