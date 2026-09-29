@@ -192,6 +192,7 @@ def test_added_event_updates_cache_without_triggering_analysis(
 
     diff_builder.build.assert_not_called()
     event_filter.evaluate.assert_not_called()
+    event_filter.evaluate_current.assert_not_called()
 
 
 def test_deleted_event_removes_pod_from_cache(
@@ -220,6 +221,16 @@ def test_deleted_event_removes_pod_from_cache(
 
     diff_builder.build.assert_not_called()
     event_filter.evaluate.assert_not_called()
+
+
+def test_deleted_event_resolves_persistent_incident(
+    watcher: KubernetesWatcher,
+) -> None:
+    lifecycle = MagicMock()
+    watcher.incident_lifecycle = lifecycle
+    watcher._evaluate_event(make_event(make_pod(), event_type="DELETED"))
+
+    lifecycle.resolve_pod.assert_called_once_with("default", POD_UID)
 
 
 def test_event_without_metadata_is_ignored(

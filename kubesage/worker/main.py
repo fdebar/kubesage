@@ -8,6 +8,9 @@ from kubesage.watchers.deduplication_repository import (
     IncidentDeduplicationRepository,
 )
 from kubesage.watchers.incident_deduplicator import IncidentDeduplicator
+from kubesage.watchers.incident_lifecycle_repository import (
+    WatcherIncidentLifecycleRepository,
+)
 from kubesage.watchers.kubernetes_event_source import (
     KubernetesPodEventSource,
 )
@@ -43,6 +46,7 @@ def run_worker() -> None:
         state_cache=PodStateCache(repository=WatcherPodStateRepository(SessionLocal)),
         diff_builder=PodStateDiffBuilder(),
         analysis_submitter=analysis_worker.submit,
+        incident_lifecycle=WatcherIncidentLifecycleRepository(SessionLocal),
     )
 
     logger.info("kubesage_worker_started")

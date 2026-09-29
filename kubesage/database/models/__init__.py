@@ -9,6 +9,7 @@ from kubesage.database.models.incident_deduplication import (
 )
 from kubesage.database.models.incident_snapshot import IncidentSnapshotModel
 from kubesage.database.models.recommendation import RecommendationModel
+from kubesage.database.models.watcher_incident import WatcherIncidentModel
 from kubesage.database.models.watcher_pod_state import WatcherPodStateModel
 
 __all__ = [
@@ -21,5 +22,6 @@ __all__ = [
     "IncidentDeduplicationModel",
     "IncidentSnapshotModel",
     "RecommendationModel",
+    "WatcherIncidentModel",
     "WatcherPodStateModel",
 ]

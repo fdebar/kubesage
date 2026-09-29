@@ -73,26 +73,29 @@ class PodEventFilter:
         uid = metadata.uid
         resource_version = metadata.resource_version
 
-        if self._is_oom_killed(pod):
-            return self._trigger(
-                namespace=namespace,
-                pod=name,
-                pod_uid=uid,
-                resource_version=resource_version,
-                reason="OOMKilled",
-                message="Container killed because of memory limit",
-            )
-
-        reason = self._waiting_reason(pod)
-        if reason in INTERESTING_REASONS:
+        issue = self.current_issue(pod)
+        if issue is not None:
+            reason, message = issue
             return self._trigger(
                 namespace=namespace,
                 pod=name,
                 pod_uid=uid,
                 resource_version=resource_version,
                 reason=reason,
-                message=f"Container is in {reason}",
+                message=message,
             )
+
+        return None
+
+    def current_issue(self, pod: V1Pod) -> tuple[str, str] | None:
+        """Return the currently active watcher condition, if any."""
+
+        if self._is_oom_killed(pod):
+            return "OOMKilled", "Container killed because of memory limit"
+
+        reason = self._waiting_reason(pod)
+        if reason in INTERESTING_REASONS:
+            return reason, f"Container is in {reason}"
 
         return None
 
