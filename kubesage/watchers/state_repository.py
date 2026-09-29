@@ -95,6 +95,9 @@ class WatcherPodStateRepository:
                         "last_terminated_reason": (
                             terminated.reason if terminated else None
                         ),
+                        "last_terminated_exit_code": (
+                            terminated.exit_code if terminated else None
+                        ),
                     }
                 )
         return {
@@ -112,6 +115,7 @@ class WatcherPodStateRepository:
         for item in state.get("container_statuses", []):
             waiting_reason = item.get("waiting_reason")
             terminated_reason = item.get("last_terminated_reason")
+            terminated_exit_code = item.get("last_terminated_exit_code")
             statuses.append(
                 V1ContainerStatus(
                     name=item.get("name"),
@@ -129,10 +133,15 @@ class WatcherPodStateRepository:
                     last_state=(
                         V1ContainerState(
                             terminated=V1ContainerStateTerminated(
-                                reason=terminated_reason
+                                reason=terminated_reason,
+                                exit_code=(
+                                    terminated_exit_code
+                                    if terminated_exit_code is not None
+                                    else 0
+                                ),
                             )
                         )
-                        if terminated_reason
+                        if terminated_reason or terminated_exit_code is not None
                         else None
                     ),
                 )
