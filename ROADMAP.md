@@ -1001,7 +1001,7 @@ Based on the latest implementation direction, the next priorities should focus l
 * confidence propagation
 * root-cause ranking
 * impact analysis
-* incident lifecycle/state
+* link watcher incident episodes to the analyses they trigger
 * recurring incident detection
 
 ## Priority 4 — AI Evaluation
@@ -1087,11 +1087,13 @@ The goal of this document is to preserve the evolution of the architecture witho
 
 # 13. Current Milestone
 
-**September 28, 2026 — KubeSage has improved application-log classification, bounded the AI-facing context, and expanded report-quality scenarios for uncertainty and irrelevant evidence.**
+**October 1, 2026 — Watcher incident episodes now have a persistent lifecycle and are available in the API and web interface.**
 
-The central engineering problem is no longer simply collecting more information. The latest implementation bounds the selected context and filters timeline noise; validating the quality of the remaining evidence is the next step.
+Each watcher episode is retained as active or resolved, including its detection, last-seen and recovery times. Startup reconciliation and pod deletion update the lifecycle, while current pod state determines whether an episode remains active. The API exposes a paginated, filterable incident history, and KubeSage Web provides an Incidents page with active/resolved filters, namespace search and automatic refresh.
 
-It is:
+The next product step is to connect each watcher episode to the analysis it triggered so that operators can move from the incident list directly to its findings, timeline and AI report.
+
+The AI context direction from the previous milestone remains a core engineering priority:
 
 > **Selecting the smallest set of trustworthy, temporally relevant and causally meaningful evidence that allows deterministic diagnostics and an LLM to explain an incident without hallucinating.**
 
