@@ -11,6 +11,7 @@ from sqlalchemy.pool import StaticPool
 from kubesage.api.app import app
 from kubesage.api.dependencies import get_watcher_incident_repository
 from kubesage.database.base import Base
+from kubesage.database.models.analysis import AnalysisModel
 from kubesage.database.models.watcher_incident import WatcherIncidentModel
 from kubesage.repositories.watcher_incident_repository import (
     WatcherIncidentRepository,
@@ -151,3 +152,37 @@ def test_list_watcher_incidents_rejects_unknown_status(
     )
 
     assert response.status_code == 422
+
+
+def test_list_watcher_incidents_returns_linked_analyses(
+    client: TestClient,
+    db_session: Session,
+) -> None:
+    incident = add_incident(
+        db_session,
+        namespace="production",
+        pod="api",
+        status="active",
+        first_seen_at=datetime.now(UTC),
+    )
+    analysis_id = "analysis-1"
+    db_session.add(
+        AnalysisModel(
+            id=analysis_id,
+            namespace="production",
+            pod="api",
+            pod_uid=incident.pod_uid,
+            trigger="watcher",
+            phase="CrashLoopBackOff",
+            duration_ms=100,
+            findings_count=0,
+        )
+    )
+    incident.analysis_id = analysis_id
+    db_session.commit()
+
+    response = client.get("/api/v1/watcher/incidents")
+
+    assert response.status_code == 200
+    item = response.json()["items"][0]
+    assert item["analysis_id"] == analysis_id

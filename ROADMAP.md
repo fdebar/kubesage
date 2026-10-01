@@ -1001,8 +1001,8 @@ Based on the latest implementation direction, the next priorities should focus l
 * confidence propagation
 * root-cause ranking
 * impact analysis
-* link watcher incident episodes to the analyses they trigger
-* recurring incident detection
+* recurring incident detection across replacement Pods and workload rollouts
+* incident impact and recovery-time trends
 
 ## Priority 4 — AI Evaluation
 
@@ -1087,11 +1087,11 @@ The goal of this document is to preserve the evolution of the architecture witho
 
 # 13. Current Milestone
 
-**October 1, 2026 — Watcher incident episodes now have a persistent lifecycle and are available in the API and web interface.**
+**October 1, 2026 — Watcher incident episodes have a persistent lifecycle, an API and web view, and a link to their analysis.**
 
-Each watcher episode is retained as active or resolved, including its detection, last-seen and recovery times. Startup reconciliation and pod deletion update the lifecycle, while current pod state determines whether an episode remains active. The API exposes a paginated, filterable incident history, and KubeSage Web provides an Incidents page with active/resolved filters, namespace search and automatic refresh.
+Each watcher episode is retained as active or resolved, including its detection, last-seen and recovery times. Startup reconciliation and pod deletion update the lifecycle, while current pod state determines whether an episode remains active. The API exposes a paginated, filterable incident history. Each episode stores the ID of its single watcher-triggered analysis, and KubeSage Web provides an Incidents page that opens it.
 
-The next product step is to connect each watcher episode to the analysis it triggered so that operators can move from the incident list directly to its findings, timeline and AI report.
+The next product step is to identify recurring failures across Pod replacements and workload rollouts, then summarize their impact and recovery time.
 
 The AI context direction from the previous milestone remains a core engineering priority:
 

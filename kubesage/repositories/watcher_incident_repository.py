@@ -12,6 +12,20 @@ class WatcherIncidentRepository:
     def __init__(self, session: Session) -> None:
         self.session = session
 
+    def link_analysis(self, incident_id: str, analysis_id: str) -> bool:
+        incident = self.session.get(WatcherIncidentModel, incident_id)
+        if incident is None:
+            return False
+        if incident.analysis_id == analysis_id:
+            return True
+        if incident.analysis_id is not None:
+            return False
+
+        incident.analysis_id = analysis_id
+        self.session.commit()
+
+        return True
+
     def list_incidents(
         self,
         limit: int = 20,

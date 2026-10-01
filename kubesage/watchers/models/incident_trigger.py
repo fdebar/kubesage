@@ -17,6 +17,7 @@ class IncidentTrigger(BaseModel):
     resource_version: str
     message: str | None = None
     occurred_at: datetime
+    watcher_incident_id: str | None = None
 
 
 class PodWatchEvent(BaseModel):

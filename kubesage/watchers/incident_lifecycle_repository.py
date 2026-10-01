@@ -22,12 +22,13 @@ class WatcherIncidentLifecycleRepository:
         pod: V1Pod,
         current_reason: str | None,
         current_message: str | None = None,
-    ) -> None:
+    ) -> str | None:
         metadata = pod.metadata
         if metadata is None or metadata.namespace is None or metadata.uid is None:
-            return
+            return None
 
         now = datetime.now(UTC)
+        incident_id = None
         with self.session_factory() as session:
             if current_reason is not None:
                 row = self._find_active(
@@ -57,6 +58,9 @@ class WatcherIncidentLifecycleRepository:
                     row.last_resource_version = metadata.resource_version
                     row.message = current_message
 
+                session.flush()
+                incident_id = row.id
+
             self._resolve_other_reasons(
                 session,
                 metadata.namespace,
@@ -65,6 +69,8 @@ class WatcherIncidentLifecycleRepository:
                 now,
             )
             session.commit()
+
+        return incident_id
 
     def resolve_pod(self, namespace: str, pod_uid: str) -> None:
         now = datetime.now(UTC)

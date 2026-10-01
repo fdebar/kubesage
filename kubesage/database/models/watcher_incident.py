@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import DateTime, Index, String
+from sqlalchemy import DateTime, ForeignKey, Index, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from kubesage.database.base import Base
@@ -21,6 +21,11 @@ class WatcherIncidentModel(Base):
     )
 
     id: Mapped[str] = mapped_column(primary_key=True, default=lambda: str(uuid4()))
+    analysis_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("analyses.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     namespace: Mapped[str] = mapped_column(String(255), nullable=False)
     pod_uid: Mapped[str] = mapped_column(String(255), nullable=False)
     reason: Mapped[str] = mapped_column(String(100), nullable=False)

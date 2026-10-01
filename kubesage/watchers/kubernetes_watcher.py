@@ -173,6 +173,10 @@ class KubernetesWatcher:
                     trigger = None
             if trigger is None:
                 continue
+            if trigger.watcher_incident_id is None:
+                active_episode = self._sync_lifecycle(pod)
+                if active_episode is not None and trigger.reason == active_episode[0]:
+                    trigger.watcher_incident_id = active_episode[1]
 
             WATCHER_INCIDENTS_DETECTED_TOTAL.labels(reason=trigger.reason).inc()
             if not self.deduplicator.should_process(trigger):
@@ -234,7 +238,13 @@ class KubernetesWatcher:
             uid,
             resource_version,
         )
-        self._sync_lifecycle(pod)
+        active_episode = self._sync_lifecycle(pod)
+        if (
+            trigger is not None
+            and active_episode is not None
+            and trigger.reason == active_episode[0]
+        ):
+            trigger.watcher_incident_id = active_episode[1]
 
         logger.debug(
             "watcher_state_diff",
@@ -256,13 +266,16 @@ class KubernetesWatcher:
     def _sync_lifecycle(
         self,
         pod: V1Pod,
-    ) -> None:
+    ) -> tuple[str, str] | None:
         if self.incident_lifecycle is None:
-            return
+            return None
 
         issue = self.event_filter.current_issue(pod)
-        self.incident_lifecycle.sync_pod(
+        incident_id = self.incident_lifecycle.sync_pod(
             pod,
             current_reason=issue[0] if issue is not None else None,
             current_message=issue[1] if issue is not None else None,
         )
+        if issue is None or incident_id is None:
+            return None
+        return issue[0], incident_id

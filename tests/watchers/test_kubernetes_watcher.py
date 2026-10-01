@@ -389,6 +389,34 @@ def test_modified_event_returns_trigger_from_filter(
     )
 
 
+def test_modified_event_attaches_active_episode_to_trigger(
+    watcher: KubernetesWatcher,
+    state_cache: MagicMock,
+    diff_builder: MagicMock,
+    event_filter: MagicMock,
+    pod_diff: PodStateDiff,
+) -> None:
+    pod = make_pod(resource_version="42")
+    trigger = make_trigger(resource_version="42")
+    lifecycle = MagicMock()
+    lifecycle.sync_pod.return_value = "episode-123"
+    watcher.incident_lifecycle = lifecycle
+    state_cache.get.return_value = make_pod(resource_version="41")
+    diff_builder.build.return_value = pod_diff
+    event_filter.evaluate.return_value = trigger
+    event_filter.current_issue.return_value = (trigger.reason, trigger.message)
+
+    result = watcher._evaluate_event(make_event(pod, resource_version="42"))
+
+    assert result is trigger
+    assert trigger.watcher_incident_id == "episode-123"
+    lifecycle.sync_pod.assert_called_once_with(
+        pod,
+        current_reason=trigger.reason,
+        current_message=trigger.message,
+    )
+
+
 def test_modified_event_with_no_previous_state_is_handled_by_diff_builder(
     watcher: KubernetesWatcher,
     state_cache: MagicMock,

@@ -18,3 +18,4 @@ class WatcherIncidentResponse(BaseModel):
     resolved_at: datetime | None
     last_resource_version: str | None
     message: str | None
+    analysis_id: str | None

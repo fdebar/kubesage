@@ -11,6 +11,7 @@ from kubesage.bootstrap import create_analysis_service
 from kubesage.database.session import SessionLocal
 from kubesage.models.analysis import AnalysisTrigger
 from kubesage.observability.metrics import WATCHER_QUEUE_DEPTH
+from kubesage.repositories.watcher_incident_repository import WatcherIncidentRepository
 from kubesage.utils.config import settings
 from kubesage.utils.exceptions import PodIdentityMismatchError, PodNotFoundError
 from kubesage.watchers.incident_deduplicator import IncidentDeduplicator
@@ -107,12 +108,32 @@ class AnalysisWorker:
                 db = SessionLocal()
                 analysis_service = create_analysis_service(db)
 
-                analysis_service.analyze(
+                analysis = analysis_service.analyze(
                     trigger.namespace,
                     trigger.pod,
                     AnalysisTrigger.WATCHER,
                     trigger.pod_uid,
                 )
+
+                if trigger.watcher_incident_id is not None:
+                    try:
+                        linked = WatcherIncidentRepository(db).link_analysis(
+                            trigger.watcher_incident_id,
+                            str(analysis.id),
+                        )
+                        if not linked:
+                            logger.warning(
+                                "worker_incident_analysis_link_rejected",
+                                watcher_incident_id=trigger.watcher_incident_id,
+                                analysis_id=str(analysis.id),
+                            )
+                    except Exception:
+                        db.rollback()
+                        logger.exception(
+                            "worker_incident_analysis_link_failed",
+                            watcher_incident_id=trigger.watcher_incident_id,
+                            analysis_id=str(analysis.id),
+                        )
 
                 logger.info(
                     "worker_analysis_completed",

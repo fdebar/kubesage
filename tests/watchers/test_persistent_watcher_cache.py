@@ -16,7 +16,9 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from kubesage.database.base import Base
+from kubesage.database.models.analysis import AnalysisModel
 from kubesage.database.models.watcher_incident import WatcherIncidentModel
+from kubesage.repositories.watcher_incident_repository import WatcherIncidentRepository
 from kubesage.watchers.deduplication_repository import (
     IncidentDeduplicationRepository,
 )
@@ -223,3 +225,44 @@ def test_startup_reconciliation_resolves_incidents_for_missing_pods(
 
     states = {incident.pod_uid: incident.status for incident in incidents}
     assert states == {"missing": "resolved", "present": "active"}
+
+
+def test_watcher_incident_keeps_one_analysis_link_idempotently(
+    session_factory: sessionmaker[Session],
+) -> None:
+    lifecycle = WatcherIncidentLifecycleRepository(session_factory)
+    incident_id = lifecycle.sync_pod(
+        make_pod(waiting_reason="CrashLoopBackOff"),
+        current_reason="CrashLoopBackOff",
+    )
+    assert incident_id is not None
+
+    analysis_ids = ["analysis-1", "analysis-2"]
+    with session_factory() as session:
+        for analysis_id in analysis_ids:
+            session.add(
+                AnalysisModel(
+                    id=analysis_id,
+                    namespace="production",
+                    pod="api",
+                    pod_uid="pod-uid",
+                    trigger="watcher",
+                    phase="CrashLoopBackOff",
+                    duration_ms=100,
+                    findings_count=0,
+                )
+            )
+        session.commit()
+
+    with session_factory() as session:
+        repository = WatcherIncidentRepository(session)
+        assert repository.link_analysis(incident_id, analysis_ids[0]) is True
+        assert repository.link_analysis(incident_id, analysis_ids[0]) is True
+        assert repository.link_analysis(incident_id, analysis_ids[1]) is False
+
+    with session_factory() as session:
+        incident = session.get(WatcherIncidentModel, incident_id)
+        linked_analysis_id = incident.analysis_id if incident is not None else None
+
+    assert incident is not None
+    assert linked_analysis_id == analysis_ids[0]
