@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 
 from kubernetes.client import (
     V1ContainerState,
+    V1ContainerStateTerminated,
     V1ContainerStateWaiting,
     V1ContainerStatus,
     V1ObjectMeta,
@@ -160,3 +161,19 @@ def test_existing_crash_loop_backoff_does_not_trigger_again() -> None:
     )
 
     assert trigger is None
+
+
+def test_current_crashloop_takes_precedence_over_historical_oom_exit() -> None:
+    pod = build_pod("CrashLoopBackOff")
+    container = pod.status.container_statuses[0]
+    container.ready = False
+    container.last_state = V1ContainerState(
+        terminated=V1ContainerStateTerminated(
+            exit_code=137,
+            reason="OOMKilled",
+        )
+    )
+
+    issue = PodEventFilter().current_issue(pod)
+
+    assert issue == ("CrashLoopBackOff", "Container is in CrashLoopBackOff")

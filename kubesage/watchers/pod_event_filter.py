@@ -89,13 +89,12 @@ class PodEventFilter:
 
     def current_issue(self, pod: V1Pod) -> tuple[str, str] | None:
         """Return the currently active watcher condition, if any."""
-
-        if self._is_oom_killed(pod):
-            return "OOMKilled", "Container killed because of memory limit"
-
         reason = self._waiting_reason(pod)
         if reason in INTERESTING_REASONS:
             return reason, f"Container is in {reason}"
+
+        if self._is_oom_killed(pod):
+            return "OOMKilled", "Container killed because of memory limit"
 
         return None
 

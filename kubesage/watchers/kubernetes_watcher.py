@@ -234,7 +234,7 @@ class KubernetesWatcher:
             uid,
             resource_version,
         )
-        self._sync_lifecycle(pod, trigger)
+        self._sync_lifecycle(pod)
 
         logger.debug(
             "watcher_state_diff",
@@ -256,7 +256,6 @@ class KubernetesWatcher:
     def _sync_lifecycle(
         self,
         pod: V1Pod,
-        trigger: IncidentTrigger | None = None,
     ) -> None:
         if self.incident_lifecycle is None:
             return
@@ -264,18 +263,6 @@ class KubernetesWatcher:
         issue = self.event_filter.current_issue(pod)
         self.incident_lifecycle.sync_pod(
             pod,
-            current_reason=(
-                trigger.reason
-                if trigger is not None
-                else issue[0]
-                if issue is not None
-                else None
-            ),
-            current_message=(
-                trigger.message
-                if trigger is not None
-                else issue[1]
-                if issue is not None
-                else None
-            ),
+            current_reason=issue[0] if issue is not None else None,
+            current_message=issue[1] if issue is not None else None,
         )
