@@ -127,6 +127,7 @@ ai:
   model: ""
   provider: ""
   contextMaxFindings: 25
+  contextMaxTokens: 12000
 
 observability:
   

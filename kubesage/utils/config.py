@@ -51,6 +51,7 @@ class Settings:
 
     # AI context configuration
     ai_context_max_findings: int = int(os.getenv("AI_CONTEXT_MAX_FINDINGS", "25"))
+    ai_context_max_tokens: int = int(os.getenv("AI_CONTEXT_MAX_TOKENS", "12000"))
 
     # AI Timeline configuration
     ai_timeline_max_events: int = int(os.getenv("AI_TIMELINE_MAX_EVENTS", "50"))

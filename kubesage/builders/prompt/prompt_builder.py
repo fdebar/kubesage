@@ -1,15 +1,70 @@
+import math
+
+import structlog
+
 from kubesage.models.ai_context import AIContext
 from kubesage.models.finding import Finding
 from kubesage.models.timeline import TimelineEventType
+from kubesage.utils.config import settings
 
 _MAX_UNREPRESENTED_KUBERNETES_EVENTS = 5
 _MAX_KUBERNETES_EVENT_FIELD_LENGTH = 300
 _MAX_TIMELINE_TITLE_LENGTH = 160
 _MAX_TIMELINE_DESCRIPTION_LENGTH = 800
+logger = structlog.get_logger()
 
 
 class PromptBuilder:
     def build(self, ai: AIContext) -> str:
+        fitted = AIContext.__new__(AIContext)
+        fitted.__dict__ = ai.__dict__.copy()
+        fitted.ctx = ai.ctx.model_copy(
+            update={
+                "events": list(ai.ctx.events),
+                "findings": list(ai.ctx.findings),
+                "timeline": list(ai.ctx.timeline),
+            }
+        )
+        fitted.intelligence = ai.intelligence.model_copy(deep=True)
+
+        prompt = self._render(fitted)
+        token_budget = max(settings.ai_context_max_tokens, 1)
+        estimated_tokens = self._estimate_tokens(prompt)
+
+        while estimated_tokens > token_budget:
+            if fitted.ctx.timeline:
+                fitted.ctx.timeline.pop()
+            elif fitted.ctx.events:
+                fitted.ctx.events.pop()
+            elif fitted.intelligence.correlations:
+                fitted.intelligence.correlations.pop()
+            elif fitted.intelligence.root_causes:
+                fitted.intelligence.root_causes.pop()
+            elif fitted.ctx.findings:
+                fitted.ctx.findings.pop()
+            else:
+                logger.warning(
+                    "ai_prompt_exceeds_token_budget",
+                    estimated_tokens=estimated_tokens,
+                    token_budget=token_budget,
+                    reason="fixed_prompt_content_exceeds_budget",
+                )
+                break
+
+            prompt = self._render(fitted)
+            estimated_tokens = self._estimate_tokens(prompt)
+
+        logger.info(
+            "ai_prompt_budget_applied",
+            estimated_tokens=estimated_tokens,
+            token_budget=token_budget,
+            findings_selected=len(fitted.ctx.findings),
+            timeline_events_selected=len(fitted.ctx.timeline),
+            kubernetes_events_selected=len(fitted.ctx.events),
+        )
+        return prompt
+
+    def _render(self, ai: AIContext) -> str:
         lines: list[str] = []
 
         self._append_instructions(lines)
@@ -24,6 +79,10 @@ class PromptBuilder:
         self._append_summary(lines, ai)
 
         return "\n".join(lines)
+
+    @staticmethod
+    def _estimate_tokens(prompt: str) -> int:
+        return math.ceil(len(prompt) / 4)
 
     def _append_incident(self, lines: list[str], ai: AIContext) -> None:
         lines.append("# Kubernetes Incident")

@@ -1,5 +1,7 @@
 from datetime import UTC, datetime
 
+from _pytest.monkeypatch import MonkeyPatch
+
 from kubesage.builders.prompt.prompt_builder import PromptBuilder
 from kubesage.models.ai_context import AIContext
 from kubesage.models.event import Event
@@ -16,6 +18,7 @@ from kubesage.models.timeline import (
     TimelineEventSource,
     TimelineEventType,
 )
+from kubesage.utils.config import settings
 
 
 def make_incident() -> Incident:
@@ -96,6 +99,74 @@ def test_prompt_contains_structured_evidence() -> None:
     assert "Value: 512Mi" in prompt
     assert "Source: prometheus" in prompt
     assert "Description: Container memory usage reached its configured limit." in prompt
+
+
+def test_prompt_budget_trims_timeline_without_mutating_source_context(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    incident = make_incident()
+    base_intelligence = make_diagnosis_with_evidence()
+    base_context = AIContext(incident, base_intelligence)
+    builder = PromptBuilder()
+    budget = builder._estimate_tokens(builder._render(base_context))
+
+    intelligence = make_diagnosis_with_evidence()
+    intelligence.timeline = [
+        TimelineEvent(
+            id=f"event-{index}",
+            timestamp=datetime(2026, 8, 31, 10, 42, 12, tzinfo=UTC),
+            type=TimelineEventType.CONTAINER_TERMINATED,
+            source=TimelineEventSource.KUBERNETES,
+            title=f"Container terminated {index}",
+            description="OOMKilled " * 200,
+        )
+        for index in range(3)
+    ]
+    context = AIContext(incident, intelligence)
+    original_timeline = list(context.ctx.timeline)
+    monkeypatch.setattr(settings, "ai_context_max_tokens", budget)
+
+    prompt = builder.build(context)
+
+    assert builder._estimate_tokens(prompt) <= budget
+    assert "ID:" in prompt
+    assert "Source: prometheus" in prompt
+    assert context.ctx.timeline == original_timeline
+    assert len(context.ctx.timeline) == 3
+
+
+def test_prompt_budget_keeps_higher_ranked_diagnosis(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    incident = make_incident()
+    diagnosis_intelligence = make_diagnosis_with_evidence()
+    builder = PromptBuilder()
+    budget = builder._estimate_tokens(
+        builder._render(AIContext(incident, diagnosis_intelligence))
+    )
+    diagnosis = diagnosis_intelligence.findings[0]
+    low_priority_observation = Finding(
+        rule="unrelated_observation",
+        kind=FindingKind.OBSERVATION,
+        severity=Severity.INFO,
+        title="Unrelated low priority observation",
+        description="Unrelated context noise " * 300,
+        confidence=0.5,
+    )
+    intelligence = IncidentIntelligence(
+        findings=[low_priority_observation, diagnosis],
+    )
+    context = AIContext(incident, intelligence)
+    original_findings = list(context.ctx.findings)
+    monkeypatch.setattr(settings, "ai_context_max_tokens", budget)
+
+    prompt = builder.build(context)
+
+    assert builder._estimate_tokens(prompt) <= budget
+    assert "Container memory limit exceeded" in prompt
+    assert "memory_usage" in prompt
+    assert "Unrelated low priority observation" not in prompt
+    assert context.ctx.findings == original_findings
 
 
 def test_prompt_contains_event_timestamp() -> None:

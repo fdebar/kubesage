@@ -762,7 +762,7 @@ Representative commit:
 
 # 5. AI Context Optimisation
 
-**Status:** Context selection and prompt-size bounds implemented; quality evaluation and token-budget work remain.
+**Status:** Context selection and prompt-size bounds implemented; an estimated prompt-token budget is now enforced before provider calls. Provider-specific tokenization and quality-regression tracking remain.
 
 A major current challenge is LLM hallucination and prompt growth.
 
@@ -770,7 +770,7 @@ The project is therefore moving away from the idea that:
 
 > **more context is always better.**
 
-KubeSage already collects a large amount of evidence. Initial selection and prompt-size bounds are now implemented; the current work is checking that these limits preserve useful evidence and improve report quality. The count and field-length bounds limit growth, but are not a provider-aware token budget.
+KubeSage already collects a large amount of evidence. Initial selection and prompt-size bounds are implemented, along with a configurable `AI_CONTEXT_MAX_TOKENS` prompt budget. The current estimator uses prompt characters divided by four because KubeSage supports OpenAI-compatible providers without a shared tokenizer. It trims lower-priority timeline entries, standalone Kubernetes events, correlations, root-cause candidates, and then lower-ranked findings until the estimated input fits. The provider's reported token usage remains the source of actual usage metrics; prompt quality should be checked when context selection changes.
 
 Recent Git history shows a deliberate optimisation layer around timeline selection:
 
@@ -808,7 +808,7 @@ AI Context Selector
         ├── temporal proximity
         ├── deduplication
         ├── finding/event count and field-size bounds
-        └── token-budget measurement and enforcement (next step)
+        └── estimated token-budget measurement and enforcement
         ↓
 Minimal high-value context
         ↓
@@ -976,7 +976,7 @@ Based on the latest implementation direction, the next priorities should focus l
 
 ## Priority 1 — AI Context Engineering
 
-* strict token budgets
+* provider-aware token budgets and calibrated estimates
 * evidence ranking
 * temporal relevance
 * deduplication
